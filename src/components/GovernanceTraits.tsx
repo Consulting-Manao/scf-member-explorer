@@ -9,7 +9,7 @@ interface GovernanceTraitsProps {
 
 function formatWithDecimals(value: unknown, decimals?: number): string {
   if (decimals === undefined || decimals === 0) return String(value);
-  const divisor = BigInt(10 ** decimals);
+  const divisor = BigInt(`1${"0".repeat(decimals)}`);
   const big = typeof value === "bigint" ? value : BigInt(String(value));
   const whole = big / divisor;
   const remainder = big % divisor;
@@ -35,15 +35,14 @@ export function GovernanceTraits({ governance, traitMeta, isLoading }: Governanc
   if (!governance) return null;
 
   const roleMeta = traitMeta?.role ?? traitMeta?.scf_role;
+  const roleMapping = roleMeta?.mapping ?? roleMeta?.valueMappings;
   const roleLabel =
-    governance.role !== undefined && roleMeta?.mapping
-      ? roleMeta.mapping[String(governance.role)] ?? String(governance.role)
-      : governance.role !== undefined
-        ? String(governance.role)
-        : undefined;
+    governance.role !== undefined
+      ? roleMapping?.[String(governance.role)] ?? String(governance.role)
+      : undefined;
 
   const nqgMeta = traitMeta?.nqg ?? traitMeta?.nqg_score;
-  const nqgDecimals = nqgMeta?.decimals;
+  const nqgDecimals = nqgMeta?.decimals ?? nqgMeta?.dataType?.decimals;
   const formattedNqg =
     governance.nqg_score !== undefined
       ? formatWithDecimals(governance.nqg_score, nqgDecimals)
