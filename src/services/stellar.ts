@@ -107,16 +107,30 @@ export async function getGovernance(tokenId: number): Promise<GovernanceData | n
   }
 }
 
-export async function getTraitMetadataUri(): Promise<Record<string, unknown> | null> {
+export interface TraitMetadata {
+  decimals?: number;
+  [key: string]: unknown;
+}
+
+export async function getTraitMetadataUri(): Promise<Record<string, TraitMetadata> | null> {
   const cacheKey = "trait_metadata_uri";
-  const cached = getCached<Record<string, unknown>>(cacheKey);
+  const cached = getCached<Record<string, TraitMetadata>>(cacheKey);
   if (cached) return cached;
 
   try {
     const result = await simulateCall("trait_metadata_uri");
-    const data = scValToNative(result) as Record<string, unknown>;
-    if (data && Object.keys(data).length > 0) setCache(cacheKey, data);
-    return data;
+    const raw = scValToNative(result);
+    console.log("trait_metadata_uri raw:", raw);
+
+    const data = raw instanceof Map ? Object.fromEntries(raw) : raw;
+    // Recursively convert nested Maps
+    const normalized: Record<string, TraitMetadata> = {};
+    for (const [key, val] of Object.entries(data)) {
+      normalized[key] = val instanceof Map ? Object.fromEntries(val) : val as TraitMetadata;
+    }
+
+    if (Object.keys(normalized).length > 0) setCache(cacheKey, normalized);
+    return normalized;
   } catch {
     return null;
   }

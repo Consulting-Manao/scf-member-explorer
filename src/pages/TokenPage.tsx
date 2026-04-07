@@ -6,7 +6,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { GovernanceTraits } from "@/components/GovernanceTraits";
 import { AttributeBadge } from "@/components/AttributeBadge";
-import { getTokenUri, getOwnerOf, getGovernance, type GovernanceData } from "@/services/stellar";
+import { getTokenUri, getOwnerOf, getGovernance, getTraitMetadataUri, type GovernanceData, type TraitMetadata } from "@/services/stellar";
 import { fetchMetadata, ipfsToHttp, type NFTMetadata } from "@/services/ipfs";
 import { CONTRACT_ADDRESS, EXPLORER_URL } from "@/config/networks";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,6 +20,7 @@ export default function TokenPage() {
   const [governance, setGovernance] = useState<GovernanceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [govLoading, setGovLoading] = useState(true);
+  const [traitMeta, setTraitMeta] = useState<Record<string, TraitMetadata> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [imgError, setImgError] = useState(false);
@@ -56,8 +57,14 @@ export default function TokenPage() {
     async function loadGovernance() {
       try {
         setGovLoading(true);
-        const gov = await getGovernance(tokenId);
-        if (!cancelled) setGovernance(gov);
+        const [gov, meta] = await Promise.all([
+          getGovernance(tokenId),
+          getTraitMetadataUri(),
+        ]);
+        if (!cancelled) {
+          setGovernance(gov);
+          setTraitMeta(meta);
+        }
       } catch {
         // governance not available
       } finally {
