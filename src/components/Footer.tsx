@@ -36,7 +36,7 @@ export function Footer() {
                 width={16}
                 height={16}
                 loading="lazy"
-                className="h-4 w-auto invert dark:invert-0"
+                className="h-4 w-auto dark:invert"
               />
             </a>
             <a

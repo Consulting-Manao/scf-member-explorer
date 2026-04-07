@@ -91,7 +91,17 @@ export async function getGovernance(tokenId: number): Promise<GovernanceData | n
       "governance",
       nativeToScVal(tokenId, { type: "u32" })
     );
-    return scValToNative(result) as GovernanceData;
+    const raw = scValToNative(result);
+    console.log("governance raw:", raw);
+
+    // scValToNative may return a Map for Soroban maps
+    const data = raw instanceof Map ? Object.fromEntries(raw) : raw;
+
+    return {
+      role: data.role ?? data.scf_role,
+      nqg_score: data.nqg_score ?? data.nqg ?? data.nqgScore,
+      ...data,
+    } as GovernanceData;
   } catch {
     return null;
   }
