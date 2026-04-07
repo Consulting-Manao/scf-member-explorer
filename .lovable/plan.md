@@ -1,84 +1,37 @@
 
 
-# Stellar Community Fund — NFT Member Explorer (Revised)
+# Add Official SCF & Stellar Icons
 
-## Changes from Previous Plan
-- **Added**: Dark/light theme toggle with system preference detection
-- Network and contract address remain **code-level constants**
+## What we have
+- The reference ChimpDAO project has the official **SCF logo** (`scf-logo.svg`, 5.5KB) and **Stellar symbol** (`stellar-symbol.png`, 60KB) in `src/assets/`
+- The ChimpDAO footer uses these with proper "Built on Stellar" and "Funded by SCF" badges with icon images
+- It also uses inline SVG icons for Discord, X (Twitter), and GitHub social links
+- Our current header uses a generic blue square with "S" letter — needs the real SCF logo
+- Our current footer uses text-only links with generic `ExternalLink` icons
 
-## Pages & Routes
+## Plan
 
-### `/` — Collection Grid (home)
-- Header: "Stellar Community Fund" title, short SCF description, **theme toggle** (sun/moon icon)
-- Responsive grid of NFT cards with **infinite scroll** (~20 cards per batch)
-- Each card: NFT image, name, token ID
-- Unminted tokens: placeholder card
-- Click → `/token/:tokenId`
-- Fully responsive: 1 col mobile, 2 col tablet, 3-4 col desktop
+### 1. Copy official assets from the ChimpDAO project
+- `src/assets/scf-logo.svg` — the official SCF logo
+- `src/assets/stellar-symbol.png` — the official Stellar rocket symbol
 
-### `/token/:tokenId` — Token Detail Page
-- Back button to collection
-- Large NFT image, token name, owner address (copyable)
-- **Governance Traits** (highlighted section):
-  - **SCF Role** → links to SCF Handbook roles page
-  - **NQG Score** → links to NQG contracts repo
-- **Vanity Traits** — accessories as simple badges
-- Technical info: contract address, IPFS link
-- Responsive: stacked layout on mobile, side-by-side on desktop
+### 2. Update Header (`src/components/Header.tsx`)
+- Replace the generic blue "S" square with the actual SCF logo SVG imported from `src/assets/scf-logo.svg`
+- Keep the same layout and sizing
 
-## Theme System
-- Toggle button in header (sun/moon icon)
-- Persisted in `localStorage`
-- Defaults to system preference via `prefers-color-scheme`
-- Uses existing Tailwind `dark` class strategy — the CSS variables for `.dark` are already defined in `index.css`
-- SCF light: clean whites/blues. Dark: deep navy/slate with same accent colors.
+### 3. Update Footer (`src/components/Footer.tsx`)
+- Add proper icon components for each social/external link:
+  - **GitHub** — use lucide `Github` icon (already available)
+  - **Discord** — inline SVG icon (same as ChimpDAO reference)
+  - **X / Twitter** — not needed for SCF (no SCF Twitter link in our links)
+- Replace generic `ExternalLink` icons with contextual icons per link
+- Add the **Stellar symbol** image next to "Built on Stellar"
+- Add the **SCF logo** image as a visual badge
+- Style the footer links as icon buttons similar to ChimpDAO's approach, adapted for SCF's clean/light theme
 
-## Config (code-level only)
-```ts
-// src/config/networks.ts
-export const NETWORK = "testnet";
-export const CONTRACT_ADDRESS = "CAXOCXBNKO3IN3UNDLYXZG3GR3B3IULTPKL42NQSMJJSLXG4J4AGN6I4";
-export const RPC_URL = NETWORK === "testnet" 
-  ? "https://soroban-testnet.stellar.org" 
-  : "https://soroban.stellar.org";
-```
-
-## Smart Contract Integration
-- `token_uri(token_id)` → IPFS metadata URI
-- `owner_of(token_id)` → owner; null = not minted
-- `governance(token_id)` → role + NQG score
-- `trait_metadata_uri()` → cached 24h, maps governance values
-- `name()` / `symbol()` → collection info
-- All via Soroban `simulateTransaction` (read-only, no signing)
-
-## Design
-- Light default: white backgrounds, SCF blue accents, subtle card shadows
-- Dark mode: deep navy/slate, same blue accents adjusted for contrast
-- All components use Tailwind dark: variants
-- Cards, badges, footer all adapt to theme
-
-## Footer
-- "Built on Stellar" → stellar.org
-- "Stellar Community Fund" → communityfund.stellar.org
-- SCF Handbook link, Stellar Dev Discord
-- © 2026 Stellar Community Fund
-
-## Key Files
-- `src/config/networks.ts` — network, RPC, contract constants
-- `src/hooks/useTheme.ts` — theme toggle + localStorage + system pref
-- `src/components/ThemeToggle.tsx` — sun/moon button
-- `src/services/stellar.ts` — Soroban contract calls
-- `src/services/ipfs.ts` — IPFS gateway + metadata fetch
-- `src/services/cache.ts` — localStorage cache with TTL
-- `src/pages/CollectionPage.tsx` — grid + infinite scroll
-- `src/pages/TokenPage.tsx` — detail view
-- `src/components/NFTCard.tsx` — card component
-- `src/components/GovernanceTraits.tsx` — role + NQG display
-- `src/components/AttributeBadge.tsx` — vanity trait badge
-- `src/components/Footer.tsx` — SCF footer
-- `src/components/Header.tsx` — title + theme toggle
-
-## Dependencies
-- `@stellar/stellar-sdk` (latest)
-- Update all existing deps to latest
+### Technical details
+- Assets copied via `cross_project--copy_project_asset`
+- Icons imported as standard image assets
+- Stellar symbol will need `dark:invert` class for theme compatibility
+- SCF logo SVG should work in both themes
 
