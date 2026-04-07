@@ -40,7 +40,7 @@ export async function getCollectionName(): Promise<string> {
 
   const result = await simulateCall("name");
   const name = scValToNative(result) as string;
-  setCache(cacheKey, name);
+  if (name) setCache(cacheKey, name);
   return name;
 }
 
@@ -51,7 +51,7 @@ export async function getCollectionSymbol(): Promise<string> {
 
   const result = await simulateCall("symbol");
   const symbol = scValToNative(result) as string;
-  setCache(cacheKey, symbol);
+  if (symbol) setCache(cacheKey, symbol);
   return symbol;
 }
 
@@ -65,7 +65,7 @@ export async function getTokenUri(tokenId: number): Promise<string> {
     nativeToScVal(tokenId, { type: "u32" })
   );
   const uri = scValToNative(result) as string;
-  setCache(cacheKey, uri);
+  if (uri) setCache(cacheKey, uri);
   return uri;
 }
 
@@ -107,40 +107,20 @@ export async function getTraitMetadataUri(): Promise<Record<string, unknown> | n
   try {
     const result = await simulateCall("trait_metadata_uri");
     const data = scValToNative(result) as Record<string, unknown>;
-    setCache(cacheKey, data);
+    if (data && Object.keys(data).length > 0) setCache(cacheKey, data);
     return data;
   } catch {
     return null;
   }
 }
 
-export async function getTotalTokens(): Promise<number> {
-  const cacheKey = "total_tokens";
+export async function getNextTokenId(): Promise<number> {
+  const cacheKey = "next_token_id";
   const cached = getCached<number>(cacheKey);
   if (cached) return cached;
 
-  try {
-    const result = await simulateCall("total_supply");
-    const total = Number(scValToNative(result));
-    setCache(cacheKey, total);
-    return total;
-  } catch {
-    // fallback: binary search
-  }
-
-  let low = 0;
-  let high = 10000;
-  while (low < high) {
-    const mid = Math.floor((low + high) / 2);
-    try {
-      await getTokenUri(mid);
-      low = mid + 1;
-    } catch {
-      high = mid;
-    }
-  }
-
-  const total = low;
+  const result = await simulateCall("next_token_id");
+  const total = Number(scValToNative(result));
   if (total > 0) setCache(cacheKey, total);
   return total;
 }

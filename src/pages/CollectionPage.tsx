@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { NFTCard } from "@/components/NFTCard";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { getTotalTokens, getTokenUri, getOwnerOf } from "@/services/stellar";
+import { getNextTokenId, getTokenUri, getOwnerOf } from "@/services/stellar";
 import { fetchMetadata, type NFTMetadata } from "@/services/ipfs";
 import { Loader2 } from "lucide-react";
 
@@ -68,7 +68,7 @@ export default function CollectionPage() {
       try {
         setLoading(true);
         setError(null);
-        const total = await getTotalTokens();
+        const total = await getNextTokenId();
         if (cancelled) return;
         setTotalTokens(total);
 
