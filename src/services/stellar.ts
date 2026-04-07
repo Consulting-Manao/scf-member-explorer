@@ -124,12 +124,24 @@ export async function getTraitMetadataUri(): Promise<Record<string, TraitMetadat
     console.log("trait_metadata_uri raw:", raw);
 
     const data = raw instanceof Map ? Object.fromEntries(raw) : raw;
-    // Recursively convert nested Maps
-    const normalized: Record<string, TraitMetadata> = {};
-    for (const [key, val] of Object.entries(data)) {
-      normalized[key] = val instanceof Map ? Object.fromEntries(val) : val as TraitMetadata;
+
+    function deepConvertMaps(val: unknown): unknown {
+      if (val instanceof Map) {
+        const obj: Record<string, unknown> = {};
+        for (const [k, v] of val) {
+          obj[String(k)] = deepConvertMaps(v);
+        }
+        return obj;
+      }
+      return val;
     }
 
+    const normalized: Record<string, TraitMetadata> = {};
+    for (const [key, val] of Object.entries(data)) {
+      normalized[key] = deepConvertMaps(val) as TraitMetadata;
+    }
+
+    console.log("trait_metadata_uri normalized:", JSON.stringify(normalized));
     if (Object.keys(normalized).length > 0) setCache(cacheKey, normalized);
     return normalized;
   } catch {
