@@ -1,4 +1,4 @@
-import { Contract, TransactionBuilder, Account, nativeToScVal, scValToNative, xdr } from "@stellar/stellar-sdk";
+import { Contract, TransactionBuilder, Account, nativeToScVal, scValToNative, xdr, Keypair } from "@stellar/stellar-sdk";
 import { Server, Api } from "@stellar/stellar-sdk/rpc";
 import { CONTRACT_ADDRESS, RPC_URL, NETWORK_PASSPHRASE } from "@/config/networks";
 import { getCached, setCache } from "./cache";
@@ -7,10 +7,8 @@ const server = new Server(RPC_URL);
 const contract = new Contract(CONTRACT_ADDRESS);
 
 async function simulateCall(method: string, ...args: xdr.ScVal[]): Promise<xdr.ScVal> {
-  const account = new Account(
-    "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF6",
-    "0"
-  );
+  const keypair = Keypair.random();
+  const account = new Account(keypair.publicKey(), "0");
 
   const tx = new TransactionBuilder(account, {
     fee: "100",
