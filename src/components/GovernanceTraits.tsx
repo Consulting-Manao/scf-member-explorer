@@ -7,10 +7,14 @@ interface GovernanceTraitsProps {
   isLoading?: boolean;
 }
 
-function formatWithDecimals(value: number | string, decimals?: number): string {
-  const num = typeof value === "string" ? Number(value) : value;
-  if (isNaN(num) || decimals === undefined || decimals === 0) return String(value);
-  return (num / Math.pow(10, decimals)).toFixed(decimals);
+function formatWithDecimals(value: unknown, decimals?: number): string {
+  if (decimals === undefined || decimals === 0) return String(value);
+  const divisor = BigInt(10 ** decimals);
+  const big = typeof value === "bigint" ? value : BigInt(String(value));
+  const whole = big / divisor;
+  const remainder = big % divisor;
+  const fracStr = remainder.toString().padStart(decimals, "0").replace(/0+$/, "");
+  return fracStr ? `${whole}.${fracStr}` : `${whole}`;
 }
 
 export function GovernanceTraits({ governance, traitMeta, isLoading }: GovernanceTraitsProps) {
