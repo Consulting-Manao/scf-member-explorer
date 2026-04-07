@@ -2,9 +2,24 @@ import { Contract, TransactionBuilder, Account, nativeToScVal, scValToNative, xd
 import { Server, Api } from "@stellar/stellar-sdk/rpc";
 import { CONTRACT_ADDRESS, RPC_URL, NETWORK_PASSPHRASE } from "@/config/networks";
 import { getCached, setCache } from "./cache";
+import { ipfsToHttp } from "./ipfs";
 
 const server = new Server(RPC_URL);
 const contract = new Contract(CONTRACT_ADDRESS);
+
+function deepConvertMaps(value: unknown): unknown {
+  if (value instanceof Map) {
+    return Object.fromEntries(
+      Array.from(value.entries()).map(([key, nestedValue]) => [String(key), deepConvertMaps(nestedValue)])
+    );
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => deepConvertMaps(item));
+  }
+
+  return value;
+}
 
 async function simulateCall(method: string, ...args: xdr.ScVal[]): Promise<xdr.ScVal> {
   const keypair = Keypair.random();
@@ -80,8 +95,8 @@ export async function getOwnerOf(tokenId: number): Promise<string | null> {
 }
 
 export interface GovernanceData {
-  role?: string;
-  nqg_score?: number;
+  role?: string | number | bigint;
+  nqg_score?: unknown;
   [key: string]: unknown;
 }
 
@@ -94,13 +109,15 @@ export async function getGovernance(tokenId: number): Promise<GovernanceData | n
     const raw = scValToNative(result);
     console.log("governance raw:", raw);
 
-    // scValToNative may return a Map for Soroban maps
-    const data = raw instanceof Map ? Object.fromEntries(raw) : raw;
+    const data = deepConvertMaps(raw);
+    if (!data || typeof data !== "object") return null;
+
+    const normalized = data as Record<string, unknown>;
 
     return {
-      role: data.role ?? data.scf_role,
-      nqg_score: data.nqg_score ?? data.nqg ?? data.nqgScore,
-      ...data,
+      ...normalized,
+      role: normalized.role ?? normalized.scf_role,
+      nqg_score: normalized.nqg_score ?? normalized.nqg ?? normalized.nqgScore,
     } as GovernanceData;
   } catch {
     return null;
@@ -108,9 +125,59 @@ export async function getGovernance(tokenId: number): Promise<GovernanceData | n
 }
 
 export interface TraitMetadata {
+  displayName?: string;
   decimals?: number;
   mapping?: Record<string, string>;
+  valueMappings?: Record<string, string>;
+  dataType?: {
+    type?: string;
+    decimals?: number;
+    signed?: boolean;
+    [key: string]: unknown;
+  };
   [key: string]: unknown;
+}
+
+function normalizeTraitMetadata(value: unknown): TraitMetadata {
+  const normalized = deepConvertMaps(value);
+  if (!normalized || typeof normalized !== "object") return {};
+
+  const record = normalized as Record<string, unknown>;
+  const dataType =
+    record.dataType && typeof record.dataType === "object"
+      ? (record.dataType as Record<string, unknown>)
+      : undefined;
+
+  const rawDecimals = dataType?.decimals ?? record.decimals;
+  const decimals =
+    typeof rawDecimals === "number"
+      ? rawDecimals
+      : typeof rawDecimals === "bigint"
+        ? Number(rawDecimals)
+        : typeof rawDecimals === "string" && rawDecimals.length > 0
+          ? Number(rawDecimals)
+          : undefined;
+
+  const mappingSource =
+    record.valueMappings && typeof record.valueMappings === "object"
+      ? (record.valueMappings as Record<string, unknown>)
+      : record.mapping && typeof record.mapping === "object"
+        ? (record.mapping as Record<string, unknown>)
+        : undefined;
+
+  const mapping = mappingSource
+    ? Object.fromEntries(
+        Object.entries(mappingSource).map(([key, mappedValue]) => [key, String(mappedValue)])
+      )
+    : undefined;
+
+  return {
+    ...record,
+    dataType: dataType as TraitMetadata["dataType"],
+    decimals: Number.isFinite(decimals) ? decimals : undefined,
+    mapping,
+    valueMappings: mapping,
+  };
 }
 
 export async function getTraitMetadataUri(): Promise<Record<string, TraitMetadata> | null> {
@@ -123,25 +190,36 @@ export async function getTraitMetadataUri(): Promise<Record<string, TraitMetadat
     const raw = scValToNative(result);
     console.log("trait_metadata_uri raw:", raw);
 
-    const data = raw instanceof Map ? Object.fromEntries(raw) : raw;
+    const uri =
+      typeof raw === "string"
+        ? raw
+        : raw instanceof Map
+          ? String(raw.get("uri") ?? raw.get("url") ?? "")
+          : raw && typeof raw === "object"
+            ? String((raw as Record<string, unknown>).uri ?? (raw as Record<string, unknown>).url ?? "")
+            : "";
 
-    function deepConvertMaps(val: unknown): unknown {
-      if (val instanceof Map) {
-        const obj: Record<string, unknown> = {};
-        for (const [k, v] of val) {
-          obj[String(k)] = deepConvertMaps(v);
-        }
-        return obj;
-      }
-      return val;
+    if (!uri) return null;
+
+    const response = await fetch(ipfsToHttp(uri));
+    if (!response.ok) {
+      throw new Error(`Failed to fetch trait metadata: ${response.status}`);
     }
 
-    const normalized: Record<string, TraitMetadata> = {};
-    for (const [key, val] of Object.entries(data)) {
-      normalized[key] = deepConvertMaps(val) as TraitMetadata;
-    }
+    const metadataRaw = await response.json();
+    const metadata = deepConvertMaps(metadataRaw) as Record<string, unknown>;
+    console.log("trait_metadata_uri resolved:", metadata);
 
-    console.log("trait_metadata_uri normalized:", JSON.stringify(normalized));
+    const traits =
+      metadata.traits && typeof metadata.traits === "object"
+        ? (metadata.traits as Record<string, unknown>)
+        : metadata;
+
+    const normalized = Object.fromEntries(
+      Object.entries(traits).map(([key, value]) => [key, normalizeTraitMetadata(value)])
+    ) as Record<string, TraitMetadata>;
+
+    console.log("trait_metadata_uri normalized:", normalized);
     if (Object.keys(normalized).length > 0) setCache(cacheKey, normalized);
     return normalized;
   } catch {
