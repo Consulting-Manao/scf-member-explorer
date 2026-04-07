@@ -97,7 +97,6 @@ export async function getOwnerOf(tokenId: number): Promise<string | null> {
 export interface GovernanceData {
   role?: string | number | bigint;
   nqg_score?: unknown;
-  [key: string]: unknown;
 }
 
 export async function getGovernance(tokenId: number): Promise<GovernanceData | null> {
@@ -107,15 +106,12 @@ export async function getGovernance(tokenId: number): Promise<GovernanceData | n
       nativeToScVal(tokenId, { type: "u32" })
     );
     const raw = scValToNative(result);
-    console.log("governance raw:", raw);
-
     const data = deepConvertMaps(raw);
     if (!data || typeof data !== "object") return null;
 
     const normalized = data as Record<string, unknown>;
 
     return {
-      ...normalized,
       role: normalized.role ?? normalized.scf_role,
       nqg_score: normalized.nqg_score ?? normalized.nqg ?? normalized.nqgScore,
     } as GovernanceData;
@@ -192,7 +188,6 @@ export async function getTraitMetadataUri(): Promise<Record<string, TraitMetadat
   try {
     const result = await simulateCall("trait_metadata_uri");
     const raw = scValToNative(result);
-    console.log("trait_metadata_uri raw:", raw);
 
     let uri = "";
     if (typeof raw === "string") {
@@ -205,7 +200,6 @@ export async function getTraitMetadataUri(): Promise<Record<string, TraitMetadat
 
     if (!uri) return null;
 
-    console.log("trait_metadata_uri fetching:", ipfsToHttp(uri));
     const response = await fetch(ipfsToHttp(uri));
     if (!response.ok) {
       throw new Error(`Failed to fetch trait metadata: ${response.status}`);
@@ -215,7 +209,6 @@ export async function getTraitMetadataUri(): Promise<Record<string, TraitMetadat
     if (!metadataRaw || typeof metadataRaw !== "object") return null;
 
     const metadata = deepConvertMaps(metadataRaw) as Record<string, unknown>;
-    console.log("trait_metadata_uri resolved:", metadata);
 
     const traits =
       metadata.traits && typeof metadata.traits === "object"
@@ -229,7 +222,6 @@ export async function getTraitMetadataUri(): Promise<Record<string, TraitMetadat
       Object.entries(traits).map(([key, value]) => [key, normalizeTraitMetadata(value)])
     ) as Record<string, TraitMetadata>;
 
-    console.log("trait_metadata_uri normalized:", normalized);
     if (Object.keys(normalized).length > 0) setCache(cacheKey, normalized);
     return normalized;
   } catch (err) {
