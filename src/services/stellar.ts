@@ -1,17 +1,18 @@
-import * as StellarSdk from "@stellar/stellar-sdk";
+import { Contract, TransactionBuilder, Account, nativeToScVal, scValToNative, xdr } from "@stellar/stellar-sdk";
+import { Server, Api } from "@stellar/stellar-sdk/rpc";
 import { CONTRACT_ADDRESS, RPC_URL, NETWORK_PASSPHRASE } from "@/config/networks";
 import { getCached, setCache } from "./cache";
 
-const server = new StellarSdk.SorobanRpc.Server(RPC_URL);
-const contract = new StellarSdk.Contract(CONTRACT_ADDRESS);
+const server = new Server(RPC_URL);
+const contract = new Contract(CONTRACT_ADDRESS);
 
-async function simulateCall(method: string, ...args: StellarSdk.xdr.ScVal[]): Promise<StellarSdk.xdr.ScVal> {
-  const account = new StellarSdk.Account(
+async function simulateCall(method: string, ...args: xdr.ScVal[]): Promise<xdr.ScVal> {
+  const account = new Account(
     "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF6",
     "0"
   );
 
-  const tx = new StellarSdk.TransactionBuilder(account, {
+  const tx = new TransactionBuilder(account, {
     fee: "100",
     networkPassphrase: NETWORK_PASSPHRASE,
   })
@@ -21,19 +22,15 @@ async function simulateCall(method: string, ...args: StellarSdk.xdr.ScVal[]): Pr
 
   const response = await server.simulateTransaction(tx);
 
-  if (StellarSdk.SorobanRpc.Api.isSimulationError(response)) {
+  if (Api.isSimulationError(response)) {
     throw new Error(`Simulation error: ${response.error}`);
   }
 
-  if (!StellarSdk.SorobanRpc.Api.isSimulationSuccess(response)) {
+  if (!Api.isSimulationSuccess(response)) {
     throw new Error("Simulation failed");
   }
 
   return response.result!.retval;
-}
-
-function scValToString(val: StellarSdk.xdr.ScVal): string {
-  return StellarSdk.scValToNative(val) as string;
 }
 
 export async function getCollectionName(): Promise<string> {
@@ -42,7 +39,7 @@ export async function getCollectionName(): Promise<string> {
   if (cached) return cached;
 
   const result = await simulateCall("name");
-  const name = scValToString(result);
+  const name = scValToNative(result) as string;
   setCache(cacheKey, name);
   return name;
 }
@@ -53,7 +50,7 @@ export async function getCollectionSymbol(): Promise<string> {
   if (cached) return cached;
 
   const result = await simulateCall("symbol");
-  const symbol = scValToString(result);
+  const symbol = scValToNative(result) as string;
   setCache(cacheKey, symbol);
   return symbol;
 }
@@ -65,9 +62,9 @@ export async function getTokenUri(tokenId: number): Promise<string> {
 
   const result = await simulateCall(
     "token_uri",
-    StellarSdk.nativeToScVal(tokenId, { type: "u32" })
+    nativeToScVal(tokenId, { type: "u32" })
   );
-  const uri = scValToString(result);
+  const uri = scValToNative(result) as string;
   setCache(cacheKey, uri);
   return uri;
 }
@@ -76,9 +73,9 @@ export async function getOwnerOf(tokenId: number): Promise<string | null> {
   try {
     const result = await simulateCall(
       "owner_of",
-      StellarSdk.nativeToScVal(tokenId, { type: "u32" })
+      nativeToScVal(tokenId, { type: "u32" })
     );
-    return StellarSdk.scValToNative(result) as string;
+    return scValToNative(result) as string;
   } catch {
     return null;
   }
@@ -94,9 +91,9 @@ export async function getGovernance(tokenId: number): Promise<GovernanceData | n
   try {
     const result = await simulateCall(
       "governance",
-      StellarSdk.nativeToScVal(tokenId, { type: "u32" })
+      nativeToScVal(tokenId, { type: "u32" })
     );
-    return StellarSdk.scValToNative(result) as GovernanceData;
+    return scValToNative(result) as GovernanceData;
   } catch {
     return null;
   }
@@ -109,7 +106,7 @@ export async function getTraitMetadataUri(): Promise<Record<string, unknown> | n
 
   try {
     const result = await simulateCall("trait_metadata_uri");
-    const data = StellarSdk.scValToNative(result) as Record<string, unknown>;
+    const data = scValToNative(result) as Record<string, unknown>;
     setCache(cacheKey, data);
     return data;
   } catch {
@@ -117,23 +114,20 @@ export async function getTraitMetadataUri(): Promise<Record<string, unknown> | n
   }
 }
 
-// Try to discover total supply or iterate until we get errors
 export async function getTotalTokens(): Promise<number> {
   const cacheKey = "total_tokens";
   const cached = getCached<number>(cacheKey);
   if (cached) return cached;
 
-  // Try common methods for total supply
   try {
     const result = await simulateCall("total_supply");
-    const total = Number(StellarSdk.scValToNative(result));
+    const total = Number(scValToNative(result));
     setCache(cacheKey, total);
     return total;
   } catch {
-    // fallback: binary search for max token ID
+    // fallback: binary search
   }
 
-  // Binary search approach
   let low = 0;
   let high = 10000;
   while (low < high) {
