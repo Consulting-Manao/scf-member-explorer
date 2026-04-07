@@ -1,55 +1,36 @@
 
 
-# Fix trait_metadata_uri parsing and governance display
+# Codebase Cleanup — No Visual or Behavioral Changes
 
-## Root Cause
+## Issues Found
 
-The console logs reveal two bugs:
+### 1. Debug `console.log` statements (6 total)
+Leftover from debugging. Should be removed:
+- `src/services/stellar.ts` lines 110, 195, 208, 218, 232
+- `src/components/GovernanceTraits.tsx` line 54
 
-1. **`traitMeta` contains character-indexed URL string** (`"0": "h", "1": "t", ...`): The `getTraitMetadataUri` function's fallback path at line 213-216 checks `metadata.traits` — if it's undefined (which it would be if `metadata` is actually a string), it falls back to `metadata` itself. `Object.entries()` on a string produces character-indexed entries like `[["0","h"],["1","t"],...]`. This means the IPFS fetch is either failing silently or never happening, and the raw string is being treated as the metadata object.
+### 2. Unused file: `src/components/NavLink.tsx`
+Not imported anywhere in the app. Dead code — delete it.
 
-2. **No network request to the trait metadata IPFS URL** visible in the logs, confirming the fetch never fires or a broken cached result is being served.
+### 3. Unused file: `src/App.css`
+Vite boilerplate CSS, never imported. Delete it.
 
-## Actual trait metadata (from IPFS)
+### 4. Unused IPFS gateways in `src/services/ipfs.ts`
+`IPFS_GATEWAYS` array declares 3 gateways but only index `[0]` is ever used. Simplify to a single constant.
 
-The JSON at the IPFS URL contains:
-```json
-{
-  "traits": {
-    "role": {
-      "valueMappings": { "0": "Verified", "1": "Pathfinder", "2": "Navigator", "3": "Pilot" }
-    },
-    "nqg": {
-      "dataType": { "type": "decimal", "decimals": 6 }
-    }
-  }
-}
-```
+### 5. `GovernanceData` has redundant `nqg` field access
+In `getGovernance`, the return normalizes `nqg_score` from `normalized.nqg_score ?? normalized.nqg ?? normalized.nqgScore`. Then in `GovernanceTraits`, it reads `governance.nqg_score ?? governance.nqg`. The spread `...normalized` already includes the raw `nqg` key, so both `governance.nqg_score` and `governance.nqg` exist. This works but is confusing. Clean up: just set `nqg_score` and don't spread unknown keys.
 
-So for token 0 with raw `{"nqg": "8341693", "role": 3}`:
-- Role `3` should display as **"Pilot"**
-- NQG `8341693` with 6 decimals should display as **"8.341693"**
+### 6. `NotFound` page uses `console.error` for 404
+Minor, but logging a 404 as `console.error` is noisy. Remove it.
 
 ## Plan
 
-### 1. Fix `getTraitMetadataUri` in `src/services/stellar.ts`
-
-- Add an early guard: if `raw` (from `scValToNative`) is a string, use it as the URI. If it's a Map/object, extract `.uri`/`.url`. If URI extraction fails, return `null` immediately — do NOT fall through to treating the raw value as metadata.
-- After fetching the JSON, validate that the result is an object before processing. If it's a string or primitive, return `null`.
-- Clear any previously cached bad data by checking the structure before caching.
-
-### 2. Fix `GovernanceTraits` in `src/components/GovernanceTraits.tsx`
-
-- For role: look up `traitMeta?.role?.valueMappings?.[String(governance.role)]` (the actual key name from the JSON is `valueMappings`, not `mapping`)
-- For NQG decimals: get from `traitMeta?.nqg?.dataType?.decimals` (the actual path in the JSON)
-- The existing `formatWithDecimals` BigInt helper should work once it receives the correct decimals value (6)
-
-### 3. Fix `getGovernance` in `src/services/stellar.ts`
-
-- The `nqg` value comes back as a BigInt. Keep it as-is (the `formatWithDecimals` function already handles BigInt).
-- Map `nqg_score` from `nqg` key since the contract uses `nqg` not `nqg_score`.
-
 ### Files to edit
-- `src/services/stellar.ts` — fix URI extraction guard, prevent string-as-metadata fallback
-- `src/components/GovernanceTraits.tsx` — use correct metadata paths (`valueMappings`, `dataType.decimals`)
+- **Delete** `src/components/NavLink.tsx`
+- **Delete** `src/App.css`
+- **`src/services/stellar.ts`** — Remove 5 `console.log` lines. Clean up `getGovernance` return to only set known keys (`role`, `nqg_score`).
+- **`src/components/GovernanceTraits.tsx`** — Remove debug `console.log`. Simplify `nqgRaw` to just `governance.nqg_score` since we normalize it upstream.
+- **`src/services/ipfs.ts`** — Replace gateway array with single `IPFS_GATEWAY` constant.
+- **`src/pages/NotFound.tsx`** — Remove `console.error` and the `useEffect`/`useLocation` imports.
 
