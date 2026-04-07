@@ -109,6 +109,7 @@ export async function getGovernance(tokenId: number): Promise<GovernanceData | n
 
 export interface TraitMetadata {
   decimals?: number;
+  mapping?: Record<string, string>;
   [key: string]: unknown;
 }
 
