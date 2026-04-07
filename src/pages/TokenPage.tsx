@@ -110,23 +110,28 @@ export default function TokenPage() {
           </div>
         ) : (
           <div className="grid gap-8 md:grid-cols-2">
-            {/* Image */}
-            <div className="overflow-hidden rounded-2xl border bg-muted">
-              {imageUrl && !imgError ? (
-                <img
-                  src={imageUrl}
-                  alt={metadata?.name || `Token #${tokenId}`}
-                  className="aspect-square w-full object-cover"
-                  onError={() => setImgError(true)}
-                />
-              ) : (
-                <div className="flex aspect-square w-full items-center justify-center">
-                  <User className="h-24 w-24 text-muted-foreground/30" />
-                </div>
-              )}
+            {/* Left column: Image + Governance */}
+            <div className="space-y-6">
+              <div className="overflow-hidden rounded-2xl border bg-muted">
+                {imageUrl && !imgError ? (
+                  <img
+                    src={imageUrl}
+                    alt={metadata?.name || `Token #${tokenId}`}
+                    className="aspect-square w-full object-cover"
+                    onError={() => setImgError(true)}
+                  />
+                ) : (
+                  <div className="flex aspect-square w-full items-center justify-center">
+                    <User className="h-24 w-24 text-muted-foreground/30" />
+                  </div>
+                )}
+              </div>
+
+              {/* Governance Traits */}
+              <GovernanceTraits governance={governance} isLoading={govLoading} />
             </div>
 
-            {/* Details */}
+            {/* Right column: Details */}
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold text-foreground sm:text-3xl">
@@ -167,9 +172,6 @@ export default function TokenPage() {
                   </div>
                 </div>
               )}
-
-              {/* Governance Traits */}
-              <GovernanceTraits governance={governance} isLoading={govLoading} />
 
               {/* Vanity Traits */}
               {vanityTraits.length > 0 && (

@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import { Github, BookOpen, ExternalLink } from "lucide-react";
+import { Github, BookOpen } from "lucide-react";
 import stellarSymbol from "@/assets/stellar-symbol.png";
 import scfLogo from "@/assets/scf-logo.svg";
 
@@ -36,7 +36,7 @@ export function Footer() {
                 width={16}
                 height={16}
                 loading="lazy"
-                className="h-4 w-auto invert dark:invert-0"
+                className="h-4 w-auto dark:invert"
               />
             </a>
             <a
