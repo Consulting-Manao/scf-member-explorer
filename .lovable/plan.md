@@ -1,64 +1,35 @@
 
 
-# Fix Governance Data, Stellar Logo, Token Detail Layout
+# Fix Role Label Mapping and NQG Score Decimal Formatting
 
-## 1. Fix governance data retrieval (`src/services/stellar.ts`)
+## Problems
+1. **Role shows "Member" instead of the actual role name** (e.g., "Pilot", "Navigator"): The `governance` method returns the role as an integer. The `trait_metadata_uri` response contains a mapping from integer values to role labels (e.g., `{0: "Pilot", 1: "Navigator"}`). Currently the code just displays the raw value or falls back to "Member".
+2. **NQG score not properly formatted**: The decimal shift from `trait_metadata_uri` may not be correctly applied because the key lookup (`traitMeta?.nqg?.decimals`) might not match the actual key in the returned data.
 
-The `governance` method returns a Soroban map, but `scValToNative` may produce keys that don't match our expected `role` / `nqg_score`. Two approaches available:
+## Plan
 
-- **Option A (current)**: Keep calling `governance(token_id)` which returns role as a string and NQG score. Add `console.log` to inspect raw output shape, then adapt key lookups.
-- **Option B**: Call `trait_values(token_id, ["role", "nqg"])` to get raw trait values, then use `trait_metadata_uri` to convert the role integer to a string label.
-
-**Plan**: Add a temporary `console.log` of the raw `scValToNative(result)` in `getGovernance` so we can see the actual key names. Also make the function resilient by iterating all keys of the returned object and mapping common variations (`nqg_score`, `nqg`, `nqgScore`) to the expected fields. If the governance call fails or returns unexpected structure, fall back to calling `trait_values`.
-
-### Technical detail
+### 1. Update `TraitMetadata` type (`src/services/stellar.ts`)
+Add a `mapping` (or `values`) field to `TraitMetadata` to capture integer-to-string role mappings:
 ```ts
-export async function getGovernance(tokenId: number): Promise<GovernanceData | null> {
-  try {
-    const result = await simulateCall("governance", nativeToScVal(tokenId, { type: "u32" }));
-    const raw = scValToNative(result);
-    console.log("governance raw:", JSON.stringify(raw));
-    
-    // Normalize: handle both Map and object structures
-    const data = raw instanceof Map ? Object.fromEntries(raw) : raw;
-    
-    return {
-      role: data.role ?? data.scf_role,
-      nqg_score: data.nqg_score ?? data.nqg ?? data.nqgScore,
-      ...data,
-    } as GovernanceData;
-  } catch {
-    return null;
-  }
+export interface TraitMetadata {
+  decimals?: number;
+  mapping?: Record<string, string>;
+  [key: string]: unknown;
 }
 ```
 
-Key insight: `scValToNative` converts Soroban maps to JS `Map` objects, not plain objects. We need `Object.fromEntries()` to convert it, then look up keys.
+### 2. Improve `getTraitMetadataUri` normalization (`src/services/stellar.ts`)
+Recursively convert nested Maps at all levels (the mapping field inside each trait is also likely a Soroban Map). Add deeper conversion.
 
-## 2. Fix Stellar logo inversion (`src/components/Footer.tsx`)
+### 3. Fix `getGovernance` to preserve raw values (`src/services/stellar.ts`)
+Stop converting the role to a string prematurely. Keep the raw integer for `role` so the UI can map it using trait metadata. Also add a `console.log` showing all keys and values for debugging.
 
-The Stellar symbol PNG is dark-colored natively. Currently has `invert dark:invert-0` which wrongly inverts it in light mode. User said "the other way around" — change to `dark:invert` (no invert in light mode, invert to light in dark mode).
+### 4. Update `GovernanceTraits` component (`src/components/GovernanceTraits.tsx`)
+- **Role**: Look up `traitMeta?.role?.mapping?.[governance.role]` to convert the integer to a human-readable label (e.g., "Pilot"). Fall back to the raw value if no mapping exists.
+- **NQG score**: Try multiple key variations in traitMeta (`nqg`, `nqg_score`) for the decimals value. Log what keys are available in traitMeta for debugging.
+- Keep the existing BigInt-safe `formatWithDecimals` function.
 
-- Line 39: `invert dark:invert-0` → `dark:invert`
-
-## 3. Redesign token detail layout (`src/pages/TokenPage.tsx`)
-
-Move GovernanceTraits below the image in the left column for better space usage:
-
-```text
-Left column:            Right column:
-┌────────────────┐     ┌──────────────────────┐
-│    Image       │     │ Name / Description   │
-│                │     │ Owner                │
-├────────────────┤     │ Attributes           │
-│  Governance    │     │ Contract details     │
-└────────────────┘     └──────────────────────┘
-```
-
-Restructure the 2-column grid so the left column contains both the image and GovernanceTraits component, while the right column has name, description, owner, vanity attributes, and technical details.
-
-## Files changed
-- `src/services/stellar.ts` — fix `getGovernance` to handle Map return type, add console.log, normalize keys
-- `src/components/Footer.tsx` — line 39: fix Stellar logo class
-- `src/pages/TokenPage.tsx` — move GovernanceTraits to left column under image
+### Files to edit
+- `src/services/stellar.ts` — update `TraitMetadata` interface, deepen Map normalization in `getTraitMetadataUri`, keep raw values in `getGovernance`
+- `src/components/GovernanceTraits.tsx` — use trait metadata mapping for role label, improve decimals key lookup for NQG score
 
