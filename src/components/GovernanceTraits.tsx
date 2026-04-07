@@ -34,11 +34,22 @@ export function GovernanceTraits({ governance, traitMeta, isLoading }: Governanc
 
   if (!governance) return null;
 
-  const nqgDecimals = traitMeta?.nqg?.decimals ?? traitMeta?.nqg_score?.decimals;
+  const roleMeta = traitMeta?.role ?? traitMeta?.scf_role;
+  const roleLabel =
+    governance.role !== undefined && roleMeta?.mapping
+      ? roleMeta.mapping[String(governance.role)] ?? String(governance.role)
+      : governance.role !== undefined
+        ? String(governance.role)
+        : undefined;
+
+  const nqgMeta = traitMeta?.nqg ?? traitMeta?.nqg_score;
+  const nqgDecimals = nqgMeta?.decimals;
   const formattedNqg =
     governance.nqg_score !== undefined
       ? formatWithDecimals(governance.nqg_score, nqgDecimals)
       : undefined;
+
+  console.log("GovernanceTraits debug:", { governance, traitMeta, roleMeta, roleLabel, nqgMeta, nqgDecimals, formattedNqg });
 
   return (
     <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-6">
