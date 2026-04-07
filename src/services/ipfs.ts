@@ -1,14 +1,10 @@
-const IPFS_GATEWAYS = [
-  "https://ipfs.io/ipfs/",
-  "https://cloudflare-ipfs.com/ipfs/",
-  "https://gateway.pinata.cloud/ipfs/",
-];
+const IPFS_GATEWAY = "https://ipfs.io/ipfs/";
 
 export function ipfsToHttp(uri: string): string {
   if (!uri) return "";
   if (uri.startsWith("http")) return uri;
   const cid = uri.replace("ipfs://", "").replace("ipfs/", "");
-  return `${IPFS_GATEWAYS[0]}${cid}`;
+  return `${IPFS_GATEWAY}${cid}`;
 }
 
 export interface NFTMetadata {

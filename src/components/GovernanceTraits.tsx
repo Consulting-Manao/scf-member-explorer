@@ -45,13 +45,11 @@ export function GovernanceTraits({ governance, traitMeta, isLoading }: Governanc
 
   const nqgMeta = traitMeta?.nqg ?? traitMeta?.nqg_score;
   const nqgDecimals = nqgMeta?.dataType?.decimals ?? nqgMeta?.decimals;
-  const nqgRaw = governance.nqg_score ?? governance.nqg;
+  const nqgRaw = governance.nqg_score;
   const formattedNqg =
     nqgRaw !== undefined
       ? formatWithDecimals(nqgRaw, nqgDecimals)
       : undefined;
-
-  console.log("GovernanceTraits debug:", { governance, traitMeta, roleMeta, roleMapping, roleLabel, nqgMeta, nqgDecimals, nqgRaw, formattedNqg });
 
   return (
     <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-6">
