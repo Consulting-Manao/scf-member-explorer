@@ -26,7 +26,6 @@ export default function CollectionPage() {
   const loadBatch = useCallback(
     async (startId: number, total: number) => {
       const endId = Math.min(startId + BATCH_SIZE, total);
-      const batch: TokenData[] = [];
 
       const promises = [];
       for (let id = startId; id < endId; id++) {
