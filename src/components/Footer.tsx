@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import { Github, BookOpen, ExternalLink } from "lucide-react";
+import { Github, BookOpen } from "lucide-react";
 import stellarSymbol from "@/assets/stellar-symbol.png";
 import scfLogo from "@/assets/scf-logo.svg";
 
