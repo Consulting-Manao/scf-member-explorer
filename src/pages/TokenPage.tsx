@@ -135,7 +135,7 @@ export default function TokenPage() {
               </div>
 
               {/* Governance Traits */}
-              <GovernanceTraits governance={governance} isLoading={govLoading} />
+              <GovernanceTraits governance={governance} traitMeta={traitMeta} isLoading={govLoading} />
             </div>
 
             {/* Right column: Details */}
