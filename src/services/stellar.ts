@@ -183,30 +183,37 @@ function normalizeTraitMetadata(value: unknown): TraitMetadata {
 export async function getTraitMetadataUri(): Promise<Record<string, TraitMetadata> | null> {
   const cacheKey = "trait_metadata_uri";
   const cached = getCached<Record<string, TraitMetadata>>(cacheKey);
-  if (cached) return cached;
+  if (cached && typeof cached === "object" && !Array.isArray(cached)) {
+    // Validate cached data isn't a character-indexed string
+    const keys = Object.keys(cached);
+    if (keys.length > 0 && keys[0] !== "0") return cached;
+  }
 
   try {
     const result = await simulateCall("trait_metadata_uri");
     const raw = scValToNative(result);
     console.log("trait_metadata_uri raw:", raw);
 
-    const uri =
-      typeof raw === "string"
-        ? raw
-        : raw instanceof Map
-          ? String(raw.get("uri") ?? raw.get("url") ?? "")
-          : raw && typeof raw === "object"
-            ? String((raw as Record<string, unknown>).uri ?? (raw as Record<string, unknown>).url ?? "")
-            : "";
+    let uri = "";
+    if (typeof raw === "string") {
+      uri = raw;
+    } else if (raw instanceof Map) {
+      uri = String(raw.get("uri") ?? raw.get("url") ?? "");
+    } else if (raw && typeof raw === "object") {
+      uri = String((raw as Record<string, unknown>).uri ?? (raw as Record<string, unknown>).url ?? "");
+    }
 
     if (!uri) return null;
 
+    console.log("trait_metadata_uri fetching:", ipfsToHttp(uri));
     const response = await fetch(ipfsToHttp(uri));
     if (!response.ok) {
       throw new Error(`Failed to fetch trait metadata: ${response.status}`);
     }
 
     const metadataRaw = await response.json();
+    if (!metadataRaw || typeof metadataRaw !== "object") return null;
+
     const metadata = deepConvertMaps(metadataRaw) as Record<string, unknown>;
     console.log("trait_metadata_uri resolved:", metadata);
 
@@ -215,6 +222,9 @@ export async function getTraitMetadataUri(): Promise<Record<string, TraitMetadat
         ? (metadata.traits as Record<string, unknown>)
         : metadata;
 
+    // Guard against string-indexed garbage
+    if (typeof traits !== "object" || Array.isArray(traits)) return null;
+
     const normalized = Object.fromEntries(
       Object.entries(traits).map(([key, value]) => [key, normalizeTraitMetadata(value)])
     ) as Record<string, TraitMetadata>;
@@ -222,7 +232,8 @@ export async function getTraitMetadataUri(): Promise<Record<string, TraitMetadat
     console.log("trait_metadata_uri normalized:", normalized);
     if (Object.keys(normalized).length > 0) setCache(cacheKey, normalized);
     return normalized;
-  } catch {
+  } catch (err) {
+    console.error("trait_metadata_uri error:", err);
     return null;
   }
 }

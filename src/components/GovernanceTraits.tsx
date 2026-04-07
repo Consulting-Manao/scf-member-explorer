@@ -35,20 +35,23 @@ export function GovernanceTraits({ governance, traitMeta, isLoading }: Governanc
   if (!governance) return null;
 
   const roleMeta = traitMeta?.role ?? traitMeta?.scf_role;
-  const roleMapping = roleMeta?.mapping ?? roleMeta?.valueMappings;
+  const roleMapping = roleMeta?.valueMappings ?? roleMeta?.mapping;
   const roleLabel =
-    governance.role !== undefined
-      ? roleMapping?.[String(governance.role)] ?? String(governance.role)
-      : undefined;
+    governance.role !== undefined && roleMapping
+      ? roleMapping[String(governance.role)] ?? String(governance.role)
+      : governance.role !== undefined
+        ? String(governance.role)
+        : undefined;
 
   const nqgMeta = traitMeta?.nqg ?? traitMeta?.nqg_score;
-  const nqgDecimals = nqgMeta?.decimals ?? nqgMeta?.dataType?.decimals;
+  const nqgDecimals = nqgMeta?.dataType?.decimals ?? nqgMeta?.decimals;
+  const nqgRaw = governance.nqg_score ?? governance.nqg;
   const formattedNqg =
-    governance.nqg_score !== undefined
-      ? formatWithDecimals(governance.nqg_score, nqgDecimals)
+    nqgRaw !== undefined
+      ? formatWithDecimals(nqgRaw, nqgDecimals)
       : undefined;
 
-  console.log("GovernanceTraits debug:", { governance, traitMeta, roleMeta, roleLabel, nqgMeta, nqgDecimals, formattedNqg });
+  console.log("GovernanceTraits debug:", { governance, traitMeta, roleMeta, roleMapping, roleLabel, nqgMeta, nqgDecimals, nqgRaw, formattedNqg });
 
   return (
     <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-6">
