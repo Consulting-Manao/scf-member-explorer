@@ -19,8 +19,8 @@ const links = [
 export function Footer() {
   return (
     <footer className="border-t bg-muted/30">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
           {/* Left: Branding badges */}
           <div className="flex items-center gap-6">
             <a
@@ -57,6 +57,11 @@ export function Footer() {
             </a>
           </div>
 
+          {/* Center: Copyright */}
+          <p className="text-xs text-muted-foreground">
+            © {new Date().getFullYear()} Stellar Community Fund
+          </p>
+
           {/* Right: Links with icons */}
           <nav className="flex items-center gap-2">
             {links.map((link) => (
@@ -74,9 +79,6 @@ export function Footer() {
             ))}
           </nav>
         </div>
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Stellar Community Fund
-        </p>
       </div>
     </footer>
   );
