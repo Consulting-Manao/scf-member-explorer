@@ -1,0 +1,69 @@
+import { Link } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ipfsToHttp, type NFTMetadata } from "@/services/ipfs";
+import { User } from "lucide-react";
+import { useState } from "react";
+
+interface NFTCardProps {
+  tokenId: number;
+  metadata: NFTMetadata | null;
+  owner: string | null;
+  isLoading?: boolean;
+}
+
+export function NFTCard({ tokenId, metadata, owner, isLoading }: NFTCardProps) {
+  const [imgError, setImgError] = useState(false);
+
+  if (isLoading) {
+    return (
+      <Card className="overflow-hidden">
+        <Skeleton className="aspect-square w-full" />
+        <CardContent className="p-4">
+          <Skeleton className="mb-2 h-5 w-3/4" />
+          <Skeleton className="h-4 w-1/2" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const isMinted = !!owner;
+  const imageUrl = metadata?.image ? ipfsToHttp(metadata.image) : "";
+
+  return (
+    <Link to={`/token/${tokenId}`}>
+      <Card className="group overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
+        <div className="relative aspect-square overflow-hidden bg-muted">
+          {imageUrl && !imgError ? (
+            <img
+              src={imageUrl}
+              alt={metadata?.name || `Token #${tokenId}`}
+              className="h-full w-full object-cover transition-transform group-hover:scale-105"
+              loading="lazy"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              <User className="h-12 w-12 text-muted-foreground/40" />
+            </div>
+          )}
+          {!isMinted && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm">
+              <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+                Not Minted
+              </span>
+            </div>
+          )}
+        </div>
+        <CardContent className="p-4">
+          <h3 className="truncate font-medium text-foreground">
+            {metadata?.name || `Member #${tokenId}`}
+          </h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Token #{tokenId}
+          </p>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
