@@ -12,7 +12,7 @@ export function Header() {
             alt="Stellar Community Fund"
             width={36}
             height={36}
-            className="h-9 w-auto dark:invert"
+            className="h-9 w-auto invert dark:invert-0"
           />
           <div>
             <h1 className="text-lg font-semibold leading-tight text-foreground sm:text-xl">

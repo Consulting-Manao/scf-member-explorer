@@ -36,7 +36,7 @@ export function Footer() {
                 width={16}
                 height={16}
                 loading="lazy"
-                className="h-4 w-auto dark:invert"
+                className="h-4 w-auto invert dark:invert-0"
               />
             </a>
             <a
@@ -52,7 +52,7 @@ export function Footer() {
                 width={48}
                 height={16}
                 loading="lazy"
-                className="h-4 w-auto dark:invert"
+                className="h-4 w-auto invert dark:invert-0"
               />
             </a>
           </div>
