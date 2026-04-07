@@ -57,7 +57,7 @@ export function GovernanceTraits({ governance, traitMeta, isLoading }: Governanc
         Governance
       </h3>
       <div className="space-y-3">
-        {governance.role !== undefined && (
+        {roleLabel !== undefined && (
           <div className="flex items-center justify-between rounded-lg bg-background/80 p-3">
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-primary" />
@@ -66,7 +66,7 @@ export function GovernanceTraits({ governance, traitMeta, isLoading }: Governanc
                   SCF Role
                 </p>
                 <p className="text-sm font-medium text-foreground">
-                  {governance.role || "Member"}
+                  {roleLabel}
                 </p>
               </div>
             </div>
