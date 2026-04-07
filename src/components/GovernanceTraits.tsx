@@ -1,12 +1,19 @@
 import { ExternalLink, Shield, BarChart3 } from "lucide-react";
-import type { GovernanceData } from "@/services/stellar";
+import type { GovernanceData, TraitMetadata } from "@/services/stellar";
 
 interface GovernanceTraitsProps {
   governance: GovernanceData | null;
+  traitMeta?: Record<string, TraitMetadata> | null;
   isLoading?: boolean;
 }
 
-export function GovernanceTraits({ governance, isLoading }: GovernanceTraitsProps) {
+function formatWithDecimals(value: number | string, decimals?: number): string {
+  const num = typeof value === "string" ? Number(value) : value;
+  if (isNaN(num) || decimals === undefined || decimals === 0) return String(value);
+  return (num / Math.pow(10, decimals)).toFixed(decimals);
+}
+
+export function GovernanceTraits({ governance, traitMeta, isLoading }: GovernanceTraitsProps) {
   if (isLoading) {
     return (
       <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-6">
@@ -22,6 +29,12 @@ export function GovernanceTraits({ governance, isLoading }: GovernanceTraitsProp
   }
 
   if (!governance) return null;
+
+  const nqgDecimals = traitMeta?.nqg?.decimals ?? traitMeta?.nqg_score?.decimals;
+  const formattedNqg =
+    governance.nqg_score !== undefined
+      ? formatWithDecimals(governance.nqg_score, nqgDecimals)
+      : undefined;
 
   return (
     <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-6">
@@ -52,7 +65,7 @@ export function GovernanceTraits({ governance, isLoading }: GovernanceTraitsProp
             </a>
           </div>
         )}
-        {governance.nqg_score !== undefined && (
+        {formattedNqg !== undefined && (
           <div className="flex items-center justify-between rounded-lg bg-background/80 p-3">
             <div className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-primary" />
@@ -61,7 +74,7 @@ export function GovernanceTraits({ governance, isLoading }: GovernanceTraitsProp
                   NQG Score
                 </p>
                 <p className="text-sm font-medium text-foreground">
-                  {governance.nqg_score}
+                  {formattedNqg}
                 </p>
               </div>
             </div>
