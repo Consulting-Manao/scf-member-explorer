@@ -34,11 +34,22 @@ export function GovernanceTraits({ governance, traitMeta, isLoading }: Governanc
 
   if (!governance) return null;
 
-  const nqgDecimals = traitMeta?.nqg?.decimals ?? traitMeta?.nqg_score?.decimals;
+  const roleMeta = traitMeta?.role ?? traitMeta?.scf_role;
+  const roleLabel =
+    governance.role !== undefined && roleMeta?.mapping
+      ? roleMeta.mapping[String(governance.role)] ?? String(governance.role)
+      : governance.role !== undefined
+        ? String(governance.role)
+        : undefined;
+
+  const nqgMeta = traitMeta?.nqg ?? traitMeta?.nqg_score;
+  const nqgDecimals = nqgMeta?.decimals;
   const formattedNqg =
     governance.nqg_score !== undefined
       ? formatWithDecimals(governance.nqg_score, nqgDecimals)
       : undefined;
+
+  console.log("GovernanceTraits debug:", { governance, traitMeta, roleMeta, roleLabel, nqgMeta, nqgDecimals, formattedNqg });
 
   return (
     <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-6">
@@ -46,7 +57,7 @@ export function GovernanceTraits({ governance, traitMeta, isLoading }: Governanc
         Governance
       </h3>
       <div className="space-y-3">
-        {governance.role !== undefined && (
+        {roleLabel !== undefined && (
           <div className="flex items-center justify-between rounded-lg bg-background/80 p-3">
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-primary" />
@@ -55,7 +66,7 @@ export function GovernanceTraits({ governance, traitMeta, isLoading }: Governanc
                   SCF Role
                 </p>
                 <p className="text-sm font-medium text-foreground">
-                  {governance.role || "Member"}
+                  {roleLabel}
                 </p>
               </div>
             </div>
