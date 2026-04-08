@@ -60,6 +60,7 @@ export async function fetchMemberProfile(ownerAddress: string): Promise<MemberPr
     if (!member?.meta) return null;
 
     const profile = await fetchMemberMeta(member.meta);
+    profile.cid = member.meta;
     return profile;
   } catch {
     return null;
