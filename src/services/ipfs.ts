@@ -42,10 +42,20 @@ export async function fetchMemberMeta(uri: string): Promise<MemberProfile> {
   const cached = getCached<MemberProfile>(cacheKey);
   if (cached) return cached;
 
-  const url = ipfsToHttp(uri);
-  const res = await fetch(url);
+  // The meta CID is a directory; the actual profile lives at /profile.json
+  const baseUrl = ipfsToHttp(uri).replace(/\/$/, "");
+  const profileUrl = `${baseUrl}/profile.json`;
+  const res = await fetch(profileUrl);
   if (!res.ok) throw new Error(`Failed to fetch member metadata: ${res.status}`);
-  const data: MemberProfile = await res.json();
-  setCache(cacheKey, data);
-  return data;
+  const data = await res.json() as Record<string, unknown>;
+
+  // Build profile; picture is conventionally at /profile-image.png
+  const profile: MemberProfile = {
+    name: data.name ? String(data.name) : undefined,
+    description: data.description ? String(data.description) : undefined,
+    picture: `${baseUrl}/profile-image.png`,
+  };
+
+  setCache(cacheKey, profile);
+  return profile;
 }
