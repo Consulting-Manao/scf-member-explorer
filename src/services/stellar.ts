@@ -2,7 +2,7 @@ import { Contract, TransactionBuilder, Account, nativeToScVal, scValToNative, xd
 import { Server, Api } from "@stellar/stellar-sdk/rpc";
 import { CONTRACT_ADDRESS, RPC_URL, NETWORK_PASSPHRASE } from "@/config/networks";
 import { getCached, setCache } from "./cache";
-import { ipfsToHttp } from "./ipfs";
+import { ipfsToHttp, fetchMetadata } from "./ipfs";
 
 const server = new Server(RPC_URL);
 const contract = new Contract(CONTRACT_ADDRESS);
@@ -47,39 +47,21 @@ async function simulateCall(method: string, ...args: xdr.ScVal[]): Promise<xdr.S
 }
 
 export async function getCollectionName(): Promise<string> {
-  const cacheKey = "collection_name";
-  const cached = getCached<string>(cacheKey);
-  if (cached) return cached;
-
   const result = await simulateCall("name");
-  const name = scValToNative(result) as string;
-  if (name) setCache(cacheKey, name);
-  return name;
+  return scValToNative(result) as string;
 }
 
 export async function getCollectionSymbol(): Promise<string> {
-  const cacheKey = "collection_symbol";
-  const cached = getCached<string>(cacheKey);
-  if (cached) return cached;
-
   const result = await simulateCall("symbol");
-  const symbol = scValToNative(result) as string;
-  if (symbol) setCache(cacheKey, symbol);
-  return symbol;
+  return scValToNative(result) as string;
 }
 
 export async function getTokenUri(tokenId: number): Promise<string> {
-  const cacheKey = `token_uri_${tokenId}`;
-  const cached = getCached<string>(cacheKey);
-  if (cached) return cached;
-
   const result = await simulateCall(
     "token_uri",
     nativeToScVal(tokenId, { type: "u32" })
   );
-  const uri = scValToNative(result) as string;
-  if (uri) setCache(cacheKey, uri);
-  return uri;
+  return scValToNative(result) as string;
 }
 
 export async function getOwnerOf(tokenId: number): Promise<string | null> {
@@ -177,14 +159,6 @@ function normalizeTraitMetadata(value: unknown): TraitMetadata {
 }
 
 export async function getTraitMetadataUri(): Promise<Record<string, TraitMetadata> | null> {
-  const cacheKey = "trait_metadata_uri";
-  const cached = getCached<Record<string, TraitMetadata>>(cacheKey);
-  if (cached && typeof cached === "object" && !Array.isArray(cached)) {
-    // Validate cached data isn't a character-indexed string
-    const keys = Object.keys(cached);
-    if (keys.length > 0 && keys[0] !== "0") return cached;
-  }
-
   try {
     const result = await simulateCall("trait_metadata_uri");
     const raw = scValToNative(result);
@@ -199,6 +173,13 @@ export async function getTraitMetadataUri(): Promise<Record<string, TraitMetadat
     }
 
     if (!uri) return null;
+
+    // Cache by IPFS URI — immutable content
+    const cached = getCached<Record<string, TraitMetadata>>(uri);
+    if (cached && typeof cached === "object" && !Array.isArray(cached)) {
+      const keys = Object.keys(cached);
+      if (keys.length > 0 && keys[0] !== "0") return cached;
+    }
 
     const response = await fetch(ipfsToHttp(uri));
     if (!response.ok) {
@@ -215,14 +196,13 @@ export async function getTraitMetadataUri(): Promise<Record<string, TraitMetadat
         ? (metadata.traits as Record<string, unknown>)
         : metadata;
 
-    // Guard against string-indexed garbage
     if (typeof traits !== "object" || Array.isArray(traits)) return null;
 
     const normalized = Object.fromEntries(
       Object.entries(traits).map(([key, value]) => [key, normalizeTraitMetadata(value)])
     ) as Record<string, TraitMetadata>;
 
-    if (Object.keys(normalized).length > 0) setCache(cacheKey, normalized);
+    if (Object.keys(normalized).length > 0) setCache(uri, normalized);
     return normalized;
   } catch (err) {
     console.error("trait_metadata_uri error:", err);
@@ -231,12 +211,6 @@ export async function getTraitMetadataUri(): Promise<Record<string, TraitMetadat
 }
 
 export async function getNextTokenId(): Promise<number> {
-  const cacheKey = "next_token_id";
-  const cached = getCached<number>(cacheKey);
-  if (cached) return cached;
-
   const result = await simulateCall("next_token_id");
-  const total = Number(scValToNative(result));
-  if (total > 0) setCache(cacheKey, total);
-  return total;
+  return Number(scValToNative(result));
 }

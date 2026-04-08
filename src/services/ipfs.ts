@@ -1,3 +1,5 @@
+import { getCached, setCache } from "./cache";
+
 const IPFS_GATEWAY = "https://ipfs.io/ipfs/";
 
 export function ipfsToHttp(uri: string): string {
@@ -18,8 +20,13 @@ export interface NFTMetadata {
 }
 
 export async function fetchMetadata(uri: string): Promise<NFTMetadata> {
+  const cached = getCached<NFTMetadata>(uri);
+  if (cached) return cached;
+
   const url = ipfsToHttp(uri);
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch metadata: ${res.status}`);
-  return res.json();
+  const data: NFTMetadata = await res.json();
+  setCache(uri, data);
+  return data;
 }
