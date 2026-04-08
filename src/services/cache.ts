@@ -1,4 +1,23 @@
-const TTL_MS = 12 * 60 * 60 * 1000; // 24 hours
+import { CONTRACT_ADDRESS } from "@/config/networks";
+
+const TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
+const CACHE_PREFIX = "scf_cache_";
+const CONTRACT_KEY = `${CACHE_PREFIX}__contract__`;
+
+// Clear all cache if contract address changed
+function ensureContractMatch(): void {
+  try {
+    const stored = localStorage.getItem(CONTRACT_KEY);
+    if (stored !== CONTRACT_ADDRESS) {
+      clearCache();
+      localStorage.setItem(CONTRACT_KEY, CONTRACT_ADDRESS);
+    }
+  } catch {
+    // localStorage unavailable
+  }
+}
+
+ensureContractMatch();
 
 interface CacheEntry<T> {
   data: T;
@@ -30,6 +49,6 @@ export function setCache<T>(key: string, data: T): void {
 }
 
 export function clearCache(): void {
-  const keys = Object.keys(localStorage).filter((k) => k.startsWith("scf_cache_"));
+  const keys = Object.keys(localStorage).filter((k) => k.startsWith(CACHE_PREFIX) && k !== CONTRACT_KEY);
   keys.forEach((k) => localStorage.removeItem(k));
 }
