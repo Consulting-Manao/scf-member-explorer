@@ -250,7 +250,9 @@ export default function TokenPage() {
                       <ExternalLink className="h-3 w-3" />
                     </a>
                   </div>
-              {tokenUri && (
+              {tokenUri && (() => {
+                    const cid = tokenUri.includes("/ipfs/") ? tokenUri.split("/ipfs/").pop()! : tokenUri.replace(/^ipfs:\/\//, "");
+                    return (
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Token metadata</span>
                       <a
@@ -259,12 +261,15 @@ export default function TokenPage() {
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 font-mono text-xs text-primary hover:underline"
                       >
-                        {tokenUri.replace(/^ipfs:\/\//, "").replace(/^ipfs\//, "")}
+                        {cid}
                         <ExternalLink className="h-3 w-3" />
                       </a>
                     </div>
-                  )}
-                  {memberProfile?.cid && (
+                    );
+                  })()}
+                  {memberProfile?.cid && (() => {
+                    const cid = memberProfile.cid.includes("/ipfs/") ? memberProfile.cid.split("/ipfs/").pop()! : memberProfile.cid.replace(/^ipfs:\/\//, "");
+                    return (
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Profile metadata</span>
                       <a
@@ -273,11 +278,12 @@ export default function TokenPage() {
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 font-mono text-xs text-primary hover:underline"
                       >
-                        {memberProfile.cid.replace(/^ipfs:\/\//, "").replace(/^ipfs\//, "").slice(0, 12)}...
+                        {cid}
                         <ExternalLink className="h-3 w-3" />
                       </a>
                     </div>
-                  )}
+                    );
+                  })()}
                 </div>
               </div>
             </div>
