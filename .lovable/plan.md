@@ -1,28 +1,31 @@
 
 
-# Token Detail: Show Both Descriptions + Token Image Overlay
+# Show IPFS CIDs in Details Section
 
-## Summary
+## Changes to `src/pages/TokenPage.tsx`
 
-Two changes to the token detail page:
-1. Show **both** the token contract description and the member profile description (not just one or the other). Move member name/description into the Owner section.
-2. When a member profile picture is used as the main image and a token contract image also exists, show the **token image as a small overlay** in the top-right corner of the main image.
+**Details section (lines 235-267):**
 
-## Changes
+1. **Rename** "Metadata" → "Token metadata" and show the IPFS CID (extracted from `tokenUri`) instead of just "IPFS". Extract CID by parsing the URL path after `/ipfs/`.
 
-### `src/pages/TokenPage.tsx`
+2. **Add** a new "Profile metadata" row when the member profile CID is available. Show the CID as a clickable link to the IPFS gateway.
 
-**Heading area (lines 158-170):**
-- Show `metadata?.name` or `Member #${tokenId}` as the title (token contract name)
-- Show `metadata?.description` below it if present (token description — always visible)
-- Remove member profile info from this section
+3. To get the profile CID, we need to surface it from the Tansu service.
 
-**Owner section (lines 172-196):**
-- If `memberProfile?.name` exists, show it as a bold name above the address
-- If `memberProfile?.description` exists, show it below the address as a secondary description
-- Keep the copy button as-is
+## Changes to `src/services/tansu.ts`
 
-**Image area (lines 137-150):**
-- Keep `displayImage` logic as-is (member picture takes priority)
-- When member picture is being used AND `metadata?.image` also exists (and is different), render a small `48x48` rounded thumbnail of the token image in the top-right corner of the image container, with a border and slight shadow — positioned `absolute top-2 right-2`
+- Update `fetchMemberProfile` to return the `meta` CID alongside the profile data. Change return type to include `cid?: string` on `MemberProfile`, or return `{ profile, cid }`.
+
+## Changes to `src/services/ipfs.ts`
+
+- Add `cid` field to `MemberProfile` interface so it can carry the raw CID through.
+
+## Helper
+
+Add a small utility function (inline in TokenPage or in ipfs.ts) to extract a CID from a URL like `https://ipfs.io/ipfs/QmXYZ.../3` → `QmXYZ.../3`.
+
+### Files to edit
+- `src/services/ipfs.ts` — Add `cid` to `MemberProfile`
+- `src/services/tansu.ts` — Pass `meta` CID into the returned profile
+- `src/pages/TokenPage.tsx` — Update Details section with renamed labels, CID display, and profile metadata row
 
