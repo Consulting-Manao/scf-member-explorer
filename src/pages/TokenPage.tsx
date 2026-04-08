@@ -134,7 +134,7 @@ export default function TokenPage() {
           <div className="grid gap-8 md:grid-cols-2">
             {/* Left column: Image + Governance */}
             <div className="space-y-6">
-              <div className="overflow-hidden rounded-2xl border bg-muted">
+              <div className="relative overflow-hidden rounded-2xl border bg-muted">
                 {displayImage && !imgError ? (
                   <img
                     src={displayImage}
@@ -147,6 +147,15 @@ export default function TokenPage() {
                     <User className="h-24 w-24 text-muted-foreground/30" />
                   </div>
                 )}
+                {memberProfile?.picture && metadata?.image && memberProfile.picture !== metadata.image && (
+                  <div className="absolute right-2 top-2 h-12 w-12 overflow-hidden rounded-lg border bg-background p-0.5 shadow-sm">
+                    <img
+                      src={ipfsToHttp(metadata.image)}
+                      alt={metadata?.name || `Token #${tokenId}`}
+                      className="h-full w-full rounded-md object-cover"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Governance Traits */}
@@ -157,14 +166,14 @@ export default function TokenPage() {
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold text-foreground sm:text-3xl">
-                  {memberProfile?.name || metadata?.name || `Member #${tokenId}`}
+                  {metadata?.name || `Member #${tokenId}`}
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Token #{tokenId}
                 </p>
-                {(memberProfile?.description || metadata?.description) && (
+                {metadata?.description && (
                   <p className="mt-3 text-sm text-muted-foreground">
-                    {memberProfile?.description || metadata?.description}
+                    {metadata.description}
                   </p>
                 )}
               </div>
@@ -175,6 +184,11 @@ export default function TokenPage() {
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Owner
                   </p>
+                  {memberProfile?.name && (
+                    <p className="mt-1 text-sm font-semibold text-foreground">
+                      {memberProfile.name}
+                    </p>
+                  )}
                   <div className="mt-1 flex items-center gap-2">
                     <p className="truncate font-mono text-sm text-foreground">
                       {owner}
@@ -192,6 +206,11 @@ export default function TokenPage() {
                       )}
                     </Button>
                   </div>
+                  {memberProfile?.description && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {memberProfile.description}
+                    </p>
+                  )}
                 </div>
               )}
 
