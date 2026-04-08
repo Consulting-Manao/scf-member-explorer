@@ -9,10 +9,12 @@ interface NFTCardProps {
   tokenId: number;
   metadata: NFTMetadata | null;
   owner: string | null;
+  memberName?: string | null;
+  memberPicture?: string | null;
   isLoading?: boolean;
 }
 
-export function NFTCard({ tokenId, metadata, owner, isLoading }: NFTCardProps) {
+export function NFTCard({ tokenId, metadata, owner, memberName, memberPicture, isLoading }: NFTCardProps) {
   const [imgError, setImgError] = useState(false);
 
   if (isLoading) {
@@ -28,16 +30,16 @@ export function NFTCard({ tokenId, metadata, owner, isLoading }: NFTCardProps) {
   }
 
   const isMinted = !!owner;
-  const imageUrl = metadata?.image ? ipfsToHttp(metadata.image) : "";
+  const displayImage = memberPicture ? ipfsToHttp(memberPicture) : metadata?.image ? ipfsToHttp(metadata.image) : "";
 
   return (
     <Link to={`/token/${tokenId}`}>
       <Card className="group overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
         <div className="relative aspect-square overflow-hidden bg-muted">
-          {imageUrl && !imgError ? (
+          {displayImage && !imgError ? (
             <img
-              src={imageUrl}
-              alt={metadata?.name || `Token #${tokenId}`}
+              src={displayImage}
+              alt={memberName || metadata?.name || `Token #${tokenId}`}
               className="h-full w-full object-cover transition-transform group-hover:scale-105"
               loading="lazy"
               onError={() => setImgError(true)}
@@ -57,7 +59,7 @@ export function NFTCard({ tokenId, metadata, owner, isLoading }: NFTCardProps) {
         </div>
         <CardContent className="p-4">
           <h3 className="truncate font-medium text-foreground">
-            {metadata?.name || `Member #${tokenId}`}
+            {memberName || metadata?.name || `Member #${tokenId}`}
           </h3>
           <p className="mt-1 truncate text-xs text-muted-foreground" title={owner || undefined}>
             {owner ? `${owner.slice(0, 6)}...${owner.slice(-6)}` : "Not Minted"}

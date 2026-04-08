@@ -8,6 +8,8 @@ import { GovernanceTraits } from "@/components/GovernanceTraits";
 import { AttributeBadge } from "@/components/AttributeBadge";
 import { getTokenUri, getOwnerOf, getGovernance, getTraitMetadataUri, type GovernanceData, type TraitMetadata } from "@/services/stellar";
 import { fetchMetadata, ipfsToHttp, type NFTMetadata } from "@/services/ipfs";
+import { fetchMemberProfile } from "@/services/tansu";
+import { type MemberProfile } from "@/services/ipfs";
 import { CONTRACT_ADDRESS, EXPLORER_URL } from "@/config/networks";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -21,6 +23,7 @@ export default function TokenPage() {
   const [loading, setLoading] = useState(true);
   const [govLoading, setGovLoading] = useState(true);
   const [traitMeta, setTraitMeta] = useState<Record<string, TraitMetadata> | null>(null);
+  const [memberProfile, setMemberProfile] = useState<MemberProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [imgError, setImgError] = useState(false);
@@ -46,6 +49,13 @@ export default function TokenPage() {
         if (uri) {
           const meta = await fetchMetadata(uri);
           if (!cancelled) setMetadata(meta);
+        }
+
+        // Fetch member profile non-blocking
+        if (ownerAddr) {
+          fetchMemberProfile(ownerAddr).then((profile) => {
+            if (!cancelled) setMemberProfile(profile);
+          });
         }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load token");
@@ -83,7 +93,12 @@ export default function TokenPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const imageUrl = metadata?.image ? ipfsToHttp(metadata.image) : "";
+  const displayImage = memberProfile?.picture
+    ? ipfsToHttp(memberProfile.picture)
+    : metadata?.image
+      ? ipfsToHttp(metadata.image)
+      : "";
+
   const vanityTraits = metadata?.attributes?.filter(
     (a) => !["role", "nqg_score", "scf_role", "nqg score"].includes(a.trait_type.toLowerCase())
   ) ?? [];
@@ -120,10 +135,10 @@ export default function TokenPage() {
             {/* Left column: Image + Governance */}
             <div className="space-y-6">
               <div className="overflow-hidden rounded-2xl border bg-muted">
-                {imageUrl && !imgError ? (
+                {displayImage && !imgError ? (
                   <img
-                    src={imageUrl}
-                    alt={metadata?.name || `Token #${tokenId}`}
+                    src={displayImage}
+                    alt={memberProfile?.name || metadata?.name || `Token #${tokenId}`}
                     className="aspect-square w-full object-cover"
                     onError={() => setImgError(true)}
                   />
@@ -142,14 +157,14 @@ export default function TokenPage() {
             <div className="space-y-6">
               <div>
                 <h2 className="text-2xl font-bold text-foreground sm:text-3xl">
-                  {metadata?.name || `Member #${tokenId}`}
+                  {memberProfile?.name || metadata?.name || `Member #${tokenId}`}
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Token #{tokenId}
                 </p>
-                {metadata?.description && (
+                {(memberProfile?.description || metadata?.description) && (
                   <p className="mt-3 text-sm text-muted-foreground">
-                    {metadata.description}
+                    {memberProfile?.description || metadata?.description}
                   </p>
                 )}
               </div>

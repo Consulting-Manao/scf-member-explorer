@@ -10,3 +10,8 @@ export const NETWORK_PASSPHRASE =
 
 export const EXPLORER_URL =
   NETWORK === "testnet" ? "https://stellar.expert/explorer/testnet" : "https://stellar.expert/explorer/public";
+
+export const TANSU_CONTRACT_ADDRESS =
+  NETWORK === "testnet"
+    ? "CBXKUSLQPVF35FYURR5C42BPYA5UOVDXX2ELKIM2CAJMCI6HXG2BHGZA"
+    : "CDXINK2T3P46M4LWK35FVIXXHJ2XHAS4FOVCGVPJ63YV5OVTM24IY5BI";
