@@ -259,7 +259,7 @@ export default function TokenPage() {
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 font-mono text-xs text-primary hover:underline"
                       >
-                        {tokenUri.replace(/^ipfs:\/\//, "").replace(/^ipfs\//, "").slice(0, 12)}...
+                        {tokenUri.replace(/^ipfs:\/\//, "").replace(/^ipfs\//, "")}
                         <ExternalLink className="h-3 w-3" />
                       </a>
                     </div>
