@@ -131,7 +131,7 @@ export default function TokenPage() {
             </div>
           </div>
         ) : (
-          <div className="grid gap-8 md:grid-cols-2">
+          <div className="grid gap-8 md:grid-cols-2 [&>*]:min-w-0">
             {/* Left column: Image + Governance */}
             <div className="space-y-6">
               <div className="relative overflow-hidden rounded-2xl border bg-muted">
