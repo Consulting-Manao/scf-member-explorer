@@ -253,16 +253,16 @@ export default function TokenPage() {
               {tokenUri && (() => {
                     const cid = tokenUri.includes("/ipfs/") ? tokenUri.split("/ipfs/").pop()! : tokenUri.replace(/^ipfs:\/\//, "");
                     return (
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Token metadata</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="shrink-0 text-muted-foreground">Token metadata</span>
                       <a
                         href={ipfsToHttp(tokenUri)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1 font-mono text-xs text-primary hover:underline"
+                        className="flex items-center gap-1 truncate font-mono text-xs text-primary hover:underline"
                       >
-                        {cid}
-                        <ExternalLink className="h-3 w-3" />
+                        <span className="truncate">{cid}</span>
+                        <ExternalLink className="h-3 w-3 shrink-0" />
                       </a>
                     </div>
                     );
@@ -270,16 +270,16 @@ export default function TokenPage() {
                   {memberProfile?.cid && (() => {
                     const cid = memberProfile.cid.includes("/ipfs/") ? memberProfile.cid.split("/ipfs/").pop()! : memberProfile.cid.replace(/^ipfs:\/\//, "");
                     return (
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Profile metadata</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="shrink-0 text-muted-foreground">Profile metadata</span>
                       <a
                         href={ipfsToHttp(memberProfile.cid)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1 font-mono text-xs text-primary hover:underline"
+                        className="flex items-center gap-1 truncate font-mono text-xs text-primary hover:underline"
                       >
-                        {cid}
-                        <ExternalLink className="h-3 w-3" />
+                        <span className="truncate">{cid}</span>
+                        <ExternalLink className="h-3 w-3 shrink-0" />
                       </a>
                     </div>
                     );
