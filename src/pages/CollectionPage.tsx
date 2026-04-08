@@ -4,6 +4,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { getNextTokenId, getTokenUri, getOwnerOf } from "@/services/stellar";
 import { fetchMetadata, type NFTMetadata } from "@/services/ipfs";
+import { fetchMemberProfile } from "@/services/tansu";
 import { Loader2 } from "lucide-react";
 
 const BATCH_SIZE = 20;
@@ -12,6 +13,8 @@ interface TokenData {
   tokenId: number;
   metadata: NFTMetadata | null;
   owner: string | null;
+  memberName?: string | null;
+  memberPicture?: string | null;
 }
 
 export default function CollectionPage() {
@@ -44,16 +47,30 @@ export default function CollectionPage() {
                   // metadata fetch failed
                 }
               }
-              return { tokenId: id, metadata, owner };
+
+              let memberName: string | null = null;
+              let memberPicture: string | null = null;
+              if (owner) {
+                try {
+                  const profile = await fetchMemberProfile(owner);
+                  if (profile) {
+                    memberName = profile.name || null;
+                    memberPicture = profile.picture || null;
+                  }
+                } catch {
+                  // member profile not available
+                }
+              }
+
+              return { tokenId: id, metadata, owner, memberName, memberPicture };
             } catch {
-              return { tokenId: id, metadata: null, owner: null };
+              return { tokenId: id, metadata: null, owner: null, memberName: null, memberPicture: null };
             }
           })()
         );
       }
 
       const results = await Promise.all(promises);
-      // Sort by tokenId to maintain order
       results.sort((a, b) => a.tokenId - b.tokenId);
       return results;
     },
@@ -163,6 +180,8 @@ export default function CollectionPage() {
                   tokenId={token.tokenId}
                   metadata={token.metadata}
                   owner={token.owner}
+                  memberName={token.memberName}
+                  memberPicture={token.memberPicture}
                 />
               ))}
             </div>

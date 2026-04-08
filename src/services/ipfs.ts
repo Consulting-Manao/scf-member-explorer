@@ -49,13 +49,3 @@ export async function fetchMemberMeta(uri: string): Promise<MemberProfile> {
   setCache(cacheKey, data);
   return data;
 }
-  const cached = getCached<NFTMetadata>(uri);
-  if (cached) return cached;
-
-  const url = ipfsToHttp(uri);
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch metadata: ${res.status}`);
-  const data: NFTMetadata = await res.json();
-  setCache(uri, data);
-  return data;
-}
