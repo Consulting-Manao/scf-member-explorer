@@ -23,6 +23,7 @@ export interface MemberProfile {
   name?: string;
   description?: string;
   picture?: string;
+  cid?: string;
 }
 
 export async function fetchMetadata(uri: string): Promise<NFTMetadata> {

@@ -250,16 +250,30 @@ export default function TokenPage() {
                       <ExternalLink className="h-3 w-3" />
                     </a>
                   </div>
-                  {tokenUri && (
+              {tokenUri && (
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Metadata</span>
+                      <span className="text-muted-foreground">Token metadata</span>
                       <a
                         href={ipfsToHttp(tokenUri)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-xs text-primary hover:underline"
+                        className="flex items-center gap-1 font-mono text-xs text-primary hover:underline"
                       >
-                        IPFS
+                        {tokenUri.replace(/^ipfs:\/\//, "").replace(/^ipfs\//, "").slice(0, 12)}...
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                  )}
+                  {memberProfile?.cid && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Profile metadata</span>
+                      <a
+                        href={ipfsToHttp(memberProfile.cid)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 font-mono text-xs text-primary hover:underline"
+                      >
+                        {memberProfile.cid.replace(/^ipfs:\/\//, "").replace(/^ipfs\//, "").slice(0, 12)}...
                         <ExternalLink className="h-3 w-3" />
                       </a>
                     </div>
