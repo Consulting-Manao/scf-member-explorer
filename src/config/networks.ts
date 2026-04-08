@@ -1,7 +1,7 @@
 // Change these values to switch between testnet and mainnet
 export const NETWORK = "testnet" as const;
 
-export const CONTRACT_ADDRESS = "CAXOCXBNKO3IN3UNDLYXZG3GR3B3IULTPKL42NQSMJJSLXG4J4AGN6I4";
+export const CONTRACT_ADDRESS = "CAKFPHWM6PGD5QQXMYFQ6X4BB62KO3E4VXC5MY4O2QQ65AUAFPYVOCJN";
 
 export const RPC_URL =
   NETWORK === "testnet"
