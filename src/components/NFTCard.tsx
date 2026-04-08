@@ -59,8 +59,8 @@ export function NFTCard({ tokenId, metadata, owner, isLoading }: NFTCardProps) {
           <h3 className="truncate font-medium text-foreground">
             {metadata?.name || `Member #${tokenId}`}
           </h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Token #{tokenId}
+          <p className="mt-1 truncate text-xs text-muted-foreground" title={owner || undefined}>
+            {owner ? `${owner.slice(0, 4)}...${owner.slice(-4)}` : "Not Minted"}
           </p>
         </CardContent>
       </Card>
