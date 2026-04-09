@@ -1,32 +1,31 @@
 
 
-# Add Token Image Overlay to Collection Cards + Extract Shared Component
+# Write a Professional README
 
-## Summary
+## Approach
 
-Extract the image overlay thumbnail (currently in TokenPage) into a reusable component, then use it in both TokenPage and NFTCard.
+Replace the placeholder `README.md` with a concise technical document covering the architecture and standards this explorer is built on. No badges, no emojis, no filler.
 
-## Changes
+## Content Outline
 
-### 1. Create `src/components/TokenImageOverlay.tsx`
+1. **Project title and one-line description** -- SCF Member Explorer, a client-side viewer for Stellar Community Fund membership NFTs.
 
-A small component that renders a thumbnail in the top-right corner of a container. Props: `tokenImage` (the token contract image URL, already resolved via `ipfsToHttp`), `alt` string. Renders a `absolute right-1 top-1` (small on cards) or `right-2 top-2` (larger on detail page) thumbnail with border/shadow. Accept a `size` prop (`"sm" | "lg"`, default `"sm"`) to control dimensions — `sm` = `h-8 w-8` for cards, `lg` = `h-12 w-12` for detail page.
+2. **Overview** -- What this app does: reads on-chain NFT data from a SEP-50 compliant contract, enriches it with Tansu membership profiles, and displays governance scores computed by Neural Quorum Governance.
 
-### 2. Update `src/components/NFTCard.tsx`
+3. **Standards and Contracts**
+   - **SEP-50 (Smart Contract NFTs)** -- explain the standard briefly, reference the SEP, note the contract methods used (`token_uri`, `owner_of`, `governance`, `trait_metadata_uri`, `next_token_id`).
+   - **Dynamic Traits** -- explain `governance()` returns mutable on-chain data (role, NQG score) and `trait_metadata_uri()` provides display instructions (decimals, value mappings). Contrast with static `attributes` in IPFS metadata.
+   - **Tansu Membership** -- explain how `get_member(address)` returns an IPFS CID pointing to a profile directory (`profile.json` + `profile-image.png`). Used to enrich token display with human-readable names and pictures.
+   - **Neural Quorum Governance (NQG)** -- explain the `nqg_score` dynamic trait, reference the `stellar-community-fund-contracts` repo, note that scores are computed off-chain by neurons and written on-chain.
 
-- Add `tokenImage` prop (the raw `metadata?.image` value) — the card already has `metadata` so we can derive it, but passing explicitly is cleaner since we need to check both `memberPicture` and `metadata?.image`.
-- After the main `<img>`, when `memberPicture` is used AND `metadata?.image` exists and differs, render `<TokenImageOverlay>` with size `"sm"`.
+4. **Architecture** -- A mermaid diagram showing the data flow: Browser -> Soroban RPC (NFT contract + Tansu contract) -> IPFS (token metadata + member profiles + trait metadata). Mention it's 100% client-side, uses `simulateTransaction` for read-only calls.
 
-### 3. Update `src/pages/TokenPage.tsx` (lines 150-158)
+5. **Configuration** -- explain `src/config/networks.ts` with testnet/mainnet addresses.
 
-- Replace the inline overlay markup with `<TokenImageOverlay>` with size `"lg"`.
+6. **Tech stack** -- one short list: React, Vite, TypeScript, Tailwind, `@stellar/stellar-sdk`.
 
-### 4. Update `src/pages/CollectionPage.tsx`
+7. **References** -- links to SEP-50, Tansu repo, NQG contracts repo, SCF handbook.
 
-- NFTCard already receives `metadata` which contains `image`, so no data changes needed — the NFTCard can check internally.
-
-### Files
-- **Create**: `src/components/TokenImageOverlay.tsx`
-- **Edit**: `src/components/NFTCard.tsx` — add overlay when member picture replaces token image
-- **Edit**: `src/pages/TokenPage.tsx` — use shared overlay component
+## File to edit
+- `README.md` -- full replacement
 
