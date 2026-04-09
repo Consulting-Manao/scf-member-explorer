@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ipfsToHttp, type NFTMetadata } from "@/services/ipfs";
+import { TokenImageOverlay } from "@/components/TokenImageOverlay";
 import { User } from "lucide-react";
 import { useState } from "react";
 
@@ -48,6 +49,9 @@ export function NFTCard({ tokenId, metadata, owner, memberName, memberPicture, i
             <div className="flex h-full w-full items-center justify-center">
               <User className="h-12 w-12 text-muted-foreground/40" />
             </div>
+          )}
+          {memberPicture && metadata?.image && memberPicture !== metadata.image && (
+            <TokenImageOverlay tokenImage={metadata.image} alt={metadata?.name || `Token #${tokenId}`} size="sm" />
           )}
           {!isMinted && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm">
