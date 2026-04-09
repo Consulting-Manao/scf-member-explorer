@@ -12,6 +12,7 @@ import { fetchMemberProfile } from "@/services/tansu";
 import { type MemberProfile } from "@/services/ipfs";
 import { CONTRACT_ADDRESS, EXPLORER_URL } from "@/config/networks";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TokenImageOverlay } from "@/components/TokenImageOverlay";
 
 export default function TokenPage() {
   const { tokenId: tokenIdParam } = useParams<{ tokenId: string }>();
@@ -148,13 +149,7 @@ export default function TokenPage() {
                   </div>
                 )}
                 {memberProfile?.picture && metadata?.image && memberProfile.picture !== metadata.image && (
-                  <div className="absolute right-2 top-2 h-12 w-12 overflow-hidden rounded-lg border bg-background p-0.5 shadow-sm">
-                    <img
-                      src={ipfsToHttp(metadata.image)}
-                      alt={metadata?.name || `Token #${tokenId}`}
-                      className="h-full w-full rounded-md object-cover"
-                    />
-                  </div>
+                  <TokenImageOverlay tokenImage={metadata.image} alt={metadata?.name || `Token #${tokenId}`} size="lg" />
                 )}
               </div>
 
