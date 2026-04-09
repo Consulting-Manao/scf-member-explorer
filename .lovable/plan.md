@@ -1,31 +1,32 @@
 
 
-# Show IPFS CIDs in Details Section
+# Add Token Image Overlay to Collection Cards + Extract Shared Component
 
-## Changes to `src/pages/TokenPage.tsx`
+## Summary
 
-**Details section (lines 235-267):**
+Extract the image overlay thumbnail (currently in TokenPage) into a reusable component, then use it in both TokenPage and NFTCard.
 
-1. **Rename** "Metadata" → "Token metadata" and show the IPFS CID (extracted from `tokenUri`) instead of just "IPFS". Extract CID by parsing the URL path after `/ipfs/`.
+## Changes
 
-2. **Add** a new "Profile metadata" row when the member profile CID is available. Show the CID as a clickable link to the IPFS gateway.
+### 1. Create `src/components/TokenImageOverlay.tsx`
 
-3. To get the profile CID, we need to surface it from the Tansu service.
+A small component that renders a thumbnail in the top-right corner of a container. Props: `tokenImage` (the token contract image URL, already resolved via `ipfsToHttp`), `alt` string. Renders a `absolute right-1 top-1` (small on cards) or `right-2 top-2` (larger on detail page) thumbnail with border/shadow. Accept a `size` prop (`"sm" | "lg"`, default `"sm"`) to control dimensions — `sm` = `h-8 w-8` for cards, `lg` = `h-12 w-12` for detail page.
 
-## Changes to `src/services/tansu.ts`
+### 2. Update `src/components/NFTCard.tsx`
 
-- Update `fetchMemberProfile` to return the `meta` CID alongside the profile data. Change return type to include `cid?: string` on `MemberProfile`, or return `{ profile, cid }`.
+- Add `tokenImage` prop (the raw `metadata?.image` value) — the card already has `metadata` so we can derive it, but passing explicitly is cleaner since we need to check both `memberPicture` and `metadata?.image`.
+- After the main `<img>`, when `memberPicture` is used AND `metadata?.image` exists and differs, render `<TokenImageOverlay>` with size `"sm"`.
 
-## Changes to `src/services/ipfs.ts`
+### 3. Update `src/pages/TokenPage.tsx` (lines 150-158)
 
-- Add `cid` field to `MemberProfile` interface so it can carry the raw CID through.
+- Replace the inline overlay markup with `<TokenImageOverlay>` with size `"lg"`.
 
-## Helper
+### 4. Update `src/pages/CollectionPage.tsx`
 
-Add a small utility function (inline in TokenPage or in ipfs.ts) to extract a CID from a URL like `https://ipfs.io/ipfs/QmXYZ.../3` → `QmXYZ.../3`.
+- NFTCard already receives `metadata` which contains `image`, so no data changes needed — the NFTCard can check internally.
 
-### Files to edit
-- `src/services/ipfs.ts` — Add `cid` to `MemberProfile`
-- `src/services/tansu.ts` — Pass `meta` CID into the returned profile
-- `src/pages/TokenPage.tsx` — Update Details section with renamed labels, CID display, and profile metadata row
+### Files
+- **Create**: `src/components/TokenImageOverlay.tsx`
+- **Edit**: `src/components/NFTCard.tsx` — add overlay when member picture replaces token image
+- **Edit**: `src/pages/TokenPage.tsx` — use shared overlay component
 
