@@ -46,28 +46,28 @@ When a member profile exists, the explorer uses the member's name and picture in
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                     Browser                         │
-│  React + TypeScript + @stellar/stellar-sdk          │
-│                                                     │
-│  simulateTransaction()                              │
-│       │                  │                          │
-│       ▼                  ▼                          │
-│  ┌─────────┐      ┌───────────┐                    │
-│  │   NFT   │      │   Tansu   │                    │
-│  │Contract │      │ Contract  │                    │
-│  │(SEP-50) │      │(Members)  │                    │
-│  └────┬────┘      └─────┬─────┘                    │
-│       │                  │                          │
-│       │   IPFS CIDs      │                          │
-│       ▼                  ▼                          │
-│  ┌──────────────────────────┐                      │
-│  │      IPFS Gateway        │                      │
-│  │  Token metadata          │                      │
-│  │  Trait metadata          │                      │
-│  │  Member profiles         │                      │
-│  └──────────────────────────┘                      │
-└─────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────┐
+│                     Browser                   │
+│  React + TypeScript + @stellar/stellar-sdk    │
+│                                               │
+│       simulateTransaction()                   │
+│       │                  │                    │
+│       ▼                  ▼                    │
+│  ┌─────────┐      ┌───────────┐               │
+│  │   NFT   │      │   Tansu   │               │
+│  │Contract │      │ Contract  │               │
+│  │(SEP-50) │      │(Members)  │               │
+│  └────┬────┘      └─────┬─────┘               │
+│       │                 │                     │
+│       │   IPFS CIDs     │                     │
+│       ▼                 ▼                     │
+│  ┌──────────────────────────┐                 │
+│  │      IPFS Gateway        │                 │
+│  │  Token metadata          │                 │
+│  │  Trait metadata          │                 │
+│  │  Member profiles         │                 │
+│  └──────────────────────────┘                 │
+└───────────────────────────────────────────────┘
 ```
 
 The application is entirely client-side. There is no backend, no API server, no database. All state is read from Soroban RPC and IPFS at render time, with in-memory caching for the session.
