@@ -30,7 +30,3 @@ export function setCache<T>(key: string, data: T): void {
   }
 }
 
-export function clearCache(): void {
-  const keys = Object.keys(localStorage).filter((k) => k.startsWith(CACHE_PREFIX));
-  keys.forEach((k) => localStorage.removeItem(k));
-}
