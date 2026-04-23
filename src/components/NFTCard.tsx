@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ipfsToHttp, type NFTMetadata } from "@/services/ipfs";
 import { TokenImageOverlay } from "@/components/TokenImageOverlay";
 import { User } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface NFTCardProps {
   tokenId: number;
@@ -32,6 +32,10 @@ export function NFTCard({ tokenId, metadata, owner, memberName, memberPicture, i
 
   const isMinted = !!owner;
   const displayImage = memberPicture ? ipfsToHttp(memberPicture) : metadata?.image ? ipfsToHttp(metadata.image) : "";
+
+  useEffect(() => {
+    setImgError(false);
+  }, [displayImage]);
 
   return (
     <Link to={`/token/${tokenId}`}>

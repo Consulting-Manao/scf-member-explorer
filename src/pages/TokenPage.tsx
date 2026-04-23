@@ -100,6 +100,10 @@ export default function TokenPage() {
       ? ipfsToHttp(metadata.image)
       : "";
 
+  useEffect(() => {
+    setImgError(false);
+  }, [displayImage]);
+
   const vanityTraits = metadata?.attributes?.filter(
     (a) => !["role", "nqg_score", "scf_role", "nqg score"].includes(a.trait_type.toLowerCase())
   ) ?? [];
