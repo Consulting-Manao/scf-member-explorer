@@ -1,7 +1,6 @@
 import { Contract, TransactionBuilder, Account, nativeToScVal, scValToNative, xdr, Keypair } from "@stellar/stellar-sdk";
 import { Server, Api } from "@stellar/stellar-sdk/rpc";
 import { CONTRACT_ADDRESS, RPC_URL, NETWORK_PASSPHRASE } from "@/config/networks";
-import { getCached, setCache } from "./cache";
 import { fetchJson } from "./ipfs";
 
 const server = new Server(RPC_URL);
@@ -174,13 +173,6 @@ export async function getTraitMetadataUri(): Promise<Record<string, TraitMetadat
 
     if (!uri) return null;
 
-    // Cache by IPFS URI — immutable content
-    const cached = getCached<Record<string, TraitMetadata>>(uri);
-    if (cached && typeof cached === "object" && !Array.isArray(cached)) {
-      const keys = Object.keys(cached);
-      if (keys.length > 0 && keys[0] !== "0") return cached;
-    }
-
     const metadataRaw = await fetchJson<unknown>(uri);
     if (!metadataRaw || typeof metadataRaw !== "object") return null;
 
@@ -197,7 +189,6 @@ export async function getTraitMetadataUri(): Promise<Record<string, TraitMetadat
       Object.entries(traits).map(([key, value]) => [key, normalizeTraitMetadata(value)])
     ) as Record<string, TraitMetadata>;
 
-    if (Object.keys(normalized).length > 0) setCache(uri, normalized);
     return normalized;
   } catch (err) {
     console.error("trait_metadata_uri error:", err);
