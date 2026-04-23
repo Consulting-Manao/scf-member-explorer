@@ -1,10 +1,11 @@
-import { Contract, TransactionBuilder, Account, nativeToScVal, scValToNative, xdr, Keypair } from "@stellar/stellar-sdk";
-import { Server, Api } from "@stellar/stellar-sdk/rpc";
-import { CONTRACT_ADDRESS, RPC_URL, NETWORK_PASSPHRASE } from "@/config/networks";
+import { Address, nativeToScVal, scValToNative, xdr } from "@stellar/stellar-sdk";
+import { CONTRACT_ADDRESS } from "@/config/networks";
 import { fetchJson } from "./ipfs";
+import { simulate } from "./soroban";
 
-const server = new Server(RPC_URL);
-const contract = new Contract(CONTRACT_ADDRESS);
+function call(method: string, ...args: xdr.ScVal[]): Promise<xdr.ScVal> {
+  return simulate(CONTRACT_ADDRESS, method, ...args);
+}
 
 function deepConvertMaps(value: unknown): unknown {
   if (value instanceof Map) {
@@ -20,56 +21,22 @@ function deepConvertMaps(value: unknown): unknown {
   return value;
 }
 
-async function simulateCall(method: string, ...args: xdr.ScVal[]): Promise<xdr.ScVal> {
-  const keypair = Keypair.random();
-  const account = new Account(keypair.publicKey(), "0");
-
-  const tx = new TransactionBuilder(account, {
-    fee: "100",
-    networkPassphrase: NETWORK_PASSPHRASE,
-  })
-    .addOperation(contract.call(method, ...args))
-    .setTimeout(30)
-    .build();
-
-  const response = await server.simulateTransaction(tx);
-
-  if (Api.isSimulationError(response)) {
-    throw new Error(`Simulation error: ${response.error}`);
-  }
-
-  if (!Api.isSimulationSuccess(response)) {
-    throw new Error("Simulation failed");
-  }
-
-  return response.result!.retval;
-}
-
-export async function getCollectionName(): Promise<string> {
-  const result = await simulateCall("name");
-  return scValToNative(result) as string;
-}
-
-export async function getCollectionSymbol(): Promise<string> {
-  const result = await simulateCall("symbol");
-  return scValToNative(result) as string;
-}
-
 export async function getTokenUri(tokenId: number): Promise<string> {
-  const result = await simulateCall(
-    "token_uri",
-    nativeToScVal(tokenId, { type: "u32" })
-  );
+  const result = await call("token_uri", nativeToScVal(tokenId, { type: "u32" }));
   return scValToNative(result) as string;
 }
 
 export async function getOwnerOf(tokenId: number): Promise<string | null> {
   try {
-    const result = await simulateCall(
-      "owner_of",
-      nativeToScVal(tokenId, { type: "u32" })
-    );
-    return scValToNative(result) as string;
+    const result = await call("owner_of", nativeToScVal(tokenId, { type: "u32" }));
+    const native = scValToNative(result);
+    if (typeof native === "string") return native;
+    // owner_of may return an Address-typed ScVal
+    try {
+      return Address.fromScVal(result).toString();
+    } catch {
+      return null;
+    }
   } catch {
     return null;
   }
@@ -82,10 +49,7 @@ export interface GovernanceData {
 
 export async function getGovernance(tokenId: number): Promise<GovernanceData | null> {
   try {
-    const result = await simulateCall(
-      "governance",
-      nativeToScVal(tokenId, { type: "u32" })
-    );
+    const result = await call("governance", nativeToScVal(tokenId, { type: "u32" }));
     const raw = scValToNative(result);
     const data = deepConvertMaps(raw);
     if (!data || typeof data !== "object") return null;
@@ -93,9 +57,9 @@ export async function getGovernance(tokenId: number): Promise<GovernanceData | n
     const normalized = data as Record<string, unknown>;
 
     return {
-      role: normalized.role ?? normalized.scf_role,
+      role: normalized.role as GovernanceData["role"] ?? normalized.scf_role as GovernanceData["role"],
       nqg_score: normalized.nqg_score ?? normalized.nqg ?? normalized.nqgScore,
-    } as GovernanceData;
+    };
   } catch {
     return null;
   }
@@ -159,7 +123,7 @@ function normalizeTraitMetadata(value: unknown): TraitMetadata {
 
 export async function getTraitMetadataUri(): Promise<Record<string, TraitMetadata> | null> {
   try {
-    const result = await simulateCall("trait_metadata_uri");
+    const result = await call("trait_metadata_uri");
     const raw = scValToNative(result);
 
     let uri = "";
@@ -185,18 +149,15 @@ export async function getTraitMetadataUri(): Promise<Record<string, TraitMetadat
 
     if (typeof traits !== "object" || Array.isArray(traits)) return null;
 
-    const normalized = Object.fromEntries(
+    return Object.fromEntries(
       Object.entries(traits).map(([key, value]) => [key, normalizeTraitMetadata(value)])
     ) as Record<string, TraitMetadata>;
-
-    return normalized;
-  } catch (err) {
-    console.error("trait_metadata_uri error:", err);
+  } catch {
     return null;
   }
 }
 
 export async function getNextTokenId(): Promise<number> {
-  const result = await simulateCall("next_token_id");
+  const result = await call("next_token_id");
   return Number(scValToNative(result));
 }

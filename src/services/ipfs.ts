@@ -89,17 +89,7 @@ export async function listDirectory(uri: string): Promise<DirEntry[] | null> {
       }
 
       const html = await res.text();
-      const re = /href="\/ipfs\/([^"/?]+)\?filename=([^"]+)"/g;
-      const entries: DirEntry[] = [];
-      const seen = new Set<string>();
-      let m: RegExpExecArray | null;
-
-      while ((m = re.exec(html)) !== null) {
-        const name = decodeURIComponent(m[2]);
-        if (seen.has(name)) continue;
-        seen.add(name);
-        entries.push({ name, cid: m[1] });
-      }
+      const entries = parseDirectoryHtml(html);
 
       if (entries.length === 0) {
         setCache(cacheKey, null);
