@@ -78,11 +78,17 @@ Network and contract addresses are defined in `src/config/networks.ts`:
 
 ```ts
 export const NETWORK = "testnet" as const;
-export const CONTRACT_ADDRESS = "CATJ45...";       // SEP-50 NFT contract
-export const TANSU_CONTRACT_ADDRESS = "CBXKU...";  // Tansu membership contract
+export const CONTRACT_ADDRESS = "CATJ45GRCHCTXLR4H2GKTUW7L5CBCKYO6P3PTRLHPASBIVT3BESZ37WN";
+export const TANSU_CONTRACT_ADDRESS = "CBXKUSLQPVF35FYURR5C42BPYA5UOVDXX2ELKIM2CAJMCI6HXG2BHGZA";
 ```
 
 Switch `NETWORK` between `"testnet"` and `"mainnet"` to change the target environment. RPC URLs, network passphrase, and explorer links are derived automatically.
+
+## Quick start
+
+```sh
+bun install && bun dev
+```
 
 ## Tech stack
 

@@ -1,16 +1,17 @@
 {
   "compilerOptions": {
     "allowJs": true,
-    "noImplicitAny": false,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "paths": {
       "@/*": [
         "./src/*"
       ]
     },
     "skipLibCheck": true,
-    "strictNullChecks": false
+    "strict": true,
+    "strictNullChecks": true
   },
   "files": [],
   "references": [

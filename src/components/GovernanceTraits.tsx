@@ -1,20 +1,11 @@
 import { ExternalLink, Shield, BarChart3 } from "lucide-react";
 import type { GovernanceData, TraitMetadata } from "@/services/stellar";
+import { formatWithDecimals } from "@/lib/format";
 
 interface GovernanceTraitsProps {
   governance: GovernanceData | null;
   traitMeta?: Record<string, TraitMetadata> | null;
   isLoading?: boolean;
-}
-
-function formatWithDecimals(value: unknown, decimals?: number): string {
-  if (decimals === undefined || decimals === 0) return String(value);
-  const divisor = BigInt(`1${"0".repeat(decimals)}`);
-  const big = typeof value === "bigint" ? value : BigInt(String(value));
-  const whole = big / divisor;
-  const remainder = big % divisor;
-  const fracStr = remainder.toString().padStart(decimals, "0").replace(/0+$/, "");
-  return fracStr ? `${whole}.${fracStr}` : `${whole}`;
 }
 
 export function GovernanceTraits({ governance, traitMeta, isLoading }: GovernanceTraitsProps) {
