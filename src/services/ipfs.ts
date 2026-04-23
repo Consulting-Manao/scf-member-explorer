@@ -56,6 +56,27 @@ function dedupe<T>(key: string, fn: () => Promise<T>): Promise<T> {
 }
 
 /**
+ * Parse a public IPFS HTTP gateway directory-index HTML page into a list of
+ * `{ name, cid }` entries. The gateway renders each child as
+ * `<a href="/ipfs/<childCid>?filename=<name>">`. Exported for unit testing.
+ */
+export function parseDirectoryHtml(html: string): DirEntry[] {
+  const re = /href="\/ipfs\/([^"/?]+)\?filename=([^"]+)"/g;
+  const entries: DirEntry[] = [];
+  const seen = new Set<string>();
+  let m: RegExpExecArray | null;
+
+  while ((m = re.exec(html)) !== null) {
+    const name = decodeURIComponent(m[2]);
+    if (seen.has(name)) continue;
+    seen.add(name);
+    entries.push({ name, cid: m[1] });
+  }
+
+  return entries;
+}
+
+/**
  * List a UnixFS directory.
  *
  * Public IPFS HTTP gateways (ipfs.io, dweb.link, w3s.link, ...) refuse
