@@ -2,7 +2,7 @@ import { Contract, TransactionBuilder, Account, nativeToScVal, scValToNative, xd
 import { Server, Api } from "@stellar/stellar-sdk/rpc";
 import { CONTRACT_ADDRESS, RPC_URL, NETWORK_PASSPHRASE } from "@/config/networks";
 import { getCached, setCache } from "./cache";
-import { ipfsToHttp, fetchMetadata } from "./ipfs";
+import { fetchJson } from "./ipfs";
 
 const server = new Server(RPC_URL);
 const contract = new Contract(CONTRACT_ADDRESS);
@@ -181,12 +181,7 @@ export async function getTraitMetadataUri(): Promise<Record<string, TraitMetadat
       if (keys.length > 0 && keys[0] !== "0") return cached;
     }
 
-    const response = await fetch(ipfsToHttp(uri));
-    if (!response.ok) {
-      throw new Error(`Failed to fetch trait metadata: ${response.status}`);
-    }
-
-    const metadataRaw = await response.json();
+    const metadataRaw = await fetchJson<unknown>(uri);
     if (!metadataRaw || typeof metadataRaw !== "object") return null;
 
     const metadata = deepConvertMaps(metadataRaw) as Record<string, unknown>;
