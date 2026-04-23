@@ -31,11 +31,13 @@ export async function simulate(
   const response = await server.simulateTransaction(tx);
 
   if (Api.isSimulationError(response)) {
-    throw new Error(`Simulation error: ${response.error}`);
+    console.error("Soroban simulation error", { contractAddress, method, error: response.error });
+    throw new Error("Contract call failed");
   }
 
   if (!Api.isSimulationSuccess(response)) {
-    throw new Error("Simulation failed");
+    console.error("Soroban simulation did not succeed", { contractAddress, method, response });
+    throw new Error("Contract call failed");
   }
 
   return response.result!.retval;
