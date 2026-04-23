@@ -1,6 +1,7 @@
 import { getCached, setCache } from "./cache";
 
 const IPFS_GATEWAY = "https://ipfs.io/ipfs/";
+const IPFS_CACHE_VERSION = "v2";
 
 export function ipfsToHttp(uri: string): string {
   if (!uri) return "";
@@ -15,6 +16,10 @@ function extractCid(uri: string): string {
     .replace(/^ipfs\//, "")
     .replace(/^https?:\/\/[^/]+\/ipfs\//, "")
     .replace(/\/$/, "");
+}
+
+function versionedKey(kind: string, value: string): string {
+  return `ipfs:${IPFS_CACHE_VERSION}:${kind}:${value}`;
 }
 
 export interface NFTMetadata {
@@ -40,7 +45,6 @@ export interface DirEntry {
   size?: number;
 }
 
-// In-memory inflight dedup — coalesce concurrent requests for the same key
 const inflight = new Map<string, Promise<unknown>>();
 
 function dedupe<T>(key: string, fn: () => Promise<T>): Promise<T> {
@@ -59,15 +63,12 @@ function dedupe<T>(key: string, fn: () => Promise<T>): Promise<T> {
  * and Kubo's `/api/v0/ls` is disabled. The remaining stable, dependency-free
  * option is the gateway's HTML directory index, where each entry is rendered
  * as `<a href="/ipfs/<childCid>?filename=<name>">`. We parse those anchors.
- *
- * Returns null when the CID is not a directory (e.g. a JSON file) or the
- * gateway returns a non-OK / non-HTML response.
  */
 export async function listDirectory(uri: string): Promise<DirEntry[] | null> {
   const cid = extractCid(uri);
   if (!cid) return null;
 
-  const cacheKey = `dir:${cid}`;
+  const cacheKey = versionedKey("dir", cid);
   const cached = getCached<DirEntry[] | null>(cacheKey);
   if (cached !== null && cached !== undefined) return cached;
 
@@ -80,19 +81,19 @@ export async function listDirectory(uri: string): Promise<DirEntry[] | null> {
         setCache(cacheKey, null);
         return null;
       }
+
       const contentType = res.headers.get("content-type") ?? "";
       if (!contentType.includes("text/html")) {
-        // It's a file, not a directory.
         setCache(cacheKey, null);
         return null;
       }
 
       const html = await res.text();
-      // Match anchors of the form: href="/ipfs/<cid>?filename=<name>"
       const re = /href="\/ipfs\/([^"/?]+)\?filename=([^"]+)"/g;
       const entries: DirEntry[] = [];
       const seen = new Set<string>();
       let m: RegExpExecArray | null;
+
       while ((m = re.exec(html)) !== null) {
         const name = decodeURIComponent(m[2]);
         if (seen.has(name)) continue;
@@ -114,11 +115,6 @@ export async function listDirectory(uri: string): Promise<DirEntry[] | null> {
   });
 }
 
-/**
- * Cached JSON fetcher.
- * - If `filename` is provided, resolve via directory listing first.
- * - Otherwise fetch the URI directly (treats it as a file CID).
- */
 export async function fetchJson<T>(uri: string, filename?: string): Promise<T> {
   const cid = extractCid(uri);
   let url: string;
@@ -133,7 +129,7 @@ export async function fetchJson<T>(uri: string, filename?: string): Promise<T> {
     url = ipfsToHttp(uri);
   }
 
-  const cacheKey = `json:${url}`;
+  const cacheKey = versionedKey("json", url);
   const cached = getCached<T>(cacheKey);
   if (cached !== null && cached !== undefined) return cached;
 
@@ -151,7 +147,7 @@ export async function fetchMetadata(uri: string): Promise<NFTMetadata> {
 }
 
 export async function fetchMemberMeta(uri: string): Promise<MemberProfile> {
-  const cacheKey = `member:${uri}`;
+  const cacheKey = versionedKey("member", uri);
   const cached = getCached<MemberProfile>(cacheKey);
   if (cached) return cached;
 
@@ -179,18 +175,15 @@ export async function fetchMemberMeta(uri: string): Promise<MemberProfile> {
         pictureUrl = `${baseUrl}/${imageEntry.name}`;
       }
     } else {
-      // Fallback: gateway didn't expose dag-json. Try profile.json directly.
       try {
         const res = await fetch(`${baseUrl}/profile.json`);
         if (res.ok) profileData = await res.json();
       } catch {
-        // leave empty
+        // ignore fallback errors
       }
     }
 
-    // profile.json may include an explicit picture field — prefer it.
-    const explicitPicture =
-      typeof profileData.picture === "string" ? (profileData.picture as string) : undefined;
+    const explicitPicture = typeof profileData.picture === "string" ? profileData.picture : undefined;
 
     const profile: MemberProfile = {
       name: profileData.name ? String(profileData.name) : undefined,
@@ -207,3 +200,4 @@ export async function fetchMemberMeta(uri: string): Promise<MemberProfile> {
     return profile;
   });
 }
+
