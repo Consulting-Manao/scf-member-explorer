@@ -1,56 +1,60 @@
 
 
-# Unify IPFS Access Through Directory Listings + Caching
+# Cleanup: Dead Code, Unused Deps, Stale Patterns
 
-## Goal
+Full-app audit after the IPFS refactor. No behaviour changes, no UI changes.
 
-All IPFS access goes through a single resolver that lists the directory once per CID, then reads files by name. No hardcoded extensions, no probing, no duplicate fetches. Cache directory listings and file payloads.
+## 1. Remove unused toast infrastructure
 
-## Approach
+Nothing in the app calls `toast()`, `useToast()`, or renders a `<Tooltip>`. The `Toaster`, `Sonner`, and `TooltipProvider` mounted in `App.tsx` are pure overhead.
 
-Add a `listDirectory(cid)` helper in `src/services/ipfs.ts` that fetches `${gateway}${cid}/?format=dag-json` and returns `[{ name, cid }]` from `Links`. Cache the listing by root CID. Build all file URLs from the listing.
+- **Delete** `src/components/ui/toast.tsx`
+- **Delete** `src/components/ui/toaster.tsx`
+- **Delete** `src/components/ui/sonner.tsx`
+- **Delete** `src/components/ui/tooltip.tsx`
+- **Delete** `src/hooks/use-toast.ts`
+- **Edit** `src/App.tsx` — remove `Toaster`, `Sonner`, `TooltipProvider` imports and JSX. Keep `QueryClientProvider` and `BrowserRouter`.
 
-Token metadata and trait metadata URIs from the contract are usually direct file CIDs (not directory paths), but in some cases they may be directory CIDs containing e.g. `metadata.json`. The resolver handles both: if a fetch returns JSON, use it; if it returns a directory (dag-json with `Links`), look for the conventional filename inside.
+## 2. Remove the dependencies those modules pulled in
 
-## Changes
+After the deletions above, these become unreferenced:
 
-### `src/services/ipfs.ts` (rewrite)
+- `@radix-ui/react-toast` — only used by `toast.tsx`
+- `@radix-ui/react-tooltip` — only used by `tooltip.tsx`
+- `sonner` — only used by `sonner.tsx`
 
-1. **`listDirectory(cid: string): Promise<DirEntry[] | null>`**
-   - Strip `ipfs://` / trailing slash from input, extract root CID.
-   - Fetch `${gateway}${cid}/?format=dag-json`.
-   - Parse `Links` → `[{ name: Link.Name, cid: Link.Hash["/"], size: Link.Tsize }]`.
-   - Cache by CID via existing `getCached`/`setCache`.
-   - Return `null` if not a directory or gateway rejects (caller falls back to direct fetch).
+`@radix-ui/react-slot` and `class-variance-authority` stay (used by `button.tsx`). `tailwind-merge`, `clsx`, `tailwindcss-animate` stay.
 
-2. **`fetchJson<T>(uri: string, filename?: string): Promise<T>`** — generic cached JSON fetcher.
-   - Cache key = full resolved URL.
-   - If `filename` provided: try `listDirectory(cid)` first, find the entry, fetch `${gateway}${cid}/${entry.name}`.
-   - Otherwise: fetch the URI directly.
-   - Used for token metadata, trait metadata, and `profile.json`.
+- **Edit** `package.json` — drop `@radix-ui/react-toast`, `@radix-ui/react-tooltip`, `sonner` from `dependencies`.
+- **Edit** `vite.config.ts` — nothing to change (no dedupe entries reference these).
 
-3. **`fetchMetadata(uri)`** → uses `fetchJson<NFTMetadata>(uri)` (token metadata is a direct file CID today; if it ever becomes a directory, callers can switch to passing `"metadata.json"`).
+## 3. Cache-layer cleanup
 
-4. **`fetchMemberMeta(uri)`**
-   - `entries = await listDirectory(uri)`.
-   - If listing succeeded: find `profile.json` entry → fetch via cached `fetchJson`; find entry whose name starts with `profile-image.` → build picture URL from that exact filename.
-   - If listing failed: fall back to fetching `${baseUrl}/profile.json` directly, leave `picture` undefined.
-   - If `profile.json` contains a `picture` field, prefer it over the directory-derived URL.
-   - Cache the resulting `MemberProfile` as today (`member:${uri}` key).
+- **Edit** `src/services/cache.ts` — remove unused `clearCache` export.
+- **Edit** `src/services/stellar.ts` — `getTraitMetadataUri` wraps `fetchJson` with a second non-versioned `getCached`/`setCache` layer. `fetchJson` already provides versioned caching + dedup, so the extra layer is redundant and can return stale entries that bypass `IPFS_CACHE_VERSION`. Drop the manual cache calls and the `import { getCached, setCache } from "./cache"`.
 
-5. **Trait metadata** (`src/services/stellar.ts` line 184) — replace the raw `fetch(ipfsToHttp(uri))` with `fetchJson<TraitMetadata>(uri)` so it benefits from the same cache and (if it's ever a directory) directory resolution.
+## 4. Import hygiene
 
-### `src/services/cache.ts`
+- **Edit** `src/pages/TokenPage.tsx` — merge the two `@/services/ipfs` imports (lines 10 + 12) into one statement.
 
-No structural changes. Existing 12h localStorage cache is reused for: directory listings (`dir:${cid}`), JSON payloads (`json:${url}`), and member profiles (`member:${uri}`). Add a tiny in-memory `Map` layer in `ipfs.ts` to dedupe concurrent requests for the same key within a single session render (avoids duplicate inflight fetches when the collection page renders 50 cards at once).
+## 5. Prune unused props
 
-### Files
+- **Edit** `src/components/NFTCard.tsx` — `isLoading` prop is never passed by `CollectionPage` (its sole caller). Remove the prop, the loading-state branch, and the now-unused `Skeleton` import. Skeleton component stays (still used by `TokenPage`).
 
-- **Edit**: `src/services/ipfs.ts` — add `listDirectory`, `fetchJson`, in-memory inflight dedup; rewrite `fetchMemberMeta`.
-- **Edit**: `src/services/stellar.ts` — route trait-metadata fetch through `fetchJson`.
+## What stays (and why)
 
-### Out of scope
+- `tailwind.config.lov.json` — auto-generated by `lovable-tagger`, do not touch.
+- React 18 `forwardRef` console warnings on `GovernanceTraits`/`AttributeBadge`/`TokenImageOverlay` — dev-only HMR artifact; none of these components are consumed via `asChild`/`Slot`, so wrapping them in `forwardRef` would be busywork with no runtime effect.
+- `clsx` is transitively used via `cn()`; keep.
+- `@tanstack/react-query` — currently only `QueryClientProvider` is mounted with no `useQuery` calls in app code, but `App.tsx` keeps it as the standard data-fetching boundary. Removing it is a larger refactor (would also need to swap manual `useEffect` patterns); out of scope for this cleanup.
 
-- No CAR decoding (not needed; `dag-json` directory listing is sufficient and dependency-free).
-- No UI changes; `NFTCard` and `TokenPage` already handle missing pictures gracefully.
+## Files touched
+
+- `src/App.tsx`
+- `src/components/NFTCard.tsx`
+- `src/services/cache.ts`
+- `src/services/stellar.ts`
+- `src/pages/TokenPage.tsx`
+- `package.json`
+- Deleted: `src/components/ui/{toast,toaster,sonner,tooltip}.tsx`, `src/hooks/use-toast.ts`
 
