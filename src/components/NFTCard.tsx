@@ -18,6 +18,13 @@ interface NFTCardProps {
 export function NFTCard({ tokenId, metadata, owner, memberName, memberPicture, isLoading }: NFTCardProps) {
   const [imgError, setImgError] = useState(false);
 
+  const isMinted = !!owner;
+  const displayImage = memberPicture ? ipfsToHttp(memberPicture) : metadata?.image ? ipfsToHttp(metadata.image) : "";
+
+  useEffect(() => {
+    setImgError(false);
+  }, [displayImage]);
+
   if (isLoading) {
     return (
       <Card className="overflow-hidden">
@@ -29,13 +36,6 @@ export function NFTCard({ tokenId, metadata, owner, memberName, memberPicture, i
       </Card>
     );
   }
-
-  const isMinted = !!owner;
-  const displayImage = memberPicture ? ipfsToHttp(memberPicture) : metadata?.image ? ipfsToHttp(metadata.image) : "";
-
-  useEffect(() => {
-    setImgError(false);
-  }, [displayImage]);
 
   return (
     <Link to={`/token/${tokenId}`}>
