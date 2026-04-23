@@ -86,7 +86,7 @@ Switch `NETWORK` between `"testnet"` and `"mainnet"` to change the target enviro
 
 ## Tech stack
 
-React, Vite, TypeScript, Tailwind CSS, `@stellar/stellar-sdk`, TanStack Query.
+React, Vite, TypeScript, Tailwind CSS, `@stellar/stellar-sdk`.
 
 ## References
 
