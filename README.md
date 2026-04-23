@@ -8,14 +8,14 @@ Client-side explorer for Stellar Community Fund membership NFTs. Reads on-chain 
 
 [SEP-50](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0050.md) defines a standard interface for NFTs on Soroban. The explorer reads the following contract methods:
 
-| Method | Returns |
-|---|---|
-| `name()` / `symbol()` | Collection metadata |
-| `token_uri(token_id)` | IPFS URI pointing to token metadata (name, description, image, attributes) |
-| `owner_of(token_id)` | Stellar address of the current owner |
-| `governance(token_id)` | Dynamic on-chain traits (role, NQG score) |
-| `trait_metadata_uri()` | Display instructions for dynamic traits (decimals, value mappings) |
-| `next_token_id()` | Used to determine total minted supply |
+| Method                 | Returns                                                                    |
+| ---------------------- | -------------------------------------------------------------------------- |
+| `name()` / `symbol()`  | Collection metadata                                                        |
+| `token_uri(token_id)`  | IPFS URI pointing to token metadata (name, description, image, attributes) |
+| `owner_of(token_id)`   | Stellar address of the current owner                                       |
+| `governance(token_id)` | Dynamic on-chain traits (role, NQG score)                                  |
+| `trait_metadata_uri()` | Display instructions for dynamic traits (decimals, value mappings)         |
+| `next_token_id()`      | Used to determine total minted supply                                      |
 
 All calls are read-only, executed via `simulateTransaction` with a throwaway keypair — no wallet connection or signing required.
 
@@ -38,7 +38,7 @@ Each NFT is owned by a Stellar address. The explorer resolves that address again
 ```
 <cid>/
   profile.json       # { name, description, links, ... }
-  profile-image.png   # member avatar
+  profile-image.png  # member avatar
 ```
 
 When a member profile exists, the explorer uses the member's name and picture in place of the raw address and default token image. The original token image is preserved as a small overlay thumbnail.
@@ -76,23 +76,7 @@ The application is entirely client-side. There is no backend, no API server, no 
 
 Network and contract addresses are defined in `src/config/networks.ts`:
 
-```ts
-export const NETWORK = "testnet" as const;
-export const CONTRACT_ADDRESS = "CATJ45GRCHCTXLR4H2GKTUW7L5CBCKYO6P3PTRLHPASBIVT3BESZ37WN";
-export const TANSU_CONTRACT_ADDRESS = "CBXKUSLQPVF35FYURR5C42BPYA5UOVDXX2ELKIM2CAJMCI6HXG2BHGZA";
-```
-
 Switch `NETWORK` between `"testnet"` and `"mainnet"` to change the target environment. RPC URLs, network passphrase, and explorer links are derived automatically.
-
-## Quick start
-
-```sh
-bun install && bun dev
-```
-
-## Tech stack
-
-React, Vite, TypeScript, Tailwind CSS, `@stellar/stellar-sdk`.
 
 ## References
 
