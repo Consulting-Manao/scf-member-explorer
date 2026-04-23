@@ -52,8 +52,16 @@ function dedupe<T>(key: string, fn: () => Promise<T>): Promise<T> {
 }
 
 /**
- * List a UnixFS directory via the trustless gateway's dag-json view.
- * Returns null if the CID is not a directory or the gateway rejects the request.
+ * List a UnixFS directory.
+ *
+ * Public IPFS HTTP gateways (ipfs.io, dweb.link, w3s.link, ...) refuse
+ * `?format=dag-json` on `dag-pb` blocks ("codec conversion is not supported")
+ * and Kubo's `/api/v0/ls` is disabled. The remaining stable, dependency-free
+ * option is the gateway's HTML directory index, where each entry is rendered
+ * as `<a href="/ipfs/<childCid>?filename=<name>">`. We parse those anchors.
+ *
+ * Returns null when the CID is not a directory (e.g. a JSON file) or the
+ * gateway returns a non-OK / non-HTML response.
  */
 export async function listDirectory(uri: string): Promise<DirEntry[] | null> {
   const cid = extractCid(uri);
@@ -65,23 +73,38 @@ export async function listDirectory(uri: string): Promise<DirEntry[] | null> {
 
   return dedupe(cacheKey, async () => {
     try {
-      const res = await fetch(`${IPFS_GATEWAY}${cid}/?format=dag-json`, {
-        headers: { Accept: "application/vnd.ipld.dag-json" },
+      const res = await fetch(`${IPFS_GATEWAY}${cid}/`, {
+        headers: { Accept: "text/html" },
       });
       if (!res.ok) {
         setCache(cacheKey, null);
         return null;
       }
-      const data = await res.json() as { Links?: Array<{ Name: string; Hash: { "/": string }; Tsize?: number }> };
-      if (!data || !Array.isArray(data.Links)) {
+      const contentType = res.headers.get("content-type") ?? "";
+      if (!contentType.includes("text/html")) {
+        // It's a file, not a directory.
         setCache(cacheKey, null);
         return null;
       }
-      const entries: DirEntry[] = data.Links.map((l) => ({
-        name: l.Name,
-        cid: l.Hash["/"],
-        size: l.Tsize,
-      }));
+
+      const html = await res.text();
+      // Match anchors of the form: href="/ipfs/<cid>?filename=<name>"
+      const re = /href="\/ipfs\/([^"/?]+)\?filename=([^"]+)"/g;
+      const entries: DirEntry[] = [];
+      const seen = new Set<string>();
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(html)) !== null) {
+        const name = decodeURIComponent(m[2]);
+        if (seen.has(name)) continue;
+        seen.add(name);
+        entries.push({ name, cid: m[1] });
+      }
+
+      if (entries.length === 0) {
+        setCache(cacheKey, null);
+        return null;
+      }
+
       setCache(cacheKey, entries);
       return entries;
     } catch {
