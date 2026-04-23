@@ -146,7 +146,10 @@ export async function fetchJson<T>(uri: string, filename?: string): Promise<T> {
 
   return dedupe(cacheKey, async () => {
     const res = await fetch(url);
-    if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
+    if (!res.ok) {
+      console.error("IPFS fetch failed", { url, status: res.status });
+      throw new Error("Failed to load IPFS resource");
+    }
     const data = (await res.json()) as T;
     setCache(cacheKey, data);
     return data;

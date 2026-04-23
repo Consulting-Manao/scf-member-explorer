@@ -58,7 +58,8 @@ export default function TokenPage() {
           });
         }
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load token");
+        console.error("Failed to load token", e);
+        if (!cancelled) setError("Unable to load this token. Please try again later.");
       } finally {
         if (!cancelled) setLoading(false);
       }

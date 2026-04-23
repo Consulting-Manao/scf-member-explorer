@@ -99,8 +99,9 @@ export default function CollectionPage() {
         setTokens(batch);
         loadedCount.current = batch.length;
       } catch (e) {
+        console.error("Failed to load collection", e);
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Failed to load collection");
+          setError("Unable to load the collection. Please try again later.");
         }
       } finally {
         if (!cancelled) setLoading(false);
