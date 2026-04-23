@@ -1,60 +1,70 @@
 
 
-# Cleanup: Dead Code, Unused Deps, Stale Patterns
+# Engineering cleanup pass (favicon preserved)
 
-Full-app audit after the IPFS refactor. No behaviour changes, no UI changes.
+Same scope as before, with the favicon left untouched per your note.
 
-## 1. Remove unused toast infrastructure
+## 1. Project identity
 
-Nothing in the app calls `toast()`, `useToast()`, or renders a `<Tooltip>`. The `Toaster`, `Sonner`, and `TooltipProvider` mounted in `App.tsx` are pure overhead.
+- **`package.json`** — rename `"vite_react_shadcn_ts"` → `"scf-member-explorer"`, set `"version": "1.0.0"`, add `"description"`, `"license": "MIT"`. Drop unused `"build:dev"` script. Add `"typecheck": "tsc -b --noEmit"`.
 
-- **Delete** `src/components/ui/toast.tsx`
-- **Delete** `src/components/ui/toaster.tsx`
-- **Delete** `src/components/ui/sonner.tsx`
-- **Delete** `src/components/ui/tooltip.tsx`
-- **Delete** `src/hooks/use-toast.ts`
-- **Edit** `src/App.tsx` — remove `Toaster`, `Sonner`, `TooltipProvider` imports and JSX. Keep `QueryClientProvider` and `BrowserRouter`.
+## 2. Remove leftovers
 
-## 2. Remove the dependencies those modules pulled in
+- **Delete `.lovable/plan.md`** and the `.lovable/` directory — stale, not consumed by any tooling.
+- **Delete `public/placeholder.svg`** — unreferenced anywhere in `src/` or `index.html`.
+- **Delete `public/robots.txt`** — current contents (allow everything) is the default crawler behaviour.
+- **Keep `public/favicon.ico`** — user-provided custom favicon. Add an explicit `<link rel="icon" href="/favicon.ico" sizes="any" />` to `index.html` so it's declared rather than only relying on the implicit browser request.
 
-After the deletions above, these become unreferenced:
+## 3. Vite + Vitest config hygiene
 
-- `@radix-ui/react-toast` — only used by `toast.tsx`
-- `@radix-ui/react-tooltip` — only used by `tooltip.tsx`
-- `sonner` — only used by `sonner.tsx`
+- **`vite.config.ts`** — trim the `dedupe` array to `["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"]` (the `@tanstack/*` entries reference removed deps). Drop the obsolete `// https://vitejs.dev/config/` comment.
+- **`vitest.config.ts`** — switch `environment: "jsdom"` → `"node"` (no test renders React). Drop `setupFiles` and delete `src/test/setup.ts`. Tighten `include` to the new test location.
 
-`@radix-ui/react-slot` and `class-variance-authority` stay (used by `button.tsx`). `tailwind-merge`, `clsx`, `tailwindcss-animate` stay.
+## 4. Service-layer correctness
 
-- **Edit** `package.json` — drop `@radix-ui/react-toast`, `@radix-ui/react-tooltip`, `sonner` from `dependencies`.
-- **Edit** `vite.config.ts` — nothing to change (no dedupe entries reference these).
+- **New `src/services/soroban.ts`** — extract the duplicated `simulateCall` into `simulate(contractAddress, method, ...args)`. Both `stellar.ts` and `tansu.ts` become thin wrappers, removing ~30 lines of identical SDK boilerplate.
+- **`src/services/stellar.ts`** — delete unused exports `getCollectionName` and `getCollectionSymbol` (no importers). Replace the `console.error("trait_metadata_uri error:", err)` with a silent return — the function already returns `null` and the call site doesn't surface errors, so the log is noise in production.
+- **`src/lib/format.ts`** (new) — move `formatWithDecimals` out of `GovernanceTraits.tsx` so it's testable in isolation; import it back into the component.
 
-## 3. Cache-layer cleanup
+## 5. TypeScript strictness
 
-- **Edit** `src/services/cache.ts` — remove unused `clearCache` export.
-- **Edit** `src/services/stellar.ts` — `getTraitMetadataUri` wraps `fetchJson` with a second non-versioned `getCached`/`setCache` layer. `fetchJson` already provides versioned caching + dedup, so the extra layer is redundant and can return stale entries that bypass `IPFS_CACHE_VERSION`. Drop the manual cache calls and the `import { getCached, setCache } from "./cache"`.
+- **`tsconfig.app.json`** — flip `"strict": true`, `"strictNullChecks": true`, `"noImplicitAny": true`, `"noUnusedLocals": true`, `"noUnusedParameters": true`. Mirror in `tsconfig.json`. Fix any errors surfaced (expected to be tiny; the codebase already uses `?.` and explicit types throughout).
 
-## 4. Import hygiene
+## 6. ESLint
 
-- **Edit** `src/pages/TokenPage.tsx` — merge the two `@/services/ipfs` imports (lines 10 + 12) into one statement.
+- **`eslint.config.js`** — remove the `"@typescript-eslint/no-unused-vars": "off"` override so unused symbols are flagged.
 
-## 5. Prune unused props
+## 7. Tests — small, real, and useful
 
-- **Edit** `src/components/NFTCard.tsx` — `isLoading` prop is never passed by `CollectionPage` (its sole caller). Remove the prop, the loading-state branch, and the now-unused `Skeleton` import. Skeleton component stays (still used by `TokenPage`).
+Delete the trivial existing test and replace with focused unit tests of the actual fragile logic.
 
-## What stays (and why)
+- **Delete** `src/test/ipfs.test.ts`, `src/test/setup.ts`, `src/test/` directory.
+- **Add `src/services/__tests__/ipfs.test.ts`**:
+  - `ipfsToHttp`: `ipfs://` prefix, http passthrough, `ipfs/` prefix, empty string.
+  - Extract the directory-index regex parser from `listDirectory` into an exported `parseDirectoryHtml(html)` helper and unit-test it against a fixture string. This is the single most fragile piece of the IPFS layer (gateway HTML format).
+- **Add `src/lib/__tests__/format.test.ts`** for `formatWithDecimals`: zero/undefined decimals passthrough, fractional truncation of trailing zeros, bigint input, string input.
+- **Drop dev deps**: `@testing-library/react`, `@testing-library/jest-dom`, `jsdom` — none are used after the switch to a `node` environment. Saves ~30 MB in `node_modules`.
 
-- `tailwind.config.lov.json` — auto-generated by `lovable-tagger`, do not touch.
-- React 18 `forwardRef` console warnings on `GovernanceTraits`/`AttributeBadge`/`TokenImageOverlay` — dev-only HMR artifact; none of these components are consumed via `asChild`/`Slot`, so wrapping them in `forwardRef` would be busywork with no runtime effect.
-- `clsx` is transitively used via `cn()`; keep.
-- `@tanstack/react-query` — currently only `QueryClientProvider` is mounted with no `useQuery` calls in app code, but `App.tsx` keeps it as the standard data-fetching boundary. Removing it is a larger refactor (would also need to swap manual `useEffect` patterns); out of scope for this cleanup.
+## 8. README
+
+- Replace the placeholder contract addresses with the real values from `src/config/networks.ts` and add a one-line quick start (`bun install && bun dev`).
 
 ## Files touched
 
-- `src/App.tsx`
-- `src/components/NFTCard.tsx`
-- `src/services/cache.ts`
-- `src/services/stellar.ts`
-- `src/pages/TokenPage.tsx`
-- `package.json`
-- Deleted: `src/components/ui/{toast,toaster,sonner,tooltip}.tsx`, `src/hooks/use-toast.ts`
+- `package.json`, `vite.config.ts`, `vitest.config.ts`, `tsconfig.json`, `tsconfig.app.json`, `eslint.config.js`, `index.html`, `README.md`
+- `src/services/stellar.ts`, `src/services/tansu.ts`, `src/services/ipfs.ts`
+- New: `src/services/soroban.ts`, `src/lib/format.ts`, `src/services/__tests__/ipfs.test.ts`, `src/lib/__tests__/format.test.ts`
+- `src/components/GovernanceTraits.tsx` (import `formatWithDecimals` from `@/lib/format`)
+
+## Files deleted
+
+- `.lovable/plan.md` and `.lovable/` directory
+- `public/placeholder.svg`, `public/robots.txt`
+- `src/test/ipfs.test.ts`, `src/test/setup.ts`, `src/test/` directory
+
+## Out of scope
+
+- `public/favicon.ico` — kept (user-supplied).
+- `lovable-tagger` Vite plugin and `lovable-agent-playwright-config` — platform tooling, not user-facing code.
+- No contract integration, RPC, styling, or UX changes.
 
