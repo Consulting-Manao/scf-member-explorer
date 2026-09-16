@@ -43,7 +43,7 @@ import {
 } from "@/lib/contract";
 import { memberName } from "@/lib/members";
 import { execute } from "@/lib/tx";
-import { cn, errorMessage, formatDuration } from "@/lib/utils";
+import { cn, errorMessage, formatDuration, shortAddress } from "@/lib/utils";
 import { useWallet } from "@/lib/wallet";
 import {
   useAdmin,
@@ -346,7 +346,12 @@ function ManageMember() {
                     new_address: newAddress,
                   })
                 }
-                onDone={() => invalidate()}
+                onDone={async (newAddress) => {
+                  await invalidate();
+                  toast.info(
+                    `Your wallet is now on ${shortAddress(newAddress)}. Switch back to the admin account to continue.`,
+                  );
+                }}
               />
             </section>
           </div>

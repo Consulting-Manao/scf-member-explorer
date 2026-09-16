@@ -37,6 +37,8 @@ const routeTree = rootRoute.addChildren([
   createRoute({
     getParentRoute: () => rootRoute,
     path: "/profile",
+    validateSearch: (search: Record<string, unknown>): { mode?: "recover" } =>
+      search.mode === "recover" ? { mode: "recover" } : {},
     component: Profile,
   }),
   toProfile("/join"),

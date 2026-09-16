@@ -1,6 +1,6 @@
 import type { AssembledTransaction } from "@stellar/stellar-sdk/contract";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { Buffer } from "buffer";
 import {
   ExternalLinkIcon,
@@ -112,6 +112,8 @@ function Choice({
 /* ----------------------------------------------------------------------- */
 
 function Onboarding({ address }: { address: string }) {
+  const { mode } = useSearch({ from: "/profile" });
+  const navigate = useNavigate({ from: "/profile" });
   const { signTransaction } = useWallet();
   const claims = useClaims(address);
   const invalidate = useInvalidateMembers();
@@ -161,6 +163,10 @@ function Onboarding({ address }: { address: string }) {
     }
   };
 
+  if (mode === "recover") {
+    return <Recovery address={address} />;
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6">
       <div className="space-y-2">
@@ -172,6 +178,21 @@ function Onboarding({ address }: { address: string }) {
           membership. Your Discord account on the Stellar server is required.
         </p>
       </div>
+
+      <Alert className="items-center">
+        <LifeBuoyIcon />
+        <span className="flex-1">
+          Already a member but lost the key? Recover your membership with this
+          account instead.
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate({ search: { mode: "recover" } })}
+        >
+          Recover
+        </Button>
+      </Alert>
 
       <Card>
         <CardHeader>
@@ -314,8 +335,6 @@ function Onboarding({ address }: { address: string }) {
           </Button>
         </CardFooter>
       </Card>
-
-      <RecoverySection address={address} />
     </div>
   );
 }
@@ -324,7 +343,8 @@ function Onboarding({ address }: { address: string }) {
 /* Recovery of an existing membership from a new address                    */
 /* ----------------------------------------------------------------------- */
 
-function RecoverySection({ address }: { address: string }) {
+function Recovery({ address }: { address: string }) {
+  const navigate = useNavigate({ from: "/profile" });
   const { signTransaction } = useWallet();
   const claims = useClaims(address);
   const invalidate = useInvalidateMembers();
@@ -374,67 +394,99 @@ function RecoverySection({ address }: { address: string }) {
   };
 
   return (
-    <Card className="border-dashed">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <LifeBuoyIcon className="size-5" /> Already a member with a lost key?
-        </CardTitle>
-        <CardDescription>
-          Verify two accounts of your membership above, or the only one it has,
-          and it moves to this address after{" "}
+    <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6">
+      <div className="space-y-2">
+        <h1 className="text-3xl font-semibold sm:text-4xl">
+          Recover your membership
+        </h1>
+        <p className="text-muted-foreground">
+          Lost the key holding your membership? Prove two of its accounts, or
+          the only one it has, and it moves to this account after{" "}
           {formatDuration(RECOVERY_DELAY_SECONDS)} unless your old key or an
           admin cancels it. An admin can approve earlier.
-        </CardDescription>
-      </CardHeader>
+        </p>
+        <Button
+          variant="link"
+          className="px-0"
+          onClick={() => navigate({ search: {} })}
+        >
+          Not a member yet? Join instead
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Accounts of the membership</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <VerifyAccounts
+            address={address}
+            returnTo="/profile?mode=recover"
+            hints={{
+              discord: "The Discord account of your membership.",
+              github: "The GitHub account of your membership.",
+              x: "The X account of your membership.",
+            }}
+          />
+        </CardContent>
+      </Card>
+
       {claims.length > 0 && (
-        <CardContent className="space-y-4">
-          {found.isLoading && (
-            <p className="text-sm text-muted-foreground">Looking up…</p>
-          )}
-          {found.data?.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              No membership is bound to these accounts.
-            </p>
-          )}
-          {(found.data?.length ?? 0) > 1 && (
-            <Alert variant="warning">
-              These accounts belong to different memberships. Only verify the
-              accounts of the membership to recover.
-            </Alert>
-          )}
-          {member && (
-            <div className="max-w-xs">
-              <MemberCard member={member} />
-            </div>
-          )}
-          {member?.revoked && (
-            <Alert variant="destructive">
-              This membership was revoked. Contact an admin.
-            </Alert>
-          )}
-          {recovery && !pendingHere && (
-            <Alert variant="warning">
-              Another recovery is already pending for this membership.
-            </Alert>
-          )}
-          {pendingHere && (
-            <Alert variant={remaining > 0 ? "default" : "success"}>
-              <HourglassIcon />
-              {remaining > 0
-                ? `Recovery pending, finalize in ${formatDuration(remaining)}.`
-                : "The delay is over, you can finalize the recovery."}
-            </Alert>
-          )}
-          {progress && (
-            <TxProgress
-              steps={
-                pendingHere ? ["sign", "submit"] : ["attest", "sign", "submit"]
-              }
-              current={progress}
-            />
-          )}
+        <Card className="animate-fade-in">
+          <CardHeader>
+            <CardTitle>Membership found</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {found.isLoading && (
+              <p className="text-sm text-muted-foreground">Looking up…</p>
+            )}
+            {found.data?.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                No membership is bound to these accounts.
+              </p>
+            )}
+            {(found.data?.length ?? 0) > 1 && (
+              <Alert variant="warning">
+                These accounts belong to different memberships. Only verify the
+                accounts of the membership to recover.
+              </Alert>
+            )}
+            {member && (
+              <div className="max-w-xs">
+                <MemberCard member={member} />
+              </div>
+            )}
+            {member?.revoked && (
+              <Alert variant="destructive">
+                This membership was revoked. Contact an admin.
+              </Alert>
+            )}
+            {recovery && !pendingHere && (
+              <Alert variant="warning">
+                Another recovery is already pending for this membership.
+              </Alert>
+            )}
+            {pendingHere && (
+              <Alert variant={remaining > 0 ? "default" : "success"}>
+                <HourglassIcon />
+                {remaining > 0
+                  ? `Recovery pending, finalize in ${formatDuration(remaining)}.`
+                  : "The delay is over, you can finalize the recovery."}
+              </Alert>
+            )}
+            {progress && (
+              <TxProgress
+                steps={
+                  pendingHere
+                    ? ["sign", "submit"]
+                    : ["attest", "sign", "submit"]
+                }
+                current={progress}
+              />
+            )}
+          </CardContent>
           {member && !member.revoked && (
-            <div className="flex justify-end">
+            <CardFooter className="justify-end">
               {pendingHere ? (
                 <Button
                   variant="accent"
@@ -471,11 +523,11 @@ function RecoverySection({ address }: { address: string }) {
                   Recover membership
                 </Button>
               )}
-            </div>
+            </CardFooter>
           )}
-        </CardContent>
+        </Card>
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -634,6 +686,7 @@ function AccountsSection({ member }: { member: MemberView }) {
   const { address, signTransaction } = useWallet();
   const invalidate = useInvalidateMembers();
   const claims = useClaims(address);
+  const [editing, setEditing] = useState(claims.length > 0);
   const [removed, setRemoved] = useState<number[]>([]);
   const [email, setEmail] = useState<"keep" | "none" | string>("keep");
   const [progress, setProgress] = useState<Step | null>(null);
@@ -678,6 +731,7 @@ function AccountsSection({ member }: { member: MemberView }) {
       });
       toast.success("Accounts updated");
       setRemoved([]);
+      setEditing(false);
       await invalidate();
     } catch (error) {
       toast.error(errorMessage(error));
@@ -686,13 +740,41 @@ function AccountsSection({ member }: { member: MemberView }) {
     }
   };
 
+  if (!editing) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Verified accounts</CardTitle>
+          <CardDescription>
+            Bound to your membership, they stay with it through key rotations
+            and recoveries.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <AccountLinks accounts={member.accounts} withHandles />
+          <p className="text-sm text-muted-foreground">
+            {member.emailHash
+              ? "A verified email hash is linked."
+              : "No email hash is linked."}
+          </p>
+        </CardContent>
+        <CardFooter className="justify-end">
+          <Button variant="outline" onClick={() => setEditing(true)}>
+            Change accounts
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Verified accounts</CardTitle>
+        <CardTitle>Change verified accounts</CardTitle>
         <CardDescription>
-          Changes are co-signed by the attester: verify at least one account in
-          this session to save them.
+          Add or replace an account by verifying it, remove one with the bin.
+          The attester co-signs the change, so at least one account must be
+          verified in this session.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -721,7 +803,7 @@ function AccountsSection({ member }: { member: MemberView }) {
         </ul>
         {address && (
           <div className="space-y-2">
-            <h4 className="text-sm font-medium">Verify again or add</h4>
+            <h4 className="text-sm font-medium">Verify an account</h4>
             <VerifyAccounts address={address} returnTo={RETURN_TO} />
           </div>
         )}
@@ -744,7 +826,17 @@ function AccountsSection({ member }: { member: MemberView }) {
           <TxProgress steps={["attest", "sign", "submit"]} current={progress} />
         )}
       </CardContent>
-      <CardFooter className="justify-end">
+      <CardFooter className="justify-end gap-2">
+        <Button
+          variant="ghost"
+          disabled={progress !== null}
+          onClick={() => {
+            setRemoved([]);
+            setEditing(false);
+          }}
+        >
+          Cancel
+        </Button>
         <Button
           disabled={claims.length === 0 || progress !== null}
           onClick={save}
@@ -757,7 +849,6 @@ function AccountsSection({ member }: { member: MemberView }) {
 }
 
 function KeySection({ member }: { member: MemberView }) {
-  const navigate = useNavigate();
   const invalidate = useInvalidateMembers();
   return (
     <Card>
@@ -771,6 +862,7 @@ function KeySection({ member }: { member: MemberView }) {
       <CardContent>
         <KeyHandover
           actionLabel="Rotate"
+          adoptNewKey
           build={(newAddress) =>
             membershipClient(newAddress).rotate_key({
               token_id: member.tokenId,
@@ -779,10 +871,7 @@ function KeySection({ member }: { member: MemberView }) {
           }
           onDone={async () => {
             await invalidate();
-            navigate({
-              to: "/members/$tokenId",
-              params: { tokenId: String(member.tokenId) },
-            });
+            window.scrollTo({ top: 0 });
           }}
         />
       </CardContent>

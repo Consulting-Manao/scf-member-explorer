@@ -20,15 +20,24 @@ import { Input, Label } from "./ui/input";
 export function KeyHandover({
   build,
   actionLabel,
+  adoptNewKey = false,
   onDone,
 }: {
   /** Build the call with the new key as source. */
   build: (newAddress: string) => Promise<AssembledTransaction<unknown>>;
   actionLabel: string;
-  onDone: () => Promise<void> | void;
+  /** The new key becomes the connected account once done. */
+  adoptNewKey?: boolean;
+  onDone: (newAddress: string) => Promise<void> | void;
 }) {
-  const { address, walletName, connect, signAuthEntry, signTransaction } =
-    useWallet();
+  const {
+    address,
+    walletName,
+    selectAccount,
+    adopt,
+    signAuthEntry,
+    signTransaction,
+  } = useWallet();
   const [newAddress, setNewAddress] = useState("");
   const [authorized, setAuthorized] =
     useState<AssembledTransaction<unknown> | null>(null);
@@ -78,15 +87,20 @@ export function KeyHandover({
     if (!authorized) return;
     setBusy(true);
     try {
-      const selected = await connect();
+      // the app keeps showing the current key while the wallet switches
+      const selected = await selectAccount();
       if (selected !== newAddress) {
         throw new Error(`Select ${shortAddress(newAddress)} in your wallet.`);
       }
-      await authorized.sign({ signTransaction });
+      await authorized.sign({
+        signTransaction: (xdr, opts) =>
+          signTransaction(xdr, { ...opts, address: newAddress }),
+      });
       await authorized.send();
       toast.success("Key updated");
       setAuthorized(null);
-      await onDone();
+      if (adoptNewKey) adopt(newAddress);
+      await onDone(newAddress);
     } catch (error) {
       toast.error(errorMessage(error));
     } finally {

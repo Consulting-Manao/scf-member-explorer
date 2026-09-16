@@ -63,6 +63,13 @@ export function Layout() {
         >
           <p>The Stellar community, on-chain.</p>
           <div className="flex flex-wrap gap-4">
+            <Link
+              className="hover:text-foreground"
+              to="/profile"
+              search={{ mode: "recover" }}
+            >
+              Lost your key?
+            </Link>
             <a
               className="hover:text-foreground"
               href={explorerUrl("contract", config().contractId)}

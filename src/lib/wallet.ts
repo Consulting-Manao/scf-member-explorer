@@ -52,6 +52,10 @@ export interface WalletContextValue {
   /** Name of the connected wallet, for messages. */
   walletName: string | null;
   connect: () => Promise<string>;
+  /** Let the user pick another account without changing `address`. */
+  selectAccount: () => Promise<string>;
+  /** Make `address` the connected one, e.g. after a key rotation. */
+  adopt: (address: string) => void;
   disconnect: () => Promise<void>;
   signTransaction: SignTransaction;
   signAuthEntry: SignAuthEntry;

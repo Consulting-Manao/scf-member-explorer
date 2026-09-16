@@ -74,6 +74,17 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     return selected;
   }, [rememberWallet]);
 
+  const selectAccount = useCallback(async () => {
+    const { address: selected } = await (await kit()).authModal();
+    await rememberWallet();
+    return selected;
+  }, [rememberWallet]);
+
+  const adopt = useCallback((selected: string) => {
+    setAddress(selected);
+    store(selected);
+  }, []);
+
   const disconnect = useCallback(async () => {
     await (await kit()).disconnect();
     setAddress(null);
@@ -104,11 +115,22 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       address,
       walletName,
       connect,
+      selectAccount,
+      adopt,
       disconnect,
       signTransaction,
       signAuthEntry,
     }),
-    [address, walletName, connect, disconnect, signTransaction, signAuthEntry],
+    [
+      address,
+      walletName,
+      connect,
+      selectAccount,
+      adopt,
+      disconnect,
+      signTransaction,
+      signAuthEntry,
+    ],
   );
 
   return (
