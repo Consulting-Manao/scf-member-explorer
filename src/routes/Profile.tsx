@@ -376,6 +376,20 @@ function Recovery({ address }: { address: string }) {
     ? Math.floor((recovery.executableAt.getTime() - now) / 1000)
     : 0;
 
+  // Same rule as the attester: two of the membership's accounts, or its only one.
+  const accounts = member?.accounts ?? [];
+  const required = Math.min(2, accounts.length);
+  const missing = accounts.filter(
+    (account) =>
+      !claims.some(
+        ({ claim }) =>
+          PROVIDER_ID[claim.provider] === account.provider &&
+          claim.id === account.id,
+      ),
+  );
+  const proven = accounts.length - missing.length;
+  const canPropose = required > 0 && proven >= required;
+
   const run = async (
     build: () => Promise<AssembledTransaction<unknown>>,
     attested: boolean,
@@ -470,6 +484,15 @@ function Recovery({ address }: { address: string }) {
                 Another recovery is already pending for this membership.
               </Alert>
             )}
+            {member && !member.revoked && !recovery && !canPropose && (
+              <Alert>
+                {required === 0
+                  ? "This membership has no verified account, so it cannot be recovered this way. Contact an admin."
+                  : `Prove ${required - proven} more of its accounts to continue: ${missing
+                      .map((a) => PROVIDER_LABEL[providerName(a.provider)])
+                      .join(", ")}.`}
+              </Alert>
+            )}
             {pendingHere && (
               <Alert variant={remaining > 0 ? "default" : "success"}>
                 <HourglassIcon />
@@ -511,7 +534,9 @@ function Recovery({ address }: { address: string }) {
               ) : (
                 <Button
                   variant="accent"
-                  disabled={Boolean(recovery) || progress !== null}
+                  disabled={
+                    Boolean(recovery) || !canPropose || progress !== null
+                  }
                   onClick={() =>
                     run(
                       () =>
