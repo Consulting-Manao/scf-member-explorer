@@ -100,7 +100,7 @@ export function MemberPage() {
         </div>
         {isOwner && (
           <Button asChild variant="outline">
-            <Link to="/me">
+            <Link to="/profile">
               <PencilIcon /> Edit
             </Link>
           </Button>

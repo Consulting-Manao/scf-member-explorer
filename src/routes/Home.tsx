@@ -71,19 +71,12 @@ export function Home() {
               history.
             </p>
             <div className="flex flex-wrap gap-3">
-              {me ? (
-                <Button asChild size="lg" variant="accent">
-                  <Link to="/me">
-                    My membership <ArrowRightIcon />
-                  </Link>
-                </Button>
-              ) : (
-                <Button asChild size="lg" variant="accent">
-                  <Link to="/join">
-                    {address ? "Join now" : "Get started"} <ArrowRightIcon />
-                  </Link>
-                </Button>
-              )}
+              <Button asChild size="lg" variant="accent">
+                <Link to="/profile">
+                  {me ? "My profile" : address ? "Join now" : "Get started"}{" "}
+                  <ArrowRightIcon />
+                </Link>
+              </Button>
               <Button asChild size="lg" variant="outline">
                 <a href="#members">Browse members</a>
               </Button>

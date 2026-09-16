@@ -50,8 +50,15 @@ the profile, DAOIP-5 project ids.
 ```bash
 bun install
 cp .dev.vars.example .dev.vars   # secrets, can override any var
-bun dev                          # app and worker on http://localhost:5173
+bun dev                          # app and worker on http://127.0.0.1:5173
 ```
+
+Open the app on `127.0.0.1`, not `localhost`: the OAuth redirect URIs are
+registered for `127.0.0.1`.
+
+The worker refuses every request until its configuration is complete and
+`/api/config` names what is missing. Public values live in `wrangler.jsonc`,
+secrets in `.dev.vars` locally and in `wrangler secret put` in production.
 
 If the local Cloudflare runtime cannot reach the network on your machine,
 run the worker with Bun instead and let Vite proxy `/api` to it:
@@ -60,10 +67,6 @@ run the worker with Bun instead and let Vite proxy `/api` to it:
 bun run dev:api                  # http://127.0.0.1:8787
 bun run dev:app                  # Vite with API_PROXY set
 ```
-
-Public configuration is in `wrangler.jsonc` and served to the app on
-`/api/config`. Set `CONTRACT_ID` and `ATTESTER_PUBLIC` there, or in
-`.dev.vars` for local testing.
 
 ```bash
 bun run lint
@@ -85,23 +88,47 @@ CONTRACT_ID=C… bun run bindings
 
 ### OAuth apps
 
-Register one app per provider with the redirect URI
-`https://<domain>/oauth/callback/<provider>`, and set the client id var and
-secret.
+Discord and GitHub are required, X is optional. Register one app per
+provider; the redirect URI is `<origin>/oauth/callback/<provider>`.
 
-| Provider | Scopes                               | Notes                                    |
-| -------- | ------------------------------------ | ---------------------------------------- |
-| Discord  | `identify email guilds.members.read` | `DISCORD_GUILD_ID`: the Stellar server   |
-| GitHub   | `read:user user:email`               | primary verified email                   |
-| X        | `users.read tweet.read`              | OAuth 2.0 with PKCE, confidential client |
+**Discord**, https://discord.com/developers/applications, New Application:
+
+- OAuth2, Client ID to `DISCORD_CLIENT_ID`, Client Secret to
+  `DISCORD_CLIENT_SECRET`.
+- Redirects, exact match including the port:
+  `http://127.0.0.1:5173/oauth/callback/discord` and the production URL.
+- No bot is needed. Scopes used: `identify email guilds.members.read`.
+- `DISCORD_GUILD_ID` is the Stellar Developers server, `897514728459468821`.
+- `DISCORD_ROLE_MAP` maps the server's role ids to 0 Verified, 1 Pathfinder,
+  2 Navigator, 3 Pilot. Copy role ids from Server Settings, Roles, with
+  Developer Mode on.
+
+**GitHub**, Settings, Developer settings, OAuth Apps, New OAuth App:
+
+- Callback URLs: `http://127.0.0.1/oauth/callback/github` (no port, GitHub
+  accepts any loopback port) and the production URL. Disable wildcard
+  matching.
+- Client ID to `GITHUB_CLIENT_ID`, generate a client secret to
+  `GITHUB_CLIENT_SECRET`. Scopes used: `read:user user:email`.
+
+**X**, https://console.x.com, only if wanted: app type Web App (confidential),
+callback `http://127.0.0.1:5173/oauth/callback/x` exact, `X_CLIENT_ID` and
+`X_CLIENT_SECRET`. The X API is pay-per-use, about $0.01 per verification
+from prepaid credits; an empty balance blocks verification.
 
 ### Roles during the migration
 
 With `ROLE_SOURCE=discord`, the role at mint comes from the member's roles on
-the Discord server through `DISCORD_ROLE_MAP` (Discord role id to 0 Verified,
-1 Pathfinder, 2 Navigator, 3 Pilot). Once existing members are onboarded,
-set `ROLE_SOURCE=verified`: new members mint as Verified and roles change
-with `set_role` from the admin.
+the Discord server through `DISCORD_ROLE_MAP`. Once existing members are
+onboarded, set `ROLE_SOURCE=verified`: new members mint as Verified and
+roles change with `set_role` from the admin.
+
+### Wallets
+
+Any wallet of Stellar Wallets Kit connects. Rotating the key and admin
+recovery need a wallet that signs authorization entries (Freighter, Lobstr,
+Albedo); xBull does not. xBull is listed only when its extension is injected
+on the page: in Brave, allow the extension on all sites.
 
 ## Testing
 
@@ -114,8 +141,10 @@ smoke script exercises the on-chain flows through the worker instead.
 ```bash
 wrangler secret put ATTESTER_SECRET   # and the other secrets of .dev.vars.example
 bun run deploy                        # testnet
-bun run build && wrangler deploy --env mainnet
 ```
+
+Mainnet is added as an `env.mainnet` block in `wrangler.jsonc` once the
+contract is deployed there, with its own contract id and attester.
 
 The attester is an unfunded account. If its key leaks, the admin calls
 `set_attester` with a new key and the secret is replaced.

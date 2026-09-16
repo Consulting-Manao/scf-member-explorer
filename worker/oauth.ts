@@ -18,10 +18,16 @@ export type Identity = Omit<Claim, "address">;
 export class OAuthError extends Error {}
 
 const USER_AGENT = "stellar-members";
+/** Discord requires this format for HTTP clients. */
+const DISCORD_USER_AGENT =
+  "DiscordBot (https://github.com/Consulting-Manao, 1.0)";
+const DISCORD_API = "https://discord.com/api/v10";
 
+/** Parse a provider response, keeping its error body for diagnosis. */
 async function json<T>(res: Response, what: string): Promise<T> {
   if (!res.ok) {
-    throw new OAuthError(`${what} failed (${res.status})`);
+    const body = (await res.text()).slice(0, 200);
+    throw new OAuthError(`${what} failed (${res.status}): ${body}`);
   }
   return (await res.json()) as T;
 }
@@ -41,9 +47,12 @@ export function roleFromDiscordRoles(roles: string[], roleMap: string): number {
 
 async function discord(env: Env, exchange: CodeExchange): Promise<Identity> {
   const token = await json<{ access_token: string }>(
-    await fetch("https://discord.com/api/oauth2/token", {
+    await fetch(`${DISCORD_API}/oauth2/token`, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": DISCORD_USER_AGENT,
+      },
       body: new URLSearchParams({
         client_id: env.DISCORD_CLIENT_ID,
         client_secret: env.DISCORD_CLIENT_SECRET,
@@ -55,20 +64,20 @@ async function discord(env: Env, exchange: CodeExchange): Promise<Identity> {
     }),
     "Discord token exchange",
   );
-  const headers = { Authorization: `Bearer ${token.access_token}` };
+  const headers = {
+    Authorization: `Bearer ${token.access_token}`,
+    "User-Agent": DISCORD_USER_AGENT,
+  };
 
   const user = await json<{
     id: string;
     username: string;
     email?: string | null;
     verified?: boolean;
-  }>(
-    await fetch("https://discord.com/api/users/@me", { headers }),
-    "Discord user",
-  );
+  }>(await fetch(`${DISCORD_API}/users/@me`, { headers }), "Discord user");
 
   const memberRes = await fetch(
-    `https://discord.com/api/users/@me/guilds/${env.DISCORD_GUILD_ID}/member`,
+    `${DISCORD_API}/users/@me/guilds/${env.DISCORD_GUILD_ID}/member`,
     { headers },
   );
   if (memberRes.status === 404) {
@@ -140,6 +149,9 @@ async function github(env: Env, exchange: CodeExchange): Promise<Identity> {
 }
 
 async function x(env: Env, exchange: CodeExchange): Promise<Identity> {
+  if (!env.X_CLIENT_ID || !env.X_CLIENT_SECRET) {
+    throw new OAuthError("X is not enabled");
+  }
   const token = await json<{ access_token: string }>(
     await fetch("https://api.x.com/2/oauth2/token", {
       method: "POST",

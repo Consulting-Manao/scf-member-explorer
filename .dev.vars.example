@@ -1,10 +1,12 @@
-# Copy to .dev.vars for `bun dev`. In production use `wrangler secret put <NAME>`.
+# Copy to .dev.vars for local development. In production: `wrangler secret put <NAME>`.
+# Any public var of wrangler.jsonc can be overridden here too.
 
-# Secret key of the attester. Unfunded account, only signs auth entries.
-ATTESTER_SECRET=S...
-# Random 32+ bytes used to sign OAuth claims: `openssl rand -base64 32`
+# Secret key of the attester identity (stellar keys show <name>). Unfunded, only signs auth entries.
+ATTESTER_SECRET=
+# Signs OAuth claims: openssl rand -base64 32
 CLAIMS_SECRET=
+# OAuth apps, see README
 DISCORD_CLIENT_SECRET=
 GITHUB_CLIENT_SECRET=
-X_CLIENT_SECRET=
+# Filebase IPFS pinning token
 FILEBASE_TOKEN=

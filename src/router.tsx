@@ -2,28 +2,30 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  redirect,
 } from "@tanstack/react-router";
 
 import { Layout } from "./components/Layout";
 import { Admin } from "./routes/Admin";
 import { Home } from "./routes/Home";
-import { Join } from "./routes/Join";
-import { Me } from "./routes/Me";
 import { MemberPage } from "./routes/Member";
 import { NotFound } from "./routes/NotFound";
 import { OAuthCallback } from "./routes/OAuthCallback";
-import { Recover } from "./routes/Recover";
-import {
-  JOIN_STEPS,
-  ME_TABS,
-  type JoinStep,
-  type MeTab,
-} from "./routes/search";
+import { Profile } from "./routes/Profile";
 
 const rootRoute = createRootRoute({
   component: Layout,
   notFoundComponent: NotFound,
 });
+
+const toProfile = (path: string) =>
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path,
+    beforeLoad: () => {
+      throw redirect({ to: "/profile" });
+    },
+  });
 
 const routeTree = rootRoute.addChildren([
   createRoute({ getParentRoute: () => rootRoute, path: "/", component: Home }),
@@ -34,29 +36,12 @@ const routeTree = rootRoute.addChildren([
   }),
   createRoute({
     getParentRoute: () => rootRoute,
-    path: "/join",
-    validateSearch: (search: Record<string, unknown>): { step: JoinStep } => ({
-      step: JOIN_STEPS.includes(search.step as JoinStep)
-        ? (search.step as JoinStep)
-        : "accounts",
-    }),
-    component: Join,
+    path: "/profile",
+    component: Profile,
   }),
-  createRoute({
-    getParentRoute: () => rootRoute,
-    path: "/me",
-    validateSearch: (search: Record<string, unknown>): { tab: MeTab } => ({
-      tab: ME_TABS.includes(search.tab as MeTab)
-        ? (search.tab as MeTab)
-        : "profile",
-    }),
-    component: Me,
-  }),
-  createRoute({
-    getParentRoute: () => rootRoute,
-    path: "/recover",
-    component: Recover,
-  }),
+  toProfile("/join"),
+  toProfile("/me"),
+  toProfile("/recover"),
   createRoute({
     getParentRoute: () => rootRoute,
     path: "/admin",

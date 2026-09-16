@@ -3,7 +3,7 @@ import { toast } from "sonner";
 
 import { PROVIDER_LABEL, ROLES, type ProviderName } from "@shared/membership";
 
-import { forgetClaim, isProviderEnabled, startOAuth } from "@/lib/oauth";
+import { enabledProviders, forgetClaim, startOAuth } from "@/lib/oauth";
 import { errorMessage } from "@/lib/utils";
 import { useClaims } from "@/queries/members";
 
@@ -19,24 +19,22 @@ const HINTS: Record<ProviderName, string> = {
 
 export function VerifyAccounts({
   address,
-  providers,
   returnTo,
   showRole = false,
   hints = HINTS,
 }: {
   address: string;
-  providers: ProviderName[];
   returnTo: string;
   showRole?: boolean;
   hints?: Partial<Record<ProviderName, string>>;
 }) {
   const claims = useClaims(address);
+  const providers = enabledProviders();
 
   return (
     <ul className="divide-y rounded-xl border">
       {providers.map((provider) => {
         const stored = claims.find((c) => c.claim.provider === provider);
-        const enabled = isProviderEnabled(provider);
         return (
           <li key={provider} className="flex items-center gap-4 p-4">
             <span className="flex size-10 items-center justify-center rounded-full bg-muted">
@@ -54,7 +52,7 @@ export function VerifyAccounts({
                 </p>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  {enabled ? hints[provider] : "Not available yet."}
+                  {hints[provider]}
                 </p>
               )}
             </div>
@@ -71,7 +69,6 @@ export function VerifyAccounts({
               <Button
                 variant="outline"
                 size="sm"
-                disabled={!enabled}
                 onClick={() =>
                   startOAuth(provider, address, returnTo).catch((error) =>
                     toast.error(errorMessage(error)),

@@ -35,6 +35,15 @@ function store(address: string | null) {
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [address, setAddress] = useState<string | null>(readStored);
+  const [walletName, setWalletName] = useState<string | null>(null);
+
+  const rememberWallet = useCallback(async () => {
+    try {
+      setWalletName((await kit()).selectedModule.productName);
+    } catch {
+      setWalletName(null);
+    }
+  }, []);
 
   useEffect(() => {
     if (!address) return;
@@ -45,8 +54,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           setAddress(current);
           store(current);
         }
+        void rememberWallet();
       })
-      .catch(() => {
+      .catch((error: unknown) => {
+        console.warn("wallet session not restored", error);
         setAddress(null);
         store(null);
       });
@@ -59,12 +70,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     const { address: selected } = await (await kit()).authModal();
     setAddress(selected);
     store(selected);
+    await rememberWallet();
     return selected;
-  }, []);
+  }, [rememberWallet]);
 
   const disconnect = useCallback(async () => {
     await (await kit()).disconnect();
     setAddress(null);
+    setWalletName(null);
     store(null);
   }, []);
 
@@ -87,8 +100,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ address, connect, disconnect, signTransaction, signAuthEntry }),
-    [address, connect, disconnect, signTransaction, signAuthEntry],
+    () => ({
+      address,
+      walletName,
+      connect,
+      disconnect,
+      signTransaction,
+      signAuthEntry,
+    }),
+    [address, walletName, connect, disconnect, signTransaction, signAuthEntry],
   );
 
   return (

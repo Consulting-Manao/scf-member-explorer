@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { getTokenOf } from "@/lib/contract";
 import { cn, errorMessage, shortAddress } from "@/lib/utils";
-import { useWallet } from "@/lib/wallet";
+import { UNSUPPORTED, useWallet } from "@/lib/wallet";
 
 import { Alert } from "./ui/alert";
 import { Button } from "./ui/button";
@@ -27,7 +27,8 @@ export function KeyHandover({
   actionLabel: string;
   onDone: () => Promise<void> | void;
 }) {
-  const { address, connect, signAuthEntry, signTransaction } = useWallet();
+  const { address, walletName, connect, signAuthEntry, signTransaction } =
+    useWallet();
   const [newAddress, setNewAddress] = useState("");
   const [authorized, setAuthorized] =
     useState<AssembledTransaction<unknown> | null>(null);
@@ -44,11 +45,26 @@ export function KeyHandover({
         throw new Error("The new key already holds a membership.");
       }
       const tx = await build(newAddress);
-      await tx.signAuthEntries({
-        address,
-        signAuthEntry: (entry, opts) =>
-          signAuthEntry(entry, { ...opts, address }),
-      });
+      try {
+        await tx.signAuthEntries({
+          address,
+          signAuthEntry: (entry, opts) =>
+            signAuthEntry(entry, { ...opts, address }),
+        });
+      } catch (error) {
+        if (
+          error &&
+          typeof error === "object" &&
+          "code" in error &&
+          error.code === UNSUPPORTED
+        ) {
+          throw new Error(
+            `${walletName ?? "This wallet"} cannot sign authorization entries. Connect with Freighter, Lobstr or Albedo for this step.`,
+            { cause: error },
+          );
+        }
+        throw error;
+      }
       await tx.simulate();
       setAuthorized(tx);
     } catch (error) {

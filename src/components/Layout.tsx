@@ -22,7 +22,7 @@ function NavLink({ to, children }: { to: string; children: string }) {
 }
 
 export function Layout() {
-  const { address, member } = useMyMembership();
+  const { address } = useMyMembership();
   const { data: admin } = useAdmin();
   const testnet = config().network === "testnet";
 
@@ -37,14 +37,9 @@ export function Layout() {
             </span>
           </Link>
           {testnet && <Badge variant="warning">Testnet</Badge>}
-          <nav className="ml-2 hidden items-center gap-1 md:flex">
+          <nav className="ml-2 flex items-center gap-1">
             <NavLink to="/">Members</NavLink>
-            {member ? (
-              <NavLink to="/me">My membership</NavLink>
-            ) : (
-              <NavLink to="/join">Join</NavLink>
-            )}
-            <NavLink to="/recover">Recover</NavLink>
+            {address && <NavLink to="/profile">Profile</NavLink>}
             {address && address === admin && (
               <NavLink to="/admin">Admin</NavLink>
             )}
@@ -54,16 +49,6 @@ export function Layout() {
             <ConnectButton />
           </div>
         </div>
-        <nav className="flex items-center gap-1 overflow-x-auto px-4 pb-2 md:hidden">
-          <NavLink to="/">Members</NavLink>
-          {member ? (
-            <NavLink to="/me">Me</NavLink>
-          ) : (
-            <NavLink to="/join">Join</NavLink>
-          )}
-          <NavLink to="/recover">Recover</NavLink>
-          {address && address === admin && <NavLink to="/admin">Admin</NavLink>}
-        </nav>
       </header>
 
       <main className="flex-1">

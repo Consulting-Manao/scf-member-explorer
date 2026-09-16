@@ -58,19 +58,11 @@ export function ConnectButton() {
         <DropdownMenuLabel>
           {member ? `Member #${member.tokenId}` : "Not a member yet"}
         </DropdownMenuLabel>
-        {member ? (
-          <DropdownMenuItem asChild>
-            <Link to="/me">
-              <UserRoundIcon /> My membership
-            </Link>
-          </DropdownMenuItem>
-        ) : (
-          <DropdownMenuItem asChild>
-            <Link to="/join">
-              <UserRoundIcon /> Join
-            </Link>
-          </DropdownMenuItem>
-        )}
+        <DropdownMenuItem asChild>
+          <Link to="/profile">
+            <UserRoundIcon /> {member ? "My profile" : "Join"}
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuItem asChild>
           <a
             href={explorerUrl("account", address)}

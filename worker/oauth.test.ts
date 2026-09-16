@@ -52,11 +52,11 @@ describe("roleFromDiscordRoles", () => {
 describe("discord", () => {
   it("returns id, handle, role and verified email hash", async () => {
     mockFetch({
-      "https://discord.com/api/oauth2/token": () =>
+      "https://discord.com/api/v10/oauth2/token": () =>
         Response.json({ access_token: "token" }),
-      "https://discord.com/api/users/@me/guilds/guild/member": () =>
+      "https://discord.com/api/v10/users/@me/guilds/guild/member": () =>
         Response.json({ roles: ["navigator"] }),
-      "https://discord.com/api/users/@me": () =>
+      "https://discord.com/api/v10/users/@me": () =>
         Response.json({
           id: "123",
           username: "grogu",
@@ -74,13 +74,43 @@ describe("discord", () => {
     });
   });
 
+  it("sends the User-Agent Discord requires", async () => {
+    mockFetch({
+      "https://discord.com/api/v10/oauth2/token": () =>
+        Response.json({ access_token: "token" }),
+      "https://discord.com/api/v10/users/@me/guilds/guild/member": () =>
+        Response.json({ roles: [] }),
+      "https://discord.com/api/v10/users/@me": () =>
+        Response.json({ id: "1", username: "u" }),
+    });
+    await exchangeCode("discord", env, exchange);
+    const calls = (fetch as unknown as { mock: { calls: unknown[][] } }).mock
+      .calls;
+    for (const [, init] of calls) {
+      const agent = new Headers((init as RequestInit).headers).get(
+        "User-Agent",
+      );
+      expect(agent).toMatch(/^DiscordBot \(/);
+    }
+  });
+
+  it("keeps the provider error body", async () => {
+    mockFetch({
+      "https://discord.com/api/v10/oauth2/token": () =>
+        new Response('{"error":"invalid_grant"}', { status: 400 }),
+    });
+    await expect(exchangeCode("discord", env, exchange)).rejects.toThrow(
+      "invalid_grant",
+    );
+  });
+
   it("refuses people outside the Discord server", async () => {
     mockFetch({
-      "https://discord.com/api/oauth2/token": () =>
+      "https://discord.com/api/v10/oauth2/token": () =>
         Response.json({ access_token: "token" }),
-      "https://discord.com/api/users/@me/guilds/guild/member": () =>
+      "https://discord.com/api/v10/users/@me/guilds/guild/member": () =>
         new Response(null, { status: 404 }),
-      "https://discord.com/api/users/@me": () =>
+      "https://discord.com/api/v10/users/@me": () =>
         Response.json({ id: "123", username: "grogu" }),
     });
 
@@ -91,11 +121,11 @@ describe("discord", () => {
 
   it("grants Verified once roles are no longer migrated", async () => {
     mockFetch({
-      "https://discord.com/api/oauth2/token": () =>
+      "https://discord.com/api/v10/oauth2/token": () =>
         Response.json({ access_token: "token" }),
-      "https://discord.com/api/users/@me/guilds/guild/member": () =>
+      "https://discord.com/api/v10/users/@me/guilds/guild/member": () =>
         Response.json({ roles: ["pilot"] }),
-      "https://discord.com/api/users/@me": () =>
+      "https://discord.com/api/v10/users/@me": () =>
         Response.json({ id: "123", username: "grogu", verified: false }),
     });
 

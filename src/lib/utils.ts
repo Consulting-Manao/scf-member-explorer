@@ -24,17 +24,37 @@ const CONTRACT_ERRORS: Record<string, string> = {
   NoRecovery: "There is no pending recovery.",
 };
 
+/** The wallets kit rejects with plain `{ code, message }` objects. */
+export function isCancelled(error: unknown): boolean {
+  const message = rawMessage(error);
+  return (
+    (typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === -1 &&
+      /closed the modal/i.test(message)) ||
+    /reject|declin|cancel/i.test(message)
+  );
+}
+
+function rawMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object" && "message" in error) {
+    return String(error.message);
+  }
+  return String(error ?? "Unknown error");
+}
+
 /** Human readable message for wallet, contract and network errors. */
 export function errorMessage(error: unknown): string {
-  const message =
-    error instanceof Error ? error.message : String(error ?? "Unknown error");
+  const message = rawMessage(error);
   const code = message.match(/Error\(Contract, #(\d+)\)/)?.[1];
   if (code) {
     const name =
       MembershipError[Number(code) as keyof typeof MembershipError]?.message;
     if (name) return CONTRACT_ERRORS[name] ?? name;
   }
-  if (/reject|declin|cancel/i.test(message)) return "Request cancelled.";
+  if (isCancelled(error)) return "Request cancelled.";
   return message;
 }
 

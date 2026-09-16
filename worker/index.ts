@@ -11,7 +11,7 @@ import {
 import { attest, AttestError } from "./attest";
 import { latestLedger, readMember, readOwner } from "./chain";
 import { signClaim, verifyClaim } from "./claims";
-import type { Env } from "./env";
+import { missingSettings, xEnabled, type Env } from "./env";
 import { upload, UploadError } from "./ipfs";
 import { exchangeCode, OAuthError } from "./oauth";
 import { getProject, searchProjects } from "./projects";
@@ -37,6 +37,17 @@ function provider(c: Context<AppEnv>): ProviderName {
 
 export const app = new Hono<AppEnv>().basePath("/api");
 
+/** Every API call requires a complete configuration. */
+app.use("*", async (c, next) => {
+  const missing = missingSettings(c.env);
+  if (missing.length > 0) {
+    throw new HTTPException(500, {
+      message: `Worker not configured: ${missing.join(", ")}`,
+    });
+  }
+  await next();
+});
+
 app.get("/config", (c) => {
   const env = c.env;
   const config: AppConfig = {
@@ -48,9 +59,9 @@ app.get("/config", (c) => {
     ipfsGateway: env.IPFS_GATEWAY,
     roleSource: env.ROLE_SOURCE,
     oauth: {
-      discord: env.DISCORD_CLIENT_ID || undefined,
-      github: env.GITHUB_CLIENT_ID || undefined,
-      x: env.X_CLIENT_ID || undefined,
+      discord: env.DISCORD_CLIENT_ID,
+      github: env.GITHUB_CLIENT_ID,
+      ...(xEnabled(env) ? { x: env.X_CLIENT_ID } : {}),
     },
   };
   return c.json(config);

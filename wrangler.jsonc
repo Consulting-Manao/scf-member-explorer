@@ -11,6 +11,7 @@
   "observability": { "enabled": true },
   // Public configuration, also served to the app on /api/config.
   // Secrets are set with `wrangler secret put`, see .dev.vars.example.
+  // The mainnet deployment is added as an `env` once the contract is deployed there.
   "vars": {
     "NETWORK": "testnet",
     "NETWORK_PASSPHRASE": "Test SDF Network ; September 2015",
@@ -22,12 +23,11 @@
     // "discord": role comes from the SDF Discord roles (migration),
     // "verified": every new member is Verified.
     "ROLE_SOURCE": "discord",
-    "DISCORD_GUILD_ID": "",
-    // Discord role id -> Role (0 Verified, 1 Pathfinder, 2 Navigator, 3 Pilot)
-    "DISCORD_ROLE_MAP": "{}",
+    "DISCORD_GUILD_ID": "897514728459468821",
+    // Stellar Developers server roles: Pilot 3, Navigator 2, Pathfinder 1, Verified 0
+    "DISCORD_ROLE_MAP": "{\"1082331251899379762\":3,\"1082353855041392731\":2,\"1082357854926807111\":1,\"1116373909504274534\":0}",
     "DISCORD_CLIENT_ID": "",
     "GITHUB_CLIENT_ID": "",
-    "X_CLIENT_ID": "",
   },
   "ratelimits": [
     {
@@ -36,31 +36,4 @@
       "simple": { "limit": 30, "period": 60 },
     },
   ],
-  "env": {
-    "mainnet": {
-      "name": "stellar-members",
-      "vars": {
-        "NETWORK": "mainnet",
-        "NETWORK_PASSPHRASE": "Public Global Stellar Network ; September 2015",
-        "RPC_URL": "https://mainnet.sorobanrpc.com",
-        "CONTRACT_ID": "",
-        "ATTESTER_PUBLIC": "",
-        "IPFS_GATEWAY": "https://ipfs.filebase.io/ipfs/",
-        "PGATLAS_URL": "https://api.pgatlas.xyz",
-        "ROLE_SOURCE": "discord",
-        "DISCORD_GUILD_ID": "",
-        "DISCORD_ROLE_MAP": "{}",
-        "DISCORD_CLIENT_ID": "",
-        "GITHUB_CLIENT_ID": "",
-        "X_CLIENT_ID": "",
-      },
-      "ratelimits": [
-        {
-          "name": "RATE_LIMITER",
-          "namespace_id": "1002",
-          "simple": { "limit": 30, "period": 60 },
-        },
-      ],
-    },
-  },
 }

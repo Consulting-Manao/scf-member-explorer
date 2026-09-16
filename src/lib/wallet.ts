@@ -1,6 +1,11 @@
 import type { StellarWalletsKit } from "@creit-tech/stellar-wallets-kit/sdk";
 import { createContext, useContext } from "react";
 
+import { config } from "./config";
+
+/** Kit error for a function the wallet does not implement. */
+export const UNSUPPORTED = -3;
+
 let loading: Promise<typeof StellarWalletsKit> | undefined;
 
 /** The wallets kit is heavy, load it on first use. */
@@ -8,8 +13,25 @@ export function kit(): Promise<typeof StellarWalletsKit> {
   loading ??= Promise.all([
     import("@creit-tech/stellar-wallets-kit/sdk"),
     import("@creit-tech/stellar-wallets-kit/modules/utils"),
-  ]).then(([{ StellarWalletsKit }, { defaultModules }]) => {
-    StellarWalletsKit.init({ modules: defaultModules() });
+    import("@creit-tech/stellar-wallets-kit/modules/xbull"),
+  ]).then(([{ StellarWalletsKit }, { defaultModules }, xbull]) => {
+    // xBull declares itself available even when its extension is not
+    // injected on this origin, then hangs on a blocked popup. Only offer
+    // it when the extension is really here.
+    class XBullExtension extends xbull.xBullModule {
+      override isAvailable(): Promise<boolean> {
+        return Promise.resolve("xBullSDK" in window);
+      }
+    }
+    StellarWalletsKit.init({
+      modules: [
+        ...defaultModules().filter(
+          (module) => module.productId !== xbull.XBULL_ID,
+        ),
+        new XBullExtension(),
+      ],
+      network: config().networkPassphrase as never,
+    });
     return StellarWalletsKit;
   });
   return loading;
@@ -27,6 +49,8 @@ export type SignAuthEntry = (
 
 export interface WalletContextValue {
   address: string | null;
+  /** Name of the connected wallet, for messages. */
+  walletName: string | null;
   connect: () => Promise<string>;
   disconnect: () => Promise<void>;
   signTransaction: SignTransaction;

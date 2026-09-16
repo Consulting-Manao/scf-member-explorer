@@ -3,7 +3,7 @@
  * worker, which returns a signed claim bound to the wallet address.
  */
 
-import type { Claim, ProviderName } from "@shared/membership";
+import { PROVIDERS, type Claim, type ProviderName } from "@shared/membership";
 
 import { api } from "./api";
 import { config } from "./config";
@@ -62,8 +62,31 @@ export function redirectUri(provider: ProviderName): string {
   return `${window.location.origin}/oauth/callback/${provider}`;
 }
 
-export function isProviderEnabled(provider: ProviderName): boolean {
-  return Boolean(config().oauth[provider]);
+/** Providers the worker is configured for, in the contract's order. */
+export function enabledProviders(): ProviderName[] {
+  return PROVIDERS.filter((provider) => Boolean(config().oauth[provider]));
+}
+
+/** Providers encode scopes separated by %20, not +. */
+export function authorizeUrl(
+  provider: ProviderName,
+  params: {
+    clientId: string;
+    redirectUri: string;
+    state: string;
+    codeChallenge: string;
+  },
+): string {
+  const { url, scope } = AUTHORIZE[provider];
+  const query = new URLSearchParams({
+    response_type: "code",
+    client_id: params.clientId,
+    redirect_uri: params.redirectUri,
+    state: params.state,
+    code_challenge: params.codeChallenge,
+    code_challenge_method: "S256",
+  });
+  return `${url}?${query}&scope=${encodeURIComponent(scope)}`;
 }
 
 /** Leave the app to authorize with the provider. */
@@ -84,17 +107,14 @@ export async function startOAuth(
   };
   sessionStorage.setItem(PENDING_KEY, JSON.stringify(pending));
 
-  const { url, scope } = AUTHORIZE[provider];
-  const params = new URLSearchParams({
-    response_type: "code",
-    client_id: clientId,
-    redirect_uri: redirectUri(provider),
-    scope,
-    state: pending.state,
-    code_challenge: await codeChallenge(pending.codeVerifier),
-    code_challenge_method: "S256",
-  });
-  window.location.assign(`${url}?${params}`);
+  window.location.assign(
+    authorizeUrl(provider, {
+      clientId,
+      redirectUri: redirectUri(provider),
+      state: pending.state,
+      codeChallenge: await codeChallenge(pending.codeVerifier),
+    }),
+  );
 }
 
 /** Exchange the code received on the callback. Returns where to go next. */
