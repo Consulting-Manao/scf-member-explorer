@@ -6,14 +6,16 @@ import {
   ExternalLinkIcon,
   HourglassIcon,
   LifeBuoyIcon,
-  TrashIcon,
+  MailIcon,
   WalletIcon,
+  XIcon,
 } from "lucide-react";
 import { useState } from "react";
 
 import {
   accountsFromClaims,
   fromHex,
+  PROVIDER_HINT,
   PROVIDER_ID,
   PROVIDER_LABEL,
   providerName,
@@ -35,6 +37,7 @@ import { RoleBadge } from "@/components/RoleBadge";
 import { TxProgress } from "@/components/TxProgress";
 import { VerifyAccounts } from "@/components/VerifyAccounts";
 import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -47,6 +50,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNow } from "@/hooks/useNow";
 import { config } from "@/lib/config";
+import { knownEmail, rememberEmail } from "@/lib/email";
+import { enabledProviders, startOAuth } from "@/lib/oauth";
 import {
   getTokenByAccount,
   membershipClient,
@@ -153,6 +158,10 @@ function Onboarding({ address }: { address: string }) {
         beforeSubmit: car ? (signed) => uploadCar(bio, car, signed) : undefined,
         onStep: setProgress,
       });
+      const chosen = emailSources.find((c) => c.provider === emailFrom);
+      if (chosen?.email && chosen.emailHash) {
+        rememberEmail(chosen.emailHash, chosen.email);
+      }
       await invalidate([sent.result]);
       notify.success(`Welcome aboard, you are member #${sent.result}`, {
         tx: sent,
@@ -723,33 +732,45 @@ function AccountsSection({ member }: { member: MemberView }) {
   const { address, signTransaction } = useWallet();
   const invalidate = useInvalidateMembers();
   const claims = useClaims(address);
-  const [editing, setEditing] = useState(claims.length > 0);
   const [removed, setRemoved] = useState<number[]>([]);
-  const [email, setEmail] = useState<"keep" | "none" | string>("keep");
+  const [email, setEmail] = useState<"keep" | "none" | ProviderName>("keep");
   const [progress, setProgress] = useState<Step | null>(null);
 
-  const merged = new Map<number, SocialAccount>(
-    member.accounts.map((account) => [account.provider, account]),
-  );
-  for (const { claim } of claims) {
-    merged.set(PROVIDER_ID[claim.provider], {
-      provider: PROVIDER_ID[claim.provider],
-      id: claim.id,
-      handle: claim.handle,
-    });
-  }
-  const accounts = [...merged.values()]
-    .filter((account) => !removed.includes(account.provider))
-    .sort((a, b) => a.provider - b.provider);
+  const bound = new Map(member.accounts.map((a) => [a.provider, a]));
+  const fresh = new Map(claims.map((c) => [PROVIDER_ID[c.claim.provider], c]));
+  const accounts: SocialAccount[] = enabledProviders()
+    .map((provider) => {
+      const id = PROVIDER_ID[provider];
+      const claim = fresh.get(id)?.claim;
+      const account = claim
+        ? { provider: id, id: claim.id, handle: claim.handle }
+        : bound.get(id);
+      return account && !removed.includes(id) ? account : null;
+    })
+    .filter((a): a is SocialAccount => a !== null);
 
   const emailClaims = claims.filter((c) => c.claim.emailHash);
+  const currentEmail = knownEmail(member.emailHash);
   const emailHash =
     email === "keep"
       ? member.emailHash
       : email === "none"
         ? null
-        : (emailClaims.find((c) => c.claim.provider === email)?.claim
-            .emailHash ?? null);
+        : (fresh.get(PROVIDER_ID[email])?.claim.emailHash ?? null);
+  const shownEmail =
+    email === "none"
+      ? null
+      : email === "keep"
+        ? currentEmail
+        : (fresh.get(PROVIDER_ID[email])?.claim.email ?? null);
+
+  const changed =
+    removed.length > 0 ||
+    emailHash !== member.emailHash ||
+    accounts.some((a) => {
+      const current = bound.get(a.provider);
+      return !current || current.id !== a.id;
+    });
 
   const save = async () => {
     if (!address) return;
@@ -766,8 +787,9 @@ function AccountsSection({ member }: { member: MemberView }) {
         claims: claims.map((c) => c.token),
         onStep: setProgress,
       });
+      if (emailHash && shownEmail) rememberEmail(emailHash, shownEmail);
       setRemoved([]);
-      setEditing(false);
+      setEmail("keep");
       await invalidate([member.tokenId]);
       notify.success("Accounts updated", { tx: sent });
     } catch (error) {
@@ -777,109 +799,175 @@ function AccountsSection({ member }: { member: MemberView }) {
     }
   };
 
-  if (!editing) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Verified accounts</CardTitle>
-          <CardDescription>
-            They belong to your membership and follow it through key rotations
-            and recoveries.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <AccountLinks accounts={member.accounts} withHandles />
-          <p className="text-sm text-muted-foreground">
-            {member.emailHash
-              ? "A verified email is linked."
-              : "No email is linked."}
-          </p>
-        </CardContent>
-        <CardFooter className="justify-end">
-          <Button variant="outline" onClick={() => setEditing(true)}>
-            Change accounts
-          </Button>
-        </CardFooter>
-      </Card>
-    );
-  }
-
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Update your accounts</CardTitle>
+        <CardTitle>Verified accounts</CardTitle>
         <CardDescription>
-          Verify a platform to add or replace it, use the bin to remove one. The
-          attester co-signs the change, so verify at least one account first.
+          They belong to your membership and follow it through key rotations and
+          recoveries. Only your public id and handle go on-chain.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4">
         <ul className="divide-y rounded-xl border">
-          {accounts.map((account) => {
-            const provider = providerName(account.provider);
+          {enabledProviders().map((provider) => {
+            const id = PROVIDER_ID[provider];
+            const current = bound.get(id);
+            const claim = fresh.get(id)?.claim;
+            const isRemoved = removed.includes(id);
+            const isNew =
+              Boolean(claim) && (!current || current.id !== claim!.id);
+            const handle = claim?.handle ?? current?.handle ?? current?.id;
             return (
-              <li key={provider} className="flex items-center gap-3 p-3">
-                <ProviderIcon provider={provider} className="size-4" />
-                <span className="flex-1 text-sm">
-                  {PROVIDER_LABEL[provider]} · {account.handle || account.id}
+              <li
+                key={provider}
+                className={cn(
+                  "flex items-center gap-4 p-4",
+                  isRemoved && "opacity-60",
+                )}
+              >
+                <span className="flex size-10 items-center justify-center rounded-full bg-muted">
+                  <ProviderIcon provider={provider} className="size-5" />
                 </span>
-                {provider !== "discord" && (
+                <div className="min-w-0 flex-1">
+                  <p className="flex flex-wrap items-center gap-2 font-medium">
+                    {PROVIDER_LABEL[provider]}
+                    {isNew && !isRemoved && (
+                      <Badge variant="success">New</Badge>
+                    )}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {isRemoved
+                      ? "Removed, save to apply."
+                      : handle
+                        ? handle
+                        : PROVIDER_HINT[provider]}
+                  </p>
+                </div>
+                {isRemoved ? (
                   <Button
                     variant="ghost"
-                    size="icon"
-                    aria-label={`Remove ${PROVIDER_LABEL[provider]}`}
-                    onClick={() => setRemoved([...removed, account.provider])}
+                    size="sm"
+                    onClick={() => setRemoved(removed.filter((p) => p !== id))}
                   >
-                    <TrashIcon />
+                    Undo
                   </Button>
+                ) : handle ? (
+                  provider !== "discord" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Remove ${PROVIDER_LABEL[provider]}`}
+                      onClick={() => setRemoved([...removed, id])}
+                    >
+                      <XIcon />
+                    </Button>
+                  )
+                ) : (
+                  address && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        startOAuth(provider, address, RETURN_TO).catch(
+                          (error) =>
+                            notify.failure("Verification not started", error),
+                        )
+                      }
+                    >
+                      Verify
+                    </Button>
+                  )
                 )}
               </li>
             );
           })}
+          <li className="flex items-center gap-4 p-4">
+            <span className="flex size-10 items-center justify-center rounded-full bg-muted">
+              <MailIcon className="size-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-medium">Email</p>
+              <p className="text-sm text-muted-foreground">
+                {emailHash === null
+                  ? member.emailHash
+                    ? "Unlinked, save to apply."
+                    : "Not linked. Only its hash goes on-chain, matching your commits in PG Atlas."
+                  : (shownEmail ??
+                    "Linked. Verify an account to see the address again.")}
+              </p>
+              {emailClaims.some((c) => c.claim.emailHash !== emailHash) && (
+                <div className="flex flex-wrap gap-1.5 pt-2">
+                  {emailClaims
+                    .filter((c) => c.claim.emailHash !== emailHash)
+                    .map((c) => (
+                      <Button
+                        key={c.claim.provider}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEmail(c.claim.provider)}
+                      >
+                        Use{" "}
+                        {c.claim.email ??
+                          `${PROVIDER_LABEL[c.claim.provider]} email`}
+                      </Button>
+                    ))}
+                </div>
+              )}
+            </div>
+            {emailHash === null && member.emailHash ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setEmail("keep")}
+              >
+                Undo
+              </Button>
+            ) : (
+              emailHash && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Unlink email"
+                  onClick={() => setEmail("none")}
+                >
+                  <XIcon />
+                </Button>
+              )
+            )}
+          </li>
         </ul>
-        {address && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium">Verify an account</h4>
-            <VerifyAccounts address={address} returnTo={RETURN_TO} />
-          </div>
-        )}
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">Verified email</legend>
-          <Choice
-            value={email}
-            onChange={setEmail}
-            options={[
-              ["keep", member.emailHash ? "Keep current" : "Keep none"],
-              ["none", "Remove"],
-              ...emailClaims.map((c): [string, string] => [
-                c.claim.provider,
-                c.claim.email ?? `${PROVIDER_LABEL[c.claim.provider]} email`,
-              ]),
-            ]}
-          />
-        </fieldset>
         {progress && (
           <TxProgress steps={["attest", "sign", "submit"]} current={progress} />
         )}
       </CardContent>
-      <CardFooter className="justify-end gap-2">
-        <Button
-          variant="ghost"
-          disabled={progress !== null}
-          onClick={() => {
-            setRemoved([]);
-            setEditing(false);
-          }}
-        >
-          Cancel
-        </Button>
-        <Button
-          disabled={claims.length === 0 || progress !== null}
-          onClick={save}
-        >
-          Save accounts
-        </Button>
-      </CardFooter>
+      {changed && (
+        <CardFooter className="flex-wrap justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            {claims.length === 0
+              ? "Verify one of your accounts to sign the change."
+              : "The attester co-signs your verified accounts."}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              disabled={progress !== null}
+              onClick={() => {
+                setRemoved([]);
+                setEmail("keep");
+              }}
+            >
+              Discard
+            </Button>
+            <Button
+              disabled={claims.length === 0 || progress !== null}
+              onClick={save}
+            >
+              Save changes
+            </Button>
+          </div>
+        </CardFooter>
+      )}
     </Card>
   );
 }

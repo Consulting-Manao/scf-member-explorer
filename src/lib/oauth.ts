@@ -7,6 +7,7 @@ import { PROVIDERS, type Claim, type ProviderName } from "@shared/membership";
 
 import { api } from "./api";
 import { config } from "./config";
+import { rememberEmail } from "./email";
 
 const AUTHORIZE: Record<ProviderName, { url: string; scope: string }> = {
   discord: {
@@ -168,6 +169,9 @@ function tokenExpired(token: string): boolean {
 }
 
 function saveClaim(stored: StoredClaim) {
+  if (stored.claim.email && stored.claim.emailHash) {
+    rememberEmail(stored.claim.emailHash, stored.claim.email);
+  }
   const others = readClaims().filter(
     (c) =>
       !(

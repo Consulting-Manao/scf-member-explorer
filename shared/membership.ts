@@ -13,6 +13,13 @@ export const PROVIDER_ID: Record<ProviderName, number> = {
   x: 2,
 };
 
+/** Why one would verify each platform. */
+export const PROVIDER_HINT: Record<ProviderName, string> = {
+  discord: "Required. You need to be on the Stellar Developers server.",
+  github: "Links you to your contributions.",
+  x: "If you want it on your profile.",
+};
+
 export const PROVIDER_LABEL: Record<ProviderName, string> = {
   discord: "Discord",
   github: "GitHub",

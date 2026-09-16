@@ -9,30 +9,16 @@ export function AccountLinks({
   accounts,
   className,
   withHandles = false,
-  asLinks = true,
 }: {
   accounts: SocialAccount[];
   className?: string;
   withHandles?: boolean;
-  /** Plain icons when rendered inside another link. */
-  asLinks?: boolean;
 }) {
   return (
     <div className={cn("flex flex-wrap items-center gap-2", className)}>
       {accounts.map((account) => {
         const provider = providerName(account.provider);
         const title = `${provider}: ${account.handle || account.id}`;
-        if (!asLinks) {
-          return (
-            <span
-              key={provider}
-              title={title}
-              className="text-muted-foreground"
-            >
-              <ProviderIcon provider={provider} className="size-4" />
-            </span>
-          );
-        }
         return (
           <a
             key={provider}

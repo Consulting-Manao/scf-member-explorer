@@ -1,6 +1,11 @@
 import { BadgeCheckIcon, XIcon as RemoveIcon } from "lucide-react";
 
-import { PROVIDER_LABEL, ROLES, type ProviderName } from "@shared/membership";
+import {
+  PROVIDER_HINT,
+  PROVIDER_LABEL,
+  ROLES,
+  type ProviderName,
+} from "@shared/membership";
 
 import { enabledProviders, forgetClaim, startOAuth } from "@/lib/oauth";
 import { notify } from "@/lib/toast";
@@ -10,17 +15,11 @@ import { ProviderIcon } from "./icons";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 
-const HINTS: Record<ProviderName, string> = {
-  discord: "Required. You need to be on the Stellar Developers server.",
-  github: "Links you to your contributions.",
-  x: "If you want it on your profile.",
-};
-
 export function VerifyAccounts({
   address,
   returnTo,
   showRole = false,
-  hints = HINTS,
+  hints = PROVIDER_HINT,
 }: {
   address: string;
   returnTo: string;

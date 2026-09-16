@@ -6,7 +6,6 @@ import { memberName } from "@/lib/members";
 import { cn } from "@/lib/utils";
 import { useNqg, useProfile } from "@/queries/members";
 
-import { AccountLinks } from "./AccountLinks";
 import { MemberAvatar } from "./MemberAvatar";
 import { RoleBadge } from "./RoleBadge";
 import { Badge } from "./ui/badge";
@@ -39,16 +38,13 @@ export function MemberCard({ member }: { member: MemberView }) {
           {profile?.description || " "}
         </p>
       </div>
-      <div className="mt-auto flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          {member.revoked ? (
-            <Badge variant="destructive">Revoked</Badge>
-          ) : (
-            <RoleBadge role={member.role} />
-          )}
-          {nqg ? <NqgScore value={nqg} /> : null}
-        </div>
-        <AccountLinks accounts={member.accounts} asLinks={false} />
+      <div className="mt-auto flex items-center gap-2">
+        {member.revoked ? (
+          <Badge variant="destructive">Revoked</Badge>
+        ) : (
+          <RoleBadge role={member.role} />
+        )}
+        {nqg ? <NqgScore value={nqg} /> : null}
       </div>
     </Link>
   );

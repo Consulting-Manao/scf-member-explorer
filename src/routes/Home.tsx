@@ -1,13 +1,12 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRightIcon, SearchIcon, UsersRoundIcon } from "lucide-react";
+import { ArrowRightIcon, UsersRoundIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { ROLES } from "@shared/membership";
 
 import { MemberCard, MemberCardSkeleton } from "@/components/MemberCard";
-import { ProjectFilter } from "@/components/ProjectFilter";
+import { MemberSearch, ProjectFilterChip } from "@/components/MemberSearch";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useSentinel } from "@/hooks/useSentinel";
 import type { MemberView } from "@/lib/contract";
 import { cn } from "@/lib/utils";
@@ -140,21 +139,20 @@ export function Home() {
                   )}
                 </button>
               ))}
+              {project && (
+                <ProjectFilterChip
+                  id={project}
+                  onRemove={() => setProject(null)}
+                />
+              )}
             </div>
-            <ProjectFilter
-              value={project}
-              onChange={setProject}
-              className="sm:w-56"
+            <MemberSearch
+              text={search}
+              onText={setSearch}
+              project={project}
+              onProject={setProject}
+              className="sm:w-72"
             />
-            <div className="relative sm:w-56">
-              <SearchIcon className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Name, address or #id"
-                className="pl-9"
-              />
-            </div>
           </div>
         </div>
 
