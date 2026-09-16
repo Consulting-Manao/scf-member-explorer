@@ -26,8 +26,8 @@
     "DISCORD_GUILD_ID": "897514728459468821",
     // Stellar Developers server roles: Pilot 3, Navigator 2, Pathfinder 1, Verified 0
     "DISCORD_ROLE_MAP": "{\"1082331251899379762\":3,\"1082353855041392731\":2,\"1082357854926807111\":1,\"1116373909504274534\":0}",
-    "DISCORD_CLIENT_ID": "",
-    "GITHUB_CLIENT_ID": "",
+    "DISCORD_CLIENT_ID": "1549691188368642078",
+    "GITHUB_CLIENT_ID": "Ov23lifVUXCy7ULe8eHz",
   },
   "ratelimits": [
     {
