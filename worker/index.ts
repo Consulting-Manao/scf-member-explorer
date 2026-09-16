@@ -1,0 +1,150 @@
+import { Keypair } from "@stellar/stellar-sdk";
+import { Hono, type Context, type Next } from "hono";
+import { HTTPException } from "hono/http-exception";
+
+import {
+  PROVIDERS,
+  type AppConfig,
+  type ProviderName,
+} from "@shared/membership";
+
+import { attest, AttestError } from "./attest";
+import { latestLedger, readMember, readOwner } from "./chain";
+import { signClaim, verifyClaim } from "./claims";
+import type { Env } from "./env";
+import { upload, UploadError } from "./ipfs";
+import { exchangeCode, OAuthError } from "./oauth";
+import { getProject, searchProjects } from "./projects";
+
+type AppEnv = { Bindings: Env };
+
+async function rateLimit(c: Context<AppEnv>, next: Next) {
+  const key = c.req.header("cf-connecting-ip") ?? "local";
+  const limiter = c.env.RATE_LIMITER;
+  if (limiter && !(await limiter.limit({ key })).success) {
+    throw new HTTPException(429, { message: "Too many requests" });
+  }
+  await next();
+}
+
+function provider(c: Context<AppEnv>): ProviderName {
+  const name = c.req.param("provider") as ProviderName;
+  if (!PROVIDERS.includes(name)) {
+    throw new HTTPException(404, { message: "Unknown provider" });
+  }
+  return name;
+}
+
+export const app = new Hono<AppEnv>().basePath("/api");
+
+app.get("/config", (c) => {
+  const env = c.env;
+  const config: AppConfig = {
+    network: env.NETWORK,
+    networkPassphrase: env.NETWORK_PASSPHRASE,
+    rpcUrl: env.RPC_URL,
+    contractId: env.CONTRACT_ID,
+    attester: env.ATTESTER_PUBLIC,
+    ipfsGateway: env.IPFS_GATEWAY,
+    roleSource: env.ROLE_SOURCE,
+    oauth: {
+      discord: env.DISCORD_CLIENT_ID || undefined,
+      github: env.GITHUB_CLIENT_ID || undefined,
+      x: env.X_CLIENT_ID || undefined,
+    },
+  };
+  return c.json(config);
+});
+
+app.post("/oauth/:provider/exchange", rateLimit, async (c) => {
+  const body = await c.req.json<{
+    code?: string;
+    codeVerifier?: string;
+    redirectUri?: string;
+    address?: string;
+  }>();
+  if (!body.code || !body.codeVerifier || !body.redirectUri || !body.address) {
+    throw new HTTPException(400, { message: "Missing parameters" });
+  }
+  const identity = await exchangeCode(provider(c), c.env, {
+    code: body.code,
+    codeVerifier: body.codeVerifier,
+    redirectUri: body.redirectUri,
+  });
+  const claim = { ...identity, address: body.address };
+  return c.json({ claim, token: await signClaim(claim, c.env.CLAIMS_SECRET) });
+});
+
+app.post("/attest", rateLimit, async (c) => {
+  const body = await c.req.json<{
+    entry?: string;
+    validUntilLedger?: number;
+    claims?: string[];
+  }>();
+  if (!body.entry || !body.validUntilLedger || !Array.isArray(body.claims)) {
+    throw new HTTPException(400, { message: "Missing parameters" });
+  }
+  const env = c.env;
+  const claims = await Promise.all(
+    body.claims.map((token) =>
+      verifyClaim(token, env.CLAIMS_SECRET).catch(() => {
+        throw new AttestError("Invalid or expired verification");
+      }),
+    ),
+  );
+
+  const entry = await attest(body.entry, body.validUntilLedger, {
+    contractId: env.CONTRACT_ID,
+    attester: Keypair.fromSecret(env.ATTESTER_SECRET),
+    networkPassphrase: env.NETWORK_PASSPHRASE,
+    latestLedger: await latestLedger(env),
+    claims,
+    owner: (tokenId) => readOwner(env, tokenId),
+    member: (tokenId) => readMember(env, tokenId),
+  });
+  console.log(
+    JSON.stringify({
+      event: "attested",
+      claims: claims.map(({ address, provider, id }) => ({
+        address,
+        provider,
+        id,
+      })),
+    }),
+  );
+  return c.json({ entry });
+});
+
+app.post("/ipfs", rateLimit, async (c) => {
+  const cid = await upload(c.env, await c.req.json());
+  return c.json({ cid });
+});
+
+app.get("/projects", async (c) =>
+  c.json(await searchProjects(c.env, c.req.query("search") ?? "")),
+);
+
+app.get("/projects/:id", async (c) => {
+  const project = await getProject(c.env, c.req.param("id"));
+  if (!project) throw new HTTPException(404, { message: "Unknown project" });
+  return c.json(project);
+});
+
+app.onError((error, c) => {
+  if (error instanceof HTTPException) {
+    return c.json({ error: error.message }, error.status);
+  }
+  if (
+    error instanceof AttestError ||
+    error instanceof OAuthError ||
+    error instanceof UploadError
+  ) {
+    return c.json({ error: error.message }, 400);
+  }
+  console.error(error);
+  return c.json({ error: "Internal error" }, 500);
+});
+
+app.notFound((c) => c.json({ error: "Not found" }, 404));
+
+export default app;

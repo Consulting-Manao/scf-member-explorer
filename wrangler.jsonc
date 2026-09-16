@@ -1,0 +1,66 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "stellar-members-testnet",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"],
+  },
+  "observability": { "enabled": true },
+  // Public configuration, also served to the app on /api/config.
+  // Secrets are set with `wrangler secret put`, see .dev.vars.example.
+  "vars": {
+    "NETWORK": "testnet",
+    "NETWORK_PASSPHRASE": "Test SDF Network ; September 2015",
+    "RPC_URL": "https://soroban-testnet.stellar.org",
+    "CONTRACT_ID": "",
+    "ATTESTER_PUBLIC": "",
+    "IPFS_GATEWAY": "https://ipfs.filebase.io/ipfs/",
+    "PGATLAS_URL": "https://api.pgatlas.xyz",
+    // "discord": role comes from the SDF Discord roles (migration),
+    // "verified": every new member is Verified.
+    "ROLE_SOURCE": "discord",
+    "DISCORD_GUILD_ID": "",
+    // Discord role id -> Role (0 Verified, 1 Pathfinder, 2 Navigator, 3 Pilot)
+    "DISCORD_ROLE_MAP": "{}",
+    "DISCORD_CLIENT_ID": "",
+    "GITHUB_CLIENT_ID": "",
+    "X_CLIENT_ID": "",
+  },
+  "ratelimits": [
+    {
+      "name": "RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 30, "period": 60 },
+    },
+  ],
+  "env": {
+    "mainnet": {
+      "name": "stellar-members",
+      "vars": {
+        "NETWORK": "mainnet",
+        "NETWORK_PASSPHRASE": "Public Global Stellar Network ; September 2015",
+        "RPC_URL": "https://mainnet.sorobanrpc.com",
+        "CONTRACT_ID": "",
+        "ATTESTER_PUBLIC": "",
+        "IPFS_GATEWAY": "https://ipfs.filebase.io/ipfs/",
+        "PGATLAS_URL": "https://api.pgatlas.xyz",
+        "ROLE_SOURCE": "discord",
+        "DISCORD_GUILD_ID": "",
+        "DISCORD_ROLE_MAP": "{}",
+        "DISCORD_CLIENT_ID": "",
+        "GITHUB_CLIENT_ID": "",
+        "X_CLIENT_ID": "",
+      },
+      "ratelimits": [
+        {
+          "name": "RATE_LIMITER",
+          "namespace_id": "1002",
+          "simple": { "limit": 30, "period": 60 },
+        },
+      ],
+    },
+  },
+}

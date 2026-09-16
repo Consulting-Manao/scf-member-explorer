@@ -1,0 +1,8 @@
+dist
+node_modules
+packages
+.wrangler
+bun.lock
+playwright-report
+test-results
+worker/worker-configuration.d.ts

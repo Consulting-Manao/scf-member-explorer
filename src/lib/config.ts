@@ -1,0 +1,21 @@
+import type { AppConfig } from "@shared/membership";
+
+let current: AppConfig | undefined;
+
+export async function loadConfig(): Promise<AppConfig> {
+  const res = await fetch("/api/config");
+  if (!res.ok) throw new Error(`Cannot load configuration (${res.status})`);
+  current = (await res.json()) as AppConfig;
+  return current;
+}
+
+/** The configuration, loaded before the app renders. */
+export function config(): AppConfig {
+  if (!current) throw new Error("Configuration not loaded");
+  return current;
+}
+
+export function explorerUrl(kind: "account" | "contract" | "tx", id: string) {
+  const network = config().network === "mainnet" ? "public" : "testnet";
+  return `https://stellar.expert/explorer/${network}/${kind}/${id}`;
+}

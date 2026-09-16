@@ -1,0 +1,10 @@
+# Copy to .dev.vars for `bun dev`. In production use `wrangler secret put <NAME>`.
+
+# Secret key of the attester. Unfunded account, only signs auth entries.
+ATTESTER_SECRET=S...
+# Random 32+ bytes used to sign OAuth claims: `openssl rand -base64 32`
+CLAIMS_SECRET=
+DISCORD_CLIENT_SECRET=
+GITHUB_CLIENT_SECRET=
+X_CLIENT_SECRET=
+FILEBASE_TOKEN=

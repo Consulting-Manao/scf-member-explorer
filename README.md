@@ -1,98 +1,117 @@
-# SCF Member Explorer
+# Stellar Members
 
-Client-side explorer for Stellar Community Fund membership NFTs. Reads on-chain token data from a [SEP-50](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0050.md) compliant contract, enriches it with [Tansu](https://tansu.dev) membership profiles, and displays governance scores computed by [Neural Quorum Governance](https://github.com/stellar/stellar-community-fund-contracts).
+Onboarding, directory and management of the Stellar community membership.
 
-## Standards and contracts
+A member is a soulbound NFT of the `stellar-membership` contract
+(`contracts/stellar-membership` in the Tansu repository). **The token id is the identity of a person**: the address holding
+it is only the current key, which can be rotated or recovered.
 
-### SEP-50 — Smart Contract NFTs
-
-[SEP-50](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0050.md) defines a standard interface for NFTs on Soroban. The explorer reads the following contract methods:
-
-| Method | Returns |
-|---|---|
-| `name()` / `symbol()` | Collection metadata |
-| `token_uri(token_id)` | IPFS URI pointing to token metadata (name, description, image, attributes) |
-| `owner_of(token_id)` | Stellar address of the current owner |
-| `governance(token_id)` | Dynamic on-chain traits (role, NQG score) |
-| `trait_metadata_uri()` | Display instructions for dynamic traits (decimals, value mappings) |
-| `next_token_id()` | Used to determine total minted supply |
-
-All calls are read-only, executed via `simulateTransaction` with a throwaway keypair — no wallet connection or signing required.
-
-### Dynamic traits
-
-SEP-50 distinguishes between **static attributes** (immutable, stored in IPFS metadata) and **dynamic traits** (mutable, returned by `governance()`). This explorer renders both.
-
-`trait_metadata_uri()` returns an IPFS document describing how to interpret dynamic trait values: decimal precision, human-readable labels via value mappings, and display names. For example, `nqg_score` is stored on-chain as a scaled integer and the trait metadata specifies the number of decimals to apply.
-
-### Neural Quorum Governance (NQG)
-
-NQG is the governance framework used by the Stellar Community Fund. Scores reflect a member's participation and standing as evaluated by a quorum of neurons — automated agents that assess governance activity off-chain and write results on-chain.
-
-The `nqg_score` dynamic trait on each membership NFT is the output of this process. The contracts and neuron implementations live in [stellar-community-fund-contracts](https://github.com/stellar/stellar-community-fund-contracts).
-
-### Tansu membership
-
-Each NFT is owned by a Stellar address. The explorer resolves that address against the [Tansu](https://tansu.dev) membership contract (`get_member(address)`), which returns an IPFS CID pointing to a profile directory:
-
-```
-<cid>/
-  profile.json       # { name, description, links, ... }
-  profile-image.png   # member avatar
-```
-
-When a member profile exists, the explorer uses the member's name and picture in place of the raw address and default token image. The original token image is preserved as a small overlay thumbnail.
+- Join: verify Discord (required, must be on the Stellar Discord server),
+  GitHub and X, list projects from [PG Atlas](https://www.pgatlas.xyz), write
+  a profile, mint.
+- Manage: edit profile, projects and accounts, rotate the key.
+- Recover: lost key, prove two accounts from a new account. The membership
+  moves after 7 days unless the current key or an admin cancels it. An admin
+  can approve earlier.
+- Admin: pending recoveries, roles, revocation, attester rotation.
 
 ## Architecture
 
 ```
-┌───────────────────────────────────────────────┐
-│                     Browser                   │
-│  React + TypeScript + @stellar/stellar-sdk    │
-│                                               │
-│       simulateTransaction()                   │
-│       │                  │                    │
-│       ▼                  ▼                    │
-│  ┌─────────┐      ┌───────────┐               │
-│  │   NFT   │      │   Tansu   │               │
-│  │Contract │      │ Contract  │               │
-│  │(SEP-50) │      │(Members)  │               │
-│  └────┬────┘      └─────┬─────┘               │
-│       │                 │                     │
-│       │   IPFS CIDs     │                     │
-│       ▼                 ▼                     │
-│  ┌──────────────────────────┐                 │
-│  │      IPFS Gateway        │                 │
-│  │  Token metadata          │                 │
-│  │  Trait metadata          │                 │
-│  │  Member profiles         │                 │
-│  └──────────────────────────┘                 │
-└───────────────────────────────────────────────┘
+browser ──── Stellar RPC     reads (ledger entries) and transactions
+   │
+   └── /api  Cloudflare Worker (same deployment as the app)
+             ├─ oauth    code exchange, returns a signed claim
+             ├─ attest   co-signs auth entries matching verified claims
+             ├─ ipfs     uploads profile CARs to Filebase
+             └─ projects PG Atlas proxy
 ```
 
-The application is entirely client-side. There is no backend, no API server, no database. All state is read from Soroban RPC and IPFS at render time, with in-memory caching for the session.
+The worker is small and stateless. It holds the **attester** key, which
+only signs `SorobanAuthorizationEntry` for `mint`, `set_external_accounts`
+and `propose_recovery` after checking the arguments against OAuth claims.
+The member always authorizes the call too, so the attester alone cannot act
+on anyone's membership. It never signs transactions nor holds funds.
 
-## Configuration
+On-chain data per member: role, external accounts (provider id and handle),
+sha256 of a verified email (same hash as PG Atlas contributors), IPFS CID of
+the profile, DAOIP-5 project ids.
 
-Network and contract addresses are defined in `src/config/networks.ts`:
+| Path               | Content                                                     |
+| ------------------ | ----------------------------------------------------------- |
+| `src/`             | React app: TanStack Router and Query, Tailwind, Wallets Kit |
+| `worker/`          | Hono API                                                    |
+| `shared/`          | Types and helpers used by both                              |
+| `packages/`        | Contract bindings, generated                                |
+| `scripts/smoke.ts` | End-to-end flows on testnet                                 |
 
-```ts
-export const NETWORK = "testnet" as const;
-export const CONTRACT_ADDRESS = "CATJ45...";       // SEP-50 NFT contract
-export const TANSU_CONTRACT_ADDRESS = "CBXKU...";  // Tansu membership contract
+## Development
+
+```bash
+bun install
+cp .dev.vars.example .dev.vars   # secrets, can override any var
+bun dev                          # app and worker on http://localhost:5173
 ```
 
-Switch `NETWORK` between `"testnet"` and `"mainnet"` to change the target environment. RPC URLs, network passphrase, and explorer links are derived automatically.
+Public configuration is in `wrangler.jsonc` and served to the app on
+`/api/config`. Set `CONTRACT_ID` and `ATTESTER_PUBLIC` there, or in
+`.dev.vars` for local testing.
 
-## Tech stack
+```bash
+bun run lint
+bun run typecheck
+bun run test
+bun run smoke                    # testnet, uses .dev.vars
+```
 
-React, Vite, TypeScript, Tailwind CSS, `@stellar/stellar-sdk`, TanStack Query.
+After a contract change, regenerate the bindings:
 
-## References
+```bash
+CONTRACT_ID=C… bun run bindings
+```
 
-- [SEP-50 — Smart Contract NFTs](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0050.md)
-- [NQG Contracts](https://github.com/stellar/stellar-community-fund-contracts)
-- [SCF Handbook — Verified Members](https://stellar.gitbook.io/scf-handbook/governance/verified-members)
-- [SCF Handbook — Neural Quorum Governance](https://stellarcommunityfund.gitbook.io/scf-handbook/community-involvement/governance/neural-quorum-governance)
-- [Tansu](https://tansu.dev)
-- [Stellar Community Fund](https://communityfund.stellar.org)
+### OAuth apps
+
+Register one app per provider with the redirect URI
+`https://<domain>/oauth/callback/<provider>`, and set the client id var and
+secret.
+
+| Provider | Scopes                               | Notes                                    |
+| -------- | ------------------------------------ | ---------------------------------------- |
+| Discord  | `identify email guilds.members.read` | `DISCORD_GUILD_ID`: the Stellar server   |
+| GitHub   | `read:user user:email`               | primary verified email                   |
+| X        | `users.read tweet.read`              | OAuth 2.0 with PKCE, confidential client |
+
+### Roles during the migration
+
+With `ROLE_SOURCE=discord`, the role at mint comes from the member's roles on
+the Discord server through `DISCORD_ROLE_MAP` (Discord role id to 0 Verified,
+1 Pathfinder, 2 Navigator, 3 Pilot). Once existing members are onboarded,
+set `ROLE_SOURCE=verified`: new members mint as Verified and roles change
+with `set_role` from the admin.
+
+## Deployment
+
+```bash
+wrangler secret put ATTESTER_SECRET   # and the other secrets of .dev.vars.example
+bun run deploy                        # testnet
+bun run build && wrangler deploy --env mainnet
+```
+
+The attester is an unfunded account. If its key leaks, the admin calls
+`set_attester` with a new key and the secret is replaced.
+
+## Reading members from other services
+
+No database is needed, read the contract:
+
+- `token_by_account(provider, id)`: token of a Discord (0), GitHub (1) or X
+  (2) account id, e.g. to map a Discord user to a member.
+- `member(token_id)`: role, status, accounts, email hash, profile CID,
+  projects.
+- `owner_of(token_id)`, `token_of(address)`, `governance(token_id)`.
+
+Changes are published as events with the token id as topic: `minted`,
+`role_set`, `external_accounts_set`, `bio_set`, `projects_set`,
+`key_rotated`, `recovery_proposed`, `recovery_cancelled`, `recovered`,
+`revoked`. Subscribe with RPC `getEvents` filtered on the contract.
