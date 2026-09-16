@@ -110,7 +110,7 @@ export const notify = {
       undefined,
       (dismiss) => (
         <Toast
-          tone="success"
+          tone="info"
           title={title}
           detail={detail}
           action={action}

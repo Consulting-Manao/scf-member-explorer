@@ -119,15 +119,16 @@ app.post("/ipfs", rateLimit, async (c) => {
 
 const PROJECTS_CACHE = { "Cache-Control": `public, max-age=${CACHE_SECONDS}` };
 
-app.get("/projects", rateLimit, async (c) =>
+app.use("/projects", rateLimit);
+app.use("/projects/*", rateLimit);
+
+app.get("/projects", async (c) =>
   c.json(
     await searchProjects(c.env, c.req.query("search") ?? ""),
     200,
     PROJECTS_CACHE,
   ),
 );
-
-app.use("/projects/*", rateLimit);
 
 app.get("/projects/:id", async (c) => {
   const project = await getProject(c.env, c.req.param("id"));

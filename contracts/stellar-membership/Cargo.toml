@@ -1,0 +1,19 @@
+[package]
+name = "stellar-membership"
+version = "2.0.0"
+description = "Soulbound membership token of the Stellar community"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+doctest = false
+
+[dependencies]
+soroban-sdk = { workspace = true }
+
+[dev-dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }

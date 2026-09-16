@@ -8,6 +8,7 @@ import {
   PROVIDER_HINT,
   PROVIDER_ID,
   PROVIDER_LABEL,
+  providerName,
   type Claim,
   type ProviderName,
   type SocialAccount,
@@ -55,7 +56,14 @@ export function AccountsSection({
   const fresh = new Map(
     claims.map((c) => [PROVIDER_ID[c.claim.provider], c.claim]),
   );
-  const accounts = enabledProviders()
+  // the platforms offered for verification, plus any other one bound on-chain
+  const providers = [
+    ...new Set([
+      ...enabledProviders(),
+      ...member.accounts.map((a) => providerName(a.provider)),
+    ]),
+  ].sort((a, b) => PROVIDER_ID[a] - PROVIDER_ID[b]);
+  const accounts = providers
     .map((provider) => {
       const id = PROVIDER_ID[provider];
       const claim = fresh.get(id);
@@ -123,7 +131,7 @@ export function AccountsSection({
       </CardHeader>
       <CardContent className="space-y-4">
         <ul className="divide-y rounded-xl border">
-          {enabledProviders().map((provider) => (
+          {providers.map((provider) => (
             <AccountRow
               key={provider}
               provider={provider}

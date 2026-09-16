@@ -50,7 +50,7 @@ function identity(name: string): Keypair {
   return Keypair.fromSecret(secret);
 }
 
-const admin = identity(process.env.ADMIN_IDENTITY ?? "stellar-members-testnet");
+const admin = identity("stellar-members-testnet");
 const attester = Keypair.fromSecret(attesterSecret);
 if (attester.publicKey() !== config.attester) {
   throw new Error("ATTESTER_SECRET does not match the configured attester");

@@ -1,12 +1,4 @@
-import type { Claim, ProviderName } from "@shared/membership";
-
-export interface Project {
-  id: string;
-  name: string;
-  category: string | null;
-  status: string | null;
-  gitOwnerUrl: string | null;
-}
+import type { Claim, Project, ProviderName } from "@shared/membership";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, init);

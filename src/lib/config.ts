@@ -4,8 +4,13 @@ let current: AppConfig | undefined;
 
 export async function loadConfig(): Promise<AppConfig> {
   const res = await fetch("/api/config");
-  if (!res.ok) throw new Error(`Cannot load configuration (${res.status})`);
-  current = (await res.json()) as AppConfig;
+  const body = (await res.json().catch(() => ({}))) as
+    AppConfig | { error?: string };
+  if (!res.ok) {
+    const reason = "error" in body ? body.error : undefined;
+    throw new Error(reason ?? `Cannot load configuration (${res.status})`);
+  }
+  current = body as AppConfig;
   return current;
 }
 

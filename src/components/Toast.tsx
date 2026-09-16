@@ -2,6 +2,7 @@ import {
   AlertCircleIcon,
   CheckIcon,
   ExternalLinkIcon,
+  InfoIcon,
   LoaderCircleIcon,
   XIcon,
 } from "lucide-react";
@@ -11,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 import { Button } from "./ui/button";
 
-export type ToastTone = "success" | "failure" | "progress";
+export type ToastTone = "success" | "failure" | "info" | "progress";
 
 export interface ToastProps {
   tone: ToastTone;
@@ -28,6 +29,7 @@ export interface ToastProps {
 const DISC: Record<ToastTone, string> = {
   success: "bg-success/20 text-success-foreground dark:text-success",
   failure: "bg-destructive/15 text-destructive dark:bg-destructive/25",
+  info: "bg-muted text-foreground",
   progress: "bg-muted text-foreground",
 };
 
@@ -56,6 +58,7 @@ export function Toast({
       >
         {tone === "success" && <CheckIcon className="size-4" />}
         {tone === "failure" && <AlertCircleIcon className="size-4" />}
+        {tone === "info" && <InfoIcon className="size-4" />}
         {tone === "progress" && (
           <LoaderCircleIcon className="size-4 animate-spin" />
         )}

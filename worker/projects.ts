@@ -1,14 +1,8 @@
 /** Projects from PG Atlas, identified by DAOIP-5 ids. */
 
-import type { Env } from "./env";
+import type { Project } from "@shared/membership";
 
-export interface Project {
-  id: string;
-  name: string;
-  category: string | null;
-  status: string | null;
-  gitOwnerUrl: string | null;
-}
+import type { Env } from "./env";
 
 interface PgAtlasProject {
   canonical_id: string;

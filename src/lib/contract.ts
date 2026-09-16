@@ -12,7 +12,11 @@ import {
 } from "@stellar/stellar-sdk";
 import { Client } from "stellar-membership";
 
-import { toHex, type SocialAccount } from "@shared/membership";
+import {
+  toHex,
+  type MemberRecord,
+  type SocialAccount,
+} from "@shared/membership";
 
 import { config } from "./config";
 
@@ -82,17 +86,6 @@ async function readEntries(keys: xdr.LedgerKey[]): Promise<unknown[]> {
   return keys.map((key) => values.get(key.toXdr("base64")));
 }
 
-interface MemberValue {
-  status: number;
-  role: number;
-  external_accounts: {
-    accounts: SocialAccount[];
-    email_hash?: Uint8Array | null;
-  };
-  bio: string;
-  projects: string[];
-}
-
 export async function getMembers(
   tokenIds: number[],
 ): Promise<(MemberView | null)[]> {
@@ -102,7 +95,7 @@ export async function getMembers(
   ]);
   const values = await readEntries(keys);
   return tokenIds.map((tokenId, i) => {
-    const member = values[2 * i] as MemberValue | undefined;
+    const member = values[2 * i] as MemberRecord | undefined;
     if (!member) return null;
     return {
       tokenId,
@@ -166,7 +159,7 @@ export interface Instance {
 }
 
 /** Key of the contract instance, whose storage holds the `DataKey` values. */
-export function instanceKey(): xdr.LedgerKey {
+function instanceKey(): xdr.LedgerKey {
   return xdr.LedgerKey.contractData(
     new xdr.LedgerKeyContractData({
       contract: new Address(config().contractId).toScAddress(),

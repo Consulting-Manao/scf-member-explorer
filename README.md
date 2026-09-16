@@ -21,7 +21,7 @@ contributors), the IPFS CID of a profile and DAOIP-5 project ids.
 
 | Path               | Content                                                     |
 | ------------------ | ----------------------------------------------------------- |
-| `contract/`        | Soroban contract, Rust                                      |
+| `contracts/`       | Soroban contract, Rust, a Cargo workspace at the root       |
 | `src/`             | React app: TanStack Router and Query, Tailwind, Wallets Kit |
 | `worker/`          | Hono API, deployed with the app as a Cloudflare Worker      |
 | `shared/`          | Types and helpers used by the app and the worker            |
@@ -48,7 +48,7 @@ on anyone's membership. It never signs transactions nor holds funds.
 
 ### Contract
 
-`contract/src/lib.rs` documents every function. In short:
+`contracts/stellar-membership/src/lib.rs` documents every function. In short:
 
 - `mint(to, role, external_accounts, bio, projects)`: the member and the
   attester both authorize; the attester only over `(to, role,
@@ -121,8 +121,8 @@ One app per provider; the redirect URI is `<origin>/oauth/callback/<provider>`.
   `GITHUB_CLIENT_SECRET`. Scopes used: `read:user user:email`.
 
 The contract also knows an X provider (id 2) for accounts bound before X
-verification was dropped; the app displays them and never offers to verify
-one.
+verification was dropped: the app shows them and lets their owner remove
+them, and never offers to verify one.
 
 ### Roles during the migration
 
@@ -151,7 +151,7 @@ The member queries are kept in the browser (IndexedDB) between visits and
 refreshed in the background after ten minutes. A transaction refreshes only
 the members it touched. The app is a PWA: the service worker caches the
 app shell, profiles and pictures from IPFS, avatars and project lookups;
-API calls and the RPC are never cached by it.
+the other API calls and the RPC are never cached by it.
 
 ## Testing
 

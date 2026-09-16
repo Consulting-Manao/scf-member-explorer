@@ -2,7 +2,6 @@ import { Link } from "@tanstack/react-router";
 
 import { useInView } from "@/hooks/useInView";
 import type { MemberView } from "@/lib/contract";
-import { cn } from "@/lib/utils";
 import { useMemberName, useNqg } from "@/queries/members";
 
 import { MemberAvatar } from "./MemberAvatar";
@@ -47,13 +46,10 @@ export function MemberCard({ member }: { member: MemberView }) {
   );
 }
 
-function NqgScore({ value, className }: { value: number; className?: string }) {
+function NqgScore({ value }: { value: number }) {
   return (
     <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-xs text-muted-foreground",
-        className,
-      )}
+      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-xs text-muted-foreground"
       title="Neural quorum governance score"
     >
       NQG {value.toFixed(2)}

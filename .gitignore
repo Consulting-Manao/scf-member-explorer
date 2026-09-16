@@ -1,18 +1,14 @@
 node_modules
 dist
-dist-ssr
-*.local
 .wrangler
 .dev.vars
 .env
 
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
 .idea
 .DS_Store
 *.log
 
 # Contract
-contract/target
-contract/test_snapshots
+target
+**/test_snapshots

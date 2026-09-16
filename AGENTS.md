@@ -10,8 +10,9 @@ The token id is the identity of a person; the address is only the
 current key. The README explains the flows, the architecture and the
 deployment.
 
-- `contract/` Soroban contract (Rust, soroban-sdk). `src/lib.rs` documents
-  every function; one file per trait; tests in `src/tests/`, one per flow.
+- `contracts/stellar-membership/` Soroban contract (Rust, soroban-sdk) in a
+  Cargo workspace at the root. `src/lib.rs` documents every function; one
+  file per trait; tests in `src/tests/`, one per flow.
 - `src/` React app (Vite, TanStack Router and Query, Tailwind, Stellar
   Wallets Kit). Reads the ledger directly, writes through the generated
   bindings, caches in the browser.

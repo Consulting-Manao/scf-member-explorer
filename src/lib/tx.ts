@@ -3,16 +3,14 @@ import type { AssembledTransaction } from "@stellar/stellar-sdk/contract";
 
 import { api } from "./api";
 import { config } from "./config";
-import type { SignAuthEntry, SignTransaction } from "./wallet";
+import type { SignTransaction } from "./wallet";
 
-export type Step = "attest" | "authorize" | "sign" | "upload" | "submit";
+export type Step = "attest" | "sign" | "upload" | "submit";
 
 export interface ExecuteOptions {
   signTransaction: SignTransaction;
   /** Claim tokens to have the attester co-sign the call. */
   claims?: string[];
-  /** Other addresses which must authorize the call, with their signer. */
-  cosigners?: { address: string; signAuthEntry: SignAuthEntry }[];
   /** Called with the signed envelope before submission. */
   beforeSubmit?: (signedTxXdr: string) => Promise<void>;
   onStep?: (step: Step) => void;
@@ -52,17 +50,6 @@ export async function execute<T>(
         });
         return xdr.SorobanAuthorizationEntry.fromXdr(signed, "base64");
       },
-    });
-    resimulate = true;
-  }
-
-  for (const cosigner of options.cosigners ?? []) {
-    if (!tx.needsNonInvokerSigningBy().includes(cosigner.address)) continue;
-    onStep("authorize");
-    await tx.signAuthEntries({
-      address: cosigner.address,
-      signAuthEntry: (entry, opts) =>
-        cosigner.signAuthEntry(entry, { ...opts, address: cosigner.address }),
     });
     resimulate = true;
   }

@@ -1,13 +1,12 @@
 import { ShieldAlertIcon, ShieldOffIcon } from "lucide-react";
 
 import { useRemaining } from "@/hooks/useNow";
+import { useTxAction } from "@/hooks/useTxAction";
 import type { MemberView, Recovery } from "@/lib/contract";
 import { membershipClient } from "@/lib/contract";
 import { notify } from "@/lib/toast";
-import { execute } from "@/lib/tx";
 import { formatDuration, shortAddress } from "@/lib/utils";
 import { useWallet } from "@/lib/wallet";
-import { useInvalidateMembers } from "@/queries/members";
 
 import { AddressFact, ConfirmDialog, Facts, MemberFact } from "./ConfirmDialog";
 import { Alert } from "./ui/alert";
@@ -23,8 +22,8 @@ export function RecoveryBanner({
   recovery: Recovery;
   canCancel: boolean;
 }) {
-  const { address, signTransaction } = useWallet();
-  const invalidate = useInvalidateMembers();
+  const { address } = useWallet();
+  const { perform } = useTxAction();
   const remaining = useRemaining(recovery.executableAt);
 
   return (
@@ -55,13 +54,14 @@ export function RecoveryBanner({
           actionLabel="Cancel recovery"
           cancelLabel="Keep it"
           onConfirm={async (onStep) => {
-            const tx = await membershipClient(address).cancel_recovery({
-              caller: address,
-              token_id: member.tokenId,
-            });
-            const sent = await execute(tx, { signTransaction, onStep });
-            await invalidate([member.tokenId]);
-            notify.success("Recovery cancelled", { tx: sent });
+            const tx = await perform(
+              await membershipClient(address).cancel_recovery({
+                caller: address,
+                token_id: member.tokenId,
+              }),
+              { touched: [member.tokenId], onStep },
+            );
+            notify.success("Recovery cancelled", { tx });
           }}
         >
           <Facts>

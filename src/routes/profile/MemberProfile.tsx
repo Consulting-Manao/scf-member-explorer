@@ -5,7 +5,6 @@ import { AccountLinks } from "@/components/AccountLinks";
 import { MemberAvatar } from "@/components/MemberAvatar";
 import { RecoveryBanner } from "@/components/RecoveryBanner";
 import { RoleBadge } from "@/components/RoleBadge";
-import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { MemberView } from "@/lib/contract";
 import { useMemberName, useRecovery } from "@/queries/members";
@@ -53,12 +52,6 @@ export function MemberProfile({
 
       {recovery && (
         <RecoveryBanner member={member} recovery={recovery} canCancel />
-      )}
-      {member.revoked && (
-        <Alert variant="destructive">
-          This membership has been revoked. Contact an admin if you think this
-          is a mistake.
-        </Alert>
       )}
 
       <ProfileSection member={member} address={address} />

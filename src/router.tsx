@@ -2,7 +2,6 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  redirect,
 } from "@tanstack/react-router";
 
 import { Layout } from "./components/Layout";
@@ -18,15 +17,6 @@ const rootRoute = createRootRoute({
   notFoundComponent: NotFound,
 });
 
-const toProfile = (path: string) =>
-  createRoute({
-    getParentRoute: () => rootRoute,
-    path,
-    beforeLoad: () => {
-      throw redirect({ to: "/profile" });
-    },
-  });
-
 const routeTree = rootRoute.addChildren([
   createRoute({ getParentRoute: () => rootRoute, path: "/", component: Home }),
   createRoute({
@@ -41,9 +31,6 @@ const routeTree = rootRoute.addChildren([
       search.mode === "recover" ? { mode: "recover" } : {},
     component: Profile,
   }),
-  toProfile("/join"),
-  toProfile("/me"),
-  toProfile("/recover"),
   createRoute({
     getParentRoute: () => rootRoute,
     path: "/admin",

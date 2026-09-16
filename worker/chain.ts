@@ -1,7 +1,7 @@
 import { rpc } from "@stellar/stellar-sdk";
 import { Client } from "stellar-membership";
 
-import type { MemberValue } from "./attest";
+import type { MemberRecord } from "@shared/membership";
 import type { Env } from "./env";
 
 function client(env: Env): Client {
@@ -32,10 +32,10 @@ export async function readOwner(
 export async function readMember(
   env: Env,
   tokenId: number,
-): Promise<MemberValue | null> {
+): Promise<MemberRecord | null> {
   try {
     return (await client(env).member({ token_id: tokenId }))
-      .result as MemberValue;
+      .result as MemberRecord;
   } catch {
     return null;
   }

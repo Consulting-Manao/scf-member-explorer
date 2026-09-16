@@ -13,11 +13,10 @@ export const PROVIDER_ID: Record<ProviderName, number> = {
   x: 2,
 };
 
-/** Why one would verify each platform. */
-export const PROVIDER_HINT: Record<ProviderName, string> = {
+/** Why one would verify each platform offered. */
+export const PROVIDER_HINT: Partial<Record<ProviderName, string>> = {
   discord: "Required. You need to be on the Stellar Developers server.",
   github: "Links you to your contributions.",
-  x: "Not offered anymore.",
 };
 
 export const PROVIDER_LABEL: Record<ProviderName, string> = {
@@ -60,6 +59,27 @@ export interface SocialAccount {
   provider: number;
   id: string;
   handle: string;
+}
+
+/** `Member` record of the contract, as decoded from the ledger. */
+export interface MemberRecord {
+  status: number;
+  role: number;
+  external_accounts: {
+    accounts: SocialAccount[];
+    email_hash?: Uint8Array | null;
+  };
+  bio: string;
+  projects: string[];
+}
+
+/** A project of PG Atlas, as served by the worker. */
+export interface Project {
+  id: string;
+  name: string;
+  category: string | null;
+  status: string | null;
+  gitOwnerUrl: string | null;
 }
 
 /** Public configuration served by the worker on `/api/config`. */

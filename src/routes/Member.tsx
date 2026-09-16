@@ -144,19 +144,11 @@ function MemberDetails({ member }: { member: MemberView }) {
             <CardTitle>Governance</CardTitle>
           </CardHeader>
           <CardContent>
-            <dl className="grid grid-cols-2 gap-4">
-              <div>
-                <dt className="text-sm text-muted-foreground">Role</dt>
-                <dd className="font-display text-xl font-semibold">
-                  <RoleBadge role={member.role} />
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">NQG score</dt>
-                <dd className="font-display text-xl font-semibold">
-                  {nqg === undefined || nqg === null ? "—" : nqg.toFixed(2)}
-                </dd>
-              </div>
+            <dl>
+              <dt className="text-sm text-muted-foreground">NQG score</dt>
+              <dd className="font-display text-xl font-semibold">
+                {nqg === undefined || nqg === null ? "—" : nqg.toFixed(2)}
+              </dd>
             </dl>
           </CardContent>
         </Card>

@@ -1,6 +1,7 @@
 {
   "name": "stellar-members",
   "private": true,
+  "license": "BSD-3-Clause",
   "version": "0.1.0",
   "type": "module",
   "workspaces": [
@@ -44,8 +45,7 @@
     "react-dom": "^19.3.0",
     "sonner": "^2.0.8",
     "stellar-membership": "workspace:*",
-    "tailwind-merge": "^3.7.0",
-    "workbox-window": "^7.4.1"
+    "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.54.10",
@@ -68,6 +68,7 @@
     "vite": "^8.3.0",
     "vite-plugin-pwa": "^1.3.0",
     "vitest": "^5.0.1",
+    "workbox-window": "^7.4.1",
     "wrangler": "^4.132.0"
   }
 }

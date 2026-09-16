@@ -5,7 +5,7 @@ SHELL := /bin/bash
 network ?= testnet
 admin ?= stellar-members-$(network)
 attester ?= stellar-members-attester-$(network)
-wasm = contract/target/wasm32v1-none/release/stellar_membership.wasm
+wasm = target/wasm32v1-none/release/stellar_membership.wasm
 contract_id = $(shell cat .stellar/stellar_membership_id-$(network))
 nqg_contract = CAM3VZX47TCQWCEYGXEDTSIJYKIVM6AWMFR7VTFYTETXFO53I5LOZGBT
 
@@ -13,17 +13,17 @@ help:  ## list the targets
 	@grep -E '^[a-z_]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-24s %s\n", $$1, $$2}'
 
 build:  ## build the contract WASM
-	cd contract && stellar contract build --optimize
+	stellar contract build --optimize
 
 test:  ## contract tests
-	cd contract && cargo test
+	cargo test
 
 lint:  ## clippy and rustfmt
-	cd contract && cargo clippy --all-targets --all-features -- -Dwarnings && cargo fmt --check
+	cargo clippy --all-targets --all-features -- -Dwarnings && cargo fmt --check
 
 bindings: build  ## regenerate the TypeScript bindings from the WASM
 	stellar contract bindings typescript --wasm $(wasm) --output-dir packages/stellar-membership --overwrite && \
-	rm packages/stellar-membership/README.md && \
+	rm -f packages/stellar-membership/README.md && \
 	cd packages/stellar-membership && bun install && bun run build
 
 deploy: build  ## deploy the contract with the admin and attester identities

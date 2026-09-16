@@ -20,12 +20,12 @@ export function RoleBadge({
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold",
-        STYLES[role] ?? STYLES[0],
+        STYLES[role]!,
         className,
       )}
     >
       <span className="size-1.5 rounded-full bg-current" />
-      {ROLES[role] ?? "Unknown"}
+      {ROLES[role]!}
     </span>
   );
 }

@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 
 const LABELS: Record<Step, string> = {
   attest: "The attester co-signs your verified accounts",
-  authorize: "Authorizing with the other account",
   sign: "Sign with your wallet",
   upload: "Uploading your profile to IPFS",
   submit: "Submitting to the Stellar network",

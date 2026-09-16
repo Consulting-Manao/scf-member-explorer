@@ -9,14 +9,13 @@ import {
 import { Client } from "stellar-membership";
 import { describe, expect, it } from "vitest";
 
-import { accountOf, type Claim } from "@shared/membership";
+import { accountOf, type Claim, type MemberRecord } from "@shared/membership";
 
 import {
   attest,
   AttestError,
   MAX_VALIDITY_LEDGERS,
   type AttestContext,
-  type MemberValue,
 } from "./attest";
 
 const networkPassphrase = Networks.TESTNET;
@@ -98,13 +97,15 @@ function mintArgs(
     .slice(0, 3);
 }
 
-const onChain: MemberValue = {
+const onChain: MemberRecord = {
   status: 0,
   role: 0,
   external_accounts: {
     accounts: [accountOf(discord), accountOf(github)],
     email_hash: Buffer.from(discord.emailHash!, "hex"),
   },
+  bio: "",
+  projects: [],
 };
 
 function context(overrides: Partial<AttestContext> = {}): AttestContext {
@@ -276,7 +277,7 @@ describe("attest propose_recovery", () => {
       "Prove 2",
     );
 
-    const single: MemberValue = {
+    const single: MemberRecord = {
       ...onChain,
       external_accounts: { accounts: [accountOf(discord)] },
     };

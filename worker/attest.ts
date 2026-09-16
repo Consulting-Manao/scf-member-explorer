@@ -20,6 +20,7 @@ import {
   PROVIDER_ID,
   toHex,
   type Claim,
+  type MemberRecord,
   type SocialAccount,
 } from "@shared/membership";
 
@@ -27,15 +28,6 @@ import {
 export const MAX_VALIDITY_LEDGERS = 120;
 
 export class AttestError extends Error {}
-
-export interface MemberValue {
-  status: number;
-  role: number;
-  external_accounts: {
-    accounts: SocialAccount[];
-    email_hash?: Uint8Array | null;
-  };
-}
 
 export interface AttestContext {
   contractId: string;
@@ -45,7 +37,7 @@ export interface AttestContext {
   /** Claims with verified signature and expiry. */
   claims: Claim[];
   owner: (tokenId: number) => Promise<string | null>;
-  member: (tokenId: number) => Promise<MemberValue | null>;
+  member: (tokenId: number) => Promise<MemberRecord | null>;
 }
 
 interface Invocation {
@@ -91,7 +83,7 @@ interface Accounts {
 }
 
 function asAccounts(value: unknown): Accounts {
-  const external = value as MemberValue["external_accounts"];
+  const external = value as MemberRecord["external_accounts"];
   if (!external || !Array.isArray(external.accounts)) {
     fail("Malformed external accounts");
   }
