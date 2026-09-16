@@ -7,7 +7,6 @@ import { useAdmin, useMyMembership } from "@/queries/members";
 import { ConnectButton } from "./ConnectButton";
 import { Logo } from "./icons";
 import { ThemeToggle } from "./ThemeToggle";
-import { Badge } from "./ui/badge";
 
 function NavLink({ to, children }: { to: string; children: string }) {
   return (
@@ -24,7 +23,6 @@ function NavLink({ to, children }: { to: string; children: string }) {
 export function Layout() {
   const { address } = useMyMembership();
   const { data: admin } = useAdmin();
-  const testnet = config().network === "testnet";
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -36,7 +34,6 @@ export function Layout() {
               Stellar Members
             </span>
           </Link>
-          {testnet && <Badge variant="warning">Testnet</Badge>}
           <nav className="ml-2 flex items-center gap-1">
             <NavLink to="/">Members</NavLink>
             {address && <NavLink to="/profile">Profile</NavLink>}
@@ -61,7 +58,7 @@ export function Layout() {
             "mx-auto flex max-w-6xl flex-col gap-3 px-4 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6",
           )}
         >
-          <p>The Stellar community, on-chain.</p>
+          <p>One identity per person, on Stellar.</p>
           <div className="flex flex-wrap gap-4">
             <Link
               className="hover:text-foreground"

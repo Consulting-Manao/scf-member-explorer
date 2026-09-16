@@ -104,7 +104,8 @@ function PendingRecoveries() {
       <CardHeader>
         <CardTitle>Pending recoveries</CardTitle>
         <CardDescription>
-          Check the accounts with the member before approving early.
+          Talk to the member before approving early. Anyone can finalize once
+          the waiting period is over.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -303,8 +304,8 @@ function ManageMember() {
                     <DialogTitle>Revoke member #{member.tokenId}?</DialogTitle>
                     <DialogDescription>
                       The address is released and the member loses its role. The
-                      record and accounts are kept, so the accounts cannot be
-                      used for a new membership. Moving the token to a new key
+                      record and accounts are kept, so they cannot be used for
+                      another membership. Moving the token to a new key
                       reinstates it.
                     </DialogDescription>
                   </DialogHeader>
@@ -333,9 +334,9 @@ function ManageMember() {
               <div>
                 <h4 className="font-medium">Move to a new key</h4>
                 <p className="text-sm text-muted-foreground">
-                  For a lost key without verified accounts, or to reinstate a
-                  revoked member. The new key signs too, so do it with the
-                  member.
+                  For a lost key when the accounts cannot be proven, or to
+                  reinstate a revoked member. The new key signs too, so do it
+                  together with the member.
                 </p>
               </div>
               <KeyHandover
@@ -374,8 +375,8 @@ function Attester() {
       <CardHeader>
         <CardTitle>Attester</CardTitle>
         <CardDescription>
-          The key co-signing verified accounts. Replace it immediately if it
-          leaks, and update the worker secret.
+          The key that co-signs verified accounts. Replace it immediately if it
+          leaks, then update the worker secret.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -433,7 +434,7 @@ export function Admin() {
             <ShieldCheckIcon className="size-8" /> Admin
           </span>
         }
-        description={`${count ?? "…"} members minted.`}
+        description={`${count ?? "…"} memberships minted so far.`}
       />
       <PendingRecoveries />
       <ManageMember />

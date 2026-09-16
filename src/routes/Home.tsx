@@ -30,7 +30,7 @@ function matches(member: MemberView, search: string): boolean {
 export function Home() {
   const { data: count } = useMemberCount();
   const members = useMembers(count);
-  const { address, member: me } = useMyMembership();
+  const { member: me } = useMyMembership();
   const [search, setSearch] = useState("");
   const [role, setRole] = useState<number | null>(null);
 
@@ -56,29 +56,29 @@ export function Home() {
             <p className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm text-muted-foreground">
               <UsersRoundIcon className="size-4" />
               {count === undefined ? "…" : count}{" "}
-              {count === 1 ? "member" : "members"} on-chain
+              {count === 1 ? "member" : "members"} and counting
             </p>
             <h1 className="text-4xl leading-[1.05] font-semibold sm:text-6xl">
-              The Stellar community,
+              Your seat in the
               <br />
               <span className="bg-gradient-to-r from-amber-500 to-yellow-300 bg-clip-text text-transparent">
-                one identity each.
+                Stellar community.
               </span>
             </h1>
             <p className="max-w-xl text-lg text-muted-foreground">
-              Verify your accounts, list your projects and mint your membership.
-              Your token is yours: rotate keys or recover it without losing your
-              history.
+              A membership that lives on Stellar and moves with you. Prove your
+              accounts once, mint it, rotate keys whenever you like, and recover
+              it if you ever lose them.
             </p>
             <div className="flex flex-wrap gap-3">
               <Button asChild size="lg" variant="accent">
                 <Link to="/profile">
-                  {me ? "My profile" : address ? "Join now" : "Get started"}{" "}
+                  {me ? "My membership" : "Claim your membership"}{" "}
                   <ArrowRightIcon />
                 </Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <a href="#members">Browse members</a>
+                <a href="#members">Meet the members</a>
               </Button>
             </div>
           </div>
@@ -127,7 +127,7 @@ export function Home() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Handle, address, #id"
+                placeholder="Search by name, address or #id"
                 className="pl-9"
               />
             </div>
@@ -135,7 +135,9 @@ export function Home() {
         </div>
 
         {members.isError && (
-          <p className="text-destructive">Could not load members.</p>
+          <p className="text-destructive">
+            The members could not be loaded. Check your connection and retry.
+          </p>
         )}
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -148,12 +150,12 @@ export function Home() {
 
         {count === 0 && (
           <div className="rounded-xl border border-dashed p-12 text-center text-muted-foreground">
-            No member yet. Be the first one.
+            No one here yet. Be the first to claim a membership.
           </div>
         )}
         {!members.isLoading && loaded.length > 0 && visible.length === 0 && (
           <p className="py-12 text-center text-muted-foreground">
-            No member matches.
+            No member matches your search.
           </p>
         )}
 

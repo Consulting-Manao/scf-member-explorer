@@ -124,7 +124,8 @@ export function KeyHandover({
           className="font-mono"
         />
         <p className="text-xs text-muted-foreground">
-          A funded Stellar account you control. It pays the transaction fee.
+          A funded Stellar account you control. It signs and pays for the
+          transaction.
         </p>
       </div>
       <ol className="space-y-3">
@@ -136,7 +137,7 @@ export function KeyHandover({
         >
           <KeyRoundIcon className="size-4" />
           <span className="flex-1 text-sm">
-            1. Authorize with the connected key
+            1. Authorize with your current key
           </span>
           <Button
             size="sm"
@@ -150,7 +151,8 @@ export function KeyHandover({
         <li className="flex flex-wrap items-center gap-3 rounded-xl border p-4">
           <ArrowRightIcon className="size-4" />
           <span className="flex-1 text-sm">
-            2. Switch to the new key, sign and {actionLabel.toLowerCase()}
+            2. Switch your wallet to the new key, then{" "}
+            {actionLabel.toLowerCase()}
           </span>
           <Button size="sm" disabled={!authorized || busy} onClick={submit}>
             {actionLabel}
@@ -159,7 +161,7 @@ export function KeyHandover({
       </ol>
       {authorized && (
         <Alert>
-          Your wallet opens to select an account: pick{" "}
+          Your wallet will ask which account to use: pick{" "}
           <span className="font-mono">{shortAddress(newAddress, 6)}</span>.
         </Alert>
       )}

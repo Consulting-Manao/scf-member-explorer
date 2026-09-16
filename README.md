@@ -140,11 +140,15 @@ smoke script exercises the on-chain flows through the worker instead.
 
 ```bash
 wrangler secret put ATTESTER_SECRET   # and the other secrets of .dev.vars.example
-bun run deploy                        # testnet
+bun run deploy                        # staging, on testnet
 ```
 
-Mainnet is added as an `env.mainnet` block in `wrangler.jsonc` once the
-contract is deployed there, with its own contract id and attester.
+Users never pick a network: staging runs on testnet and production on
+mainnet, and the app shows no trace of which one it is on. The only values
+that differ between the two are `NETWORK`, `NETWORK_PASSPHRASE`, `RPC_URL`,
+`CONTRACT_ID` and `ATTESTER_PUBLIC` (with its secret). OAuth apps, IPFS and
+the other secrets are shared. Production is added as an `env.mainnet` block
+in `wrangler.jsonc` once the contract is deployed there.
 
 The attester is an unfunded account. If its key leaks, the admin calls
 `set_attester` with a new key and the secret is replaced.

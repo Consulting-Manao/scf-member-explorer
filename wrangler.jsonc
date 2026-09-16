@@ -11,8 +11,9 @@
   "observability": { "enabled": true },
   // Public configuration, also served to the app on /api/config.
   // Secrets are set with `wrangler secret put`, see .dev.vars.example.
-  // The mainnet deployment is added as an `env` once the contract is deployed there.
   "vars": {
+    // Staging runs on testnet, production on mainnet: these five values are the
+    // only ones that differ. Users never pick a network.
     "NETWORK": "testnet",
     "NETWORK_PASSPHRASE": "Test SDF Network ; September 2015",
     "RPC_URL": "https://soroban-testnet.stellar.org",

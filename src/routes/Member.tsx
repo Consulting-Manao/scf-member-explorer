@@ -53,7 +53,7 @@ export function MemberPage() {
   if (!member) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-24 text-center sm:px-6">
-        <h1 className="text-3xl font-semibold">Member not found</h1>
+        <h1 className="text-3xl font-semibold">No such member</h1>
         <Button asChild variant="link">
           <Link to="/">Back to members</Link>
         </Button>
@@ -122,7 +122,7 @@ export function MemberPage() {
             <AccountLinks accounts={member.accounts} withHandles />
             {member.emailHash && (
               <p className="text-sm text-muted-foreground">
-                Verified email linked to contributions.
+                A verified email links this member to their contributions.
               </p>
             )}
             {profile?.social && (

@@ -51,7 +51,7 @@ export function ProfileForm({
               const file = e.target.files?.[0];
               if (!file) return;
               if (file.size > MAX_IMAGE_BYTES) {
-                toast.error("The picture must be under 1 MB.");
+                toast.error("Pick a picture under 1 MB.");
                 return;
               }
               set({ image: file });
@@ -78,7 +78,7 @@ export function ProfileForm({
             value={value.name}
             maxLength={80}
             onChange={(e) => set({ name: e.target.value })}
-            placeholder="How the community knows you"
+            placeholder="The name people know you by"
           />
         </div>
         <div className="space-y-2">
@@ -88,7 +88,7 @@ export function ProfileForm({
             value={value.description}
             maxLength={500}
             onChange={(e) => set({ description: e.target.value })}
-            placeholder="What you work on in the Stellar ecosystem"
+            placeholder="What you build, maintain or care about on Stellar"
           />
         </div>
         <div className="space-y-2">

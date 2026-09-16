@@ -4,11 +4,11 @@ import type { Step } from "@/lib/tx";
 import { cn } from "@/lib/utils";
 
 const LABELS: Record<Step, string> = {
-  attest: "Attesting verified accounts",
+  attest: "The attester co-signs your verified accounts",
   authorize: "Authorizing with the other account",
-  sign: "Signing with your wallet",
-  upload: "Uploading profile to IPFS",
-  submit: "Submitting to Stellar",
+  sign: "Sign with your wallet",
+  upload: "Uploading your profile to IPFS",
+  submit: "Submitting to the Stellar network",
 };
 
 export function TxProgress({

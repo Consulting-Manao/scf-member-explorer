@@ -44,7 +44,10 @@ export function OAuthCallback() {
       ) : (
         <>
           <LoaderCircleIcon className="size-8 animate-spin" />
-          <p className="text-muted-foreground">Verifying your account…</p>
+          <p className="text-muted-foreground">
+            Confirming your {PROVIDER_LABEL[provider as ProviderName] ?? ""}{" "}
+            account…
+          </p>
         </>
       )}
     </div>

@@ -12,9 +12,9 @@ import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 
 const HINTS: Record<ProviderName, string> = {
-  discord: "Required. You must be on the Stellar Discord server.",
-  github: "Links your contributions.",
-  x: "Optional.",
+  discord: "Required. You need to be on the Stellar Developers server.",
+  github: "Links you to your contributions.",
+  x: "If you want it on your profile.",
 };
 
 export function VerifyAccounts({

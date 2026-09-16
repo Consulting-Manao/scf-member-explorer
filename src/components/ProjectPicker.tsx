@@ -31,7 +31,9 @@ function ProjectChip({ id, onRemove }: { id: string; onRemove?: () => void }) {
 
 export function ProjectList({ ids }: { ids: string[] }) {
   if (ids.length === 0) {
-    return <p className="text-sm text-muted-foreground">No projects listed.</p>;
+    return (
+      <p className="text-sm text-muted-foreground">No project listed yet.</p>
+    );
   }
   return (
     <div className="flex flex-wrap gap-2">
@@ -97,7 +99,9 @@ export function ProjectPicker({
           </div>
         )}
         {projects?.length === 0 && (
-          <p className="p-4 text-sm text-muted-foreground">No project found.</p>
+          <p className="p-4 text-sm text-muted-foreground">
+            No project matches.
+          </p>
         )}
         <ul className="divide-y">
           {projects?.map((project) => {
@@ -138,7 +142,7 @@ export function ProjectPicker({
         </ul>
       </div>
       <p className="text-xs text-muted-foreground">
-        {value.length}/{MAX_PROJECTS} projects. Data from PG Atlas.
+        {value.length}/{MAX_PROJECTS} projects, from PG Atlas.
       </p>
     </div>
   );

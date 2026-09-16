@@ -153,7 +153,7 @@ function Onboarding({ address }: { address: string }) {
         beforeSubmit: car ? (signed) => uploadCar(bio, car, signed) : undefined,
         onStep: setProgress,
       });
-      toast.success(`Welcome, you are member #${tokenId}`);
+      toast.success(`Welcome aboard, you are member #${tokenId}`);
       await invalidate();
       window.scrollTo({ top: 0 });
     } catch (error) {
@@ -171,18 +171,18 @@ function Onboarding({ address }: { address: string }) {
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6">
       <div className="space-y-2">
         <h1 className="text-3xl font-semibold sm:text-4xl">
-          Join the Stellar community
+          Claim your membership
         </h1>
         <p className="text-muted-foreground">
-          Verify your accounts, tell the community about you and mint your
-          membership. Your Discord account on the Stellar server is required.
+          Prove your accounts, say who you are, mint. Your Discord account on
+          the Stellar Developers server is what gets you in.
         </p>
       </div>
 
       <Alert className="items-center">
         <LifeBuoyIcon />
         <span className="flex-1">
-          Already a member but lost the key? Recover your membership with this
+          Already a member and lost your key? Recover your membership with this
           account instead.
         </span>
         <Button
@@ -196,10 +196,10 @@ function Onboarding({ address }: { address: string }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Accounts</CardTitle>
+          <CardTitle>Prove your accounts</CardTitle>
           <CardDescription>
-            Verified by signing in with each platform. Only your public id and
-            handle go on-chain, plus the hash of a verified email if you link
+            Sign in with each platform. Only your public id and handle go
+            on-chain, plus the hash of a verified email if you choose to link
             one.
           </CardDescription>
         </CardHeader>
@@ -211,10 +211,13 @@ function Onboarding({ address }: { address: string }) {
           />
           {emailSources.length > 0 && (
             <fieldset className="space-y-2">
-              <legend className="text-sm font-medium">Verified email</legend>
+              <legend className="text-sm font-medium">
+                Link a verified email
+              </legend>
               <p className="text-sm text-muted-foreground">
-                Its hash matches your commits in PG Atlas. A hash can be
-                compared with a known email, so skip it if you prefer.
+                Its hash connects you to your commits in PG Atlas. A hash can be
+                matched against a known email, so skip it if you would rather
+                not.
               </p>
               <Choice
                 value={emailFrom}
@@ -234,9 +237,9 @@ function Onboarding({ address }: { address: string }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Profile</CardTitle>
+          <CardTitle>Introduce yourself</CardTitle>
           <CardDescription>
-            Optional. Published on IPFS, referenced on-chain.
+            Optional. Stored on IPFS and linked to your membership.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -246,9 +249,9 @@ function Onboarding({ address }: { address: string }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Projects</CardTitle>
+          <CardTitle>Your projects</CardTitle>
           <CardDescription>
-            Stellar projects you work on, from PG Atlas. Stored on-chain.
+            The Stellar projects you build or maintain, from PG Atlas.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -258,10 +261,10 @@ function Onboarding({ address }: { address: string }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Mint</CardTitle>
+          <CardTitle>Mint your membership</CardTitle>
           <CardDescription>
-            One transaction signed by your wallet. The attester co-signs the
-            accounts it verified.
+            One transaction, signed by your wallet. The attester co-signs the
+            accounts it verified and nothing else.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -309,7 +312,8 @@ function Onboarding({ address }: { address: string }) {
           </dl>
           {config().roleSource === "discord" && discord && role > 0 && (
             <Alert>
-              Your {ROLES[role]} role comes from the Stellar Discord server.
+              You hold the {ROLES[role]} role on the Stellar Developers server.
+              It comes with your membership.
             </Alert>
           )}
           {progress && (
@@ -400,23 +404,23 @@ function Recovery({ address }: { address: string }) {
           Recover your membership
         </h1>
         <p className="text-muted-foreground">
-          Lost the key holding your membership? Prove two of its accounts, or
-          the only one it has, and it moves to this account after{" "}
-          {formatDuration(RECOVERY_DELAY_SECONDS)} unless your old key or an
-          admin cancels it. An admin can approve earlier.
+          Lost the key that holds it? Prove two of its accounts, or the only one
+          it has, and it moves to this account after{" "}
+          {formatDuration(RECOVERY_DELAY_SECONDS)}, unless the old key or an
+          admin cancels. An admin can approve sooner.
         </p>
         <Button
           variant="link"
           className="px-0"
           onClick={() => navigate({ search: {} })}
         >
-          Not a member yet? Join instead
+          New here? Claim a membership instead
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Accounts of the membership</CardTitle>
+          <CardTitle>Prove the accounts of your membership</CardTitle>
         </CardHeader>
         <CardContent>
           <VerifyAccounts
@@ -434,11 +438,11 @@ function Recovery({ address }: { address: string }) {
       {claims.length > 0 && (
         <Card className="animate-fade-in">
           <CardHeader>
-            <CardTitle>Membership found</CardTitle>
+            <CardTitle>Your membership</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {found.isLoading && (
-              <p className="text-sm text-muted-foreground">Looking up…</p>
+              <p className="text-sm text-muted-foreground">Looking it up…</p>
             )}
             {found.data?.length === 0 && (
               <p className="text-sm text-muted-foreground">
@@ -470,8 +474,8 @@ function Recovery({ address }: { address: string }) {
               <Alert variant={remaining > 0 ? "default" : "success"}>
                 <HourglassIcon />
                 {remaining > 0
-                  ? `Recovery pending, finalize in ${formatDuration(remaining)}.`
-                  : "The delay is over, you can finalize the recovery."}
+                  ? `Recovery in progress. You can finalize in ${formatDuration(remaining)}.`
+                  : "The waiting period is over. Finalize to take your membership back."}
               </Alert>
             )}
             {progress && (
@@ -520,7 +524,7 @@ function Recovery({ address }: { address: string }) {
                     )
                   }
                 >
-                  Recover membership
+                  Start recovery
                 </Button>
               )}
             </CardFooter>
@@ -611,9 +615,9 @@ function ProfileEditor({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Profile</CardTitle>
+        <CardTitle>Your profile</CardTitle>
         <CardDescription>
-          Published on IPFS, referenced on-chain.
+          Stored on IPFS and linked to your membership.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -665,9 +669,9 @@ function ProjectsSection({ member }: { member: MemberView }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Projects</CardTitle>
+        <CardTitle>Your projects</CardTitle>
         <CardDescription>
-          Projects are identified with DAOIP-5 ids from PG Atlas.
+          The Stellar projects you build or maintain, from PG Atlas.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -746,7 +750,7 @@ function AccountsSection({ member }: { member: MemberView }) {
         <CardHeader>
           <CardTitle>Verified accounts</CardTitle>
           <CardDescription>
-            Bound to your membership, they stay with it through key rotations
+            They belong to your membership and follow it through key rotations
             and recoveries.
           </CardDescription>
         </CardHeader>
@@ -754,8 +758,8 @@ function AccountsSection({ member }: { member: MemberView }) {
           <AccountLinks accounts={member.accounts} withHandles />
           <p className="text-sm text-muted-foreground">
             {member.emailHash
-              ? "A verified email hash is linked."
-              : "No email hash is linked."}
+              ? "A verified email is linked."
+              : "No email is linked."}
           </p>
         </CardContent>
         <CardFooter className="justify-end">
@@ -770,11 +774,10 @@ function AccountsSection({ member }: { member: MemberView }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Change verified accounts</CardTitle>
+        <CardTitle>Update your accounts</CardTitle>
         <CardDescription>
-          Add or replace an account by verifying it, remove one with the bin.
-          The attester co-signs the change, so at least one account must be
-          verified in this session.
+          Verify a platform to add or replace it, use the bin to remove one. The
+          attester co-signs the change, so verify at least one account first.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -808,7 +811,7 @@ function AccountsSection({ member }: { member: MemberView }) {
           </div>
         )}
         <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">Email hash</legend>
+          <legend className="text-sm font-medium">Verified email</legend>
           <Choice
             value={email}
             onChange={setEmail}
@@ -853,10 +856,10 @@ function KeySection({ member }: { member: MemberView }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Key</CardTitle>
+        <CardTitle>Your key</CardTitle>
         <CardDescription>
-          Move your membership to another account. Your member id, role,
-          accounts and history stay the same.
+          Move your membership to another Stellar account. Same member, same
+          history, new key.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -910,7 +913,7 @@ function MemberProfile({
             to="/members/$tokenId"
             params={{ tokenId: String(member.tokenId) }}
           >
-            <ExternalLinkIcon /> Public profile
+            <ExternalLinkIcon /> View as others see it
           </Link>
         </Button>
       </div>
@@ -919,7 +922,10 @@ function MemberProfile({
         <RecoveryBanner tokenId={tokenId} recovery={recovery} canCancel />
       )}
       {member.revoked && (
-        <Alert variant="destructive">This membership has been revoked.</Alert>
+        <Alert variant="destructive">
+          This membership has been revoked. Contact an admin if you think this
+          is a mistake.
+        </Alert>
       )}
 
       <ProfileSection member={member} />
@@ -944,10 +950,9 @@ export function Profile() {
             <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-full bg-muted">
               <WalletIcon className="size-5" />
             </div>
-            <CardTitle className="text-2xl">Your profile</CardTitle>
+            <CardTitle className="text-2xl">Your membership</CardTitle>
             <CardDescription>
-              Connect the Stellar account that holds your membership, or the one
-              that will.
+              Connect your Stellar wallet to claim your membership or manage it.
             </CardDescription>
           </CardHeader>
           <CardFooter className="justify-center pt-6">

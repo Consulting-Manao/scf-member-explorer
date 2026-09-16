@@ -46,14 +46,14 @@ export function RecoveryBanner({
     <Alert variant="warning" className="items-start">
       <ShieldAlertIcon />
       <div className="flex-1 space-y-1">
-        <p className="font-medium">A key recovery is pending</p>
+        <p className="font-medium">Someone is recovering this membership</p>
         <p className="text-muted-foreground">
           This membership moves to{" "}
           <span className="font-mono">
             {shortAddress(recovery.newAddress, 6)}
           </span>{" "}
           {remaining > 0 ? `in ${formatDuration(remaining)}` : "any moment now"}
-          . If you did not request it, cancel it now.
+          . If that is not you, cancel it now.
         </p>
       </div>
       {canCancel && (
