@@ -58,7 +58,7 @@ export function Layout() {
             "mx-auto flex max-w-6xl flex-col gap-3 px-4 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6",
           )}
         >
-          <p>One identity per person, on Stellar.</p>
+          <p>Your identify on Stellar</p>
           <div className="flex flex-wrap gap-4">
             <Link
               className="hover:text-foreground"

@@ -125,9 +125,10 @@ roles change with `set_role` from the admin.
 
 ### Wallets
 
-Any wallet of Stellar Wallets Kit connects. Rotating the key and admin
-recovery need a wallet that signs authorization entries (Freighter, Lobstr,
-Albedo); xBull does not. xBull is listed only when its extension is injected
+Any wallet of Stellar Wallets Kit connects. Rotating the key needs a wallet
+that signs authorization entries (Freighter, Lobstr, Albedo); xBull does not.
+The admin moves a membership with its own signature only, since the member
+is not present. xBull is listed only when its extension is injected
 on the page: in Brave, allow the extension on all sites.
 
 ## Testing

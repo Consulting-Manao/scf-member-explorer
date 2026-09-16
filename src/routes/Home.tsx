@@ -66,9 +66,8 @@ export function Home() {
               </span>
             </h1>
             <p className="max-w-xl text-lg text-muted-foreground">
-              One membership, owned by you, recorded on Stellar. It carries your
-              role and your work, and it stays yours even if you change or lose
-              your keys.
+              Your membership, owned by you, recorded on the Stellar blockchain.
+              It carries your role and your work.
             </p>
             <div className="flex flex-wrap gap-3">
               <Button asChild size="lg" variant="accent">

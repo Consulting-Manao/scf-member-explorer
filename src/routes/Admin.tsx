@@ -1,13 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ShieldCheckIcon } from "lucide-react";
+import { StrKey } from "@stellar/stellar-sdk";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { ROLES } from "@shared/membership";
 
 import { Copyable } from "@/components/Copyable";
-import { KeyHandover } from "@/components/KeyHandover";
 import { MemberAvatar } from "@/components/MemberAvatar";
 import { PageHeader } from "@/components/PageHeader";
 import { RoleBadge } from "@/components/RoleBadge";
@@ -43,7 +43,7 @@ import {
 } from "@/lib/contract";
 import { memberName } from "@/lib/members";
 import { execute } from "@/lib/tx";
-import { cn, errorMessage, formatDuration, shortAddress } from "@/lib/utils";
+import { cn, errorMessage, formatDuration } from "@/lib/utils";
 import { useWallet } from "@/lib/wallet";
 import {
   useAdmin,
@@ -191,7 +191,6 @@ function ManageMember() {
   const { data: member, isFetching } = useMember(tokenId);
   const { data: profile } = useProfile(member?.bio || undefined);
   const { busy, run } = useAdminAction();
-  const invalidate = useInvalidateMembers();
   const [role, setRole] = useState<number | null>(null);
 
   return (
@@ -330,35 +329,52 @@ function ManageMember() {
               </Dialog>
             </section>
 
-            <section className="space-y-3 rounded-xl border p-4">
-              <div>
-                <h4 className="font-medium">Move to a new key</h4>
-                <p className="text-sm text-muted-foreground">
-                  For a lost key when the accounts cannot be proven, or to
-                  reinstate a revoked member. The new key signs too, so do it
-                  together with the member.
-                </p>
-              </div>
-              <KeyHandover
-                actionLabel="Move"
-                build={(newAddress) =>
-                  membershipClient(newAddress).recover({
-                    token_id: member.tokenId,
-                    new_address: newAddress,
-                  })
-                }
-                onDone={async (newAddress) => {
-                  await invalidate();
-                  toast.info(
-                    `Your wallet is now on ${shortAddress(newAddress)}. Switch back to the admin account to continue.`,
-                  );
-                }}
-              />
-            </section>
+            <MoveToKey tokenId={member.tokenId} />
           </div>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function MoveToKey({ tokenId }: { tokenId: number }) {
+  const { busy, run } = useAdminAction();
+  const [newAddress, setNewAddress] = useState("");
+  const valid =
+    StrKey.isValidEd25519PublicKey(newAddress) ||
+    StrKey.isValidContract(newAddress);
+
+  return (
+    <section className="space-y-3 rounded-xl border p-4">
+      <div>
+        <h4 className="font-medium">Move to a new key</h4>
+        <p className="text-sm text-muted-foreground">
+          For a lost key when the accounts cannot be proven, or to reinstate a
+          revoked member. Only you sign: make sure the member controls this
+          address.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="move-address">New address</Label>
+        <Input
+          id="move-address"
+          value={newAddress}
+          onChange={(e) => setNewAddress(e.target.value.trim())}
+          placeholder="G… or C…"
+          spellCheck={false}
+        />
+      </div>
+      <Button
+        disabled={!valid || busy}
+        onClick={() =>
+          run(`Member #${tokenId} moved`, (client) =>
+            client.recover({ token_id: tokenId, new_address: newAddress }),
+          ).then(() => setNewAddress(""))
+        }
+      >
+        Move
+      </Button>
+    </section>
   );
 }
 
