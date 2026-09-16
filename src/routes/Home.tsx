@@ -66,9 +66,9 @@ export function Home() {
               </span>
             </h1>
             <p className="max-w-xl text-lg text-muted-foreground">
-              A membership that lives on Stellar and moves with you. Prove your
-              accounts once, mint it, rotate keys whenever you like, and recover
-              it if you ever lose them.
+              One membership, owned by you, recorded on Stellar. It carries your
+              role and your work, and it stays yours even if you change or lose
+              your keys.
             </p>
             <div className="flex flex-wrap gap-3">
               <Button asChild size="lg" variant="accent">
