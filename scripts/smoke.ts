@@ -18,7 +18,8 @@ import {
 } from "@stellar/stellar-sdk/contract";
 import { Client } from "stellar-membership";
 
-import { PROVIDER_ID, type AppConfig, type Claim } from "../shared/membership";
+import { accountOf, type AppConfig, type Claim } from "../shared/membership";
+import { packCar, profileFiles } from "../src/lib/ipfs";
 import { signClaim } from "../worker/claims";
 import { app } from "../worker/index";
 import { localEnv } from "./env";
@@ -32,8 +33,8 @@ function api(path: string, init?: RequestInit): Promise<Response> {
     : Promise.resolve(app.request(`/api${path}`, init, env));
 }
 
-const secret = process.env.CLAIMS_SECRET ?? env?.CLAIMS_SECRET;
-if (!secret) throw new Error("CLAIMS_SECRET is required");
+const claimsSecret = process.env.CLAIMS_SECRET ?? env?.CLAIMS_SECRET;
+if (!claimsSecret) throw new Error("CLAIMS_SECRET is required");
 const attesterSecret = process.env.ATTESTER_SECRET ?? env?.ATTESTER_SECRET;
 if (!attesterSecret) throw new Error("ATTESTER_SECRET is required");
 
@@ -101,14 +102,27 @@ async function cosign(tx: AssembledTransaction<unknown>, signer: Keypair) {
   await tx.simulate();
 }
 
-async function expectFailure(label: string, run: () => Promise<unknown>) {
+/** `run` must fail for the `expected` reason, not for any reason. */
+async function expectFailure(
+  label: string,
+  expected: RegExp,
+  run: () => Promise<unknown>,
+) {
   try {
     await run();
   } catch (error) {
-    console.log(`  rejected as expected: ${(error as Error).message}`);
+    const message = (error as Error).message;
+    if (!expected.test(message)) {
+      throw new Error(`${label} failed for the wrong reason: ${message}`);
+    }
+    console.log(`  rejected as expected: ${message}`);
     return;
   }
   throw new Error(`${label} should have failed`);
+}
+
+async function member(tokenId: number) {
+  return (await client(admin).member({ token_id: tokenId })).result;
 }
 
 async function tokenOf(address: string): Promise<number | null> {
@@ -136,14 +150,10 @@ const github: Claim = {
   id: "stellar-members-admin",
   handle: "stellar-members",
 };
-const accounts = [discord, github].map((c) => ({
-  provider: PROVIDER_ID[c.provider],
-  id: c.id,
-  handle: c.handle,
-}));
+const accounts = [discord, github].map(accountOf);
 const forAdmin = [
-  await signClaim(discord, secret),
-  await signClaim(github, secret),
+  await signClaim(discord, claimsSecret),
+  await signClaim(github, claimsSecret),
 ];
 
 step("reset: the admin holds its membership");
@@ -162,17 +172,6 @@ if (tokenId === null) {
   }
 }
 if (tokenId === null) {
-  await expectFailure("forged role", async () => {
-    const tx = await client(admin).mint({
-      to: admin.publicKey(),
-      role: 2,
-      external_accounts: { accounts, email_hash: undefined },
-      bio: "",
-      projects: [],
-    });
-    await attest(tx, forAdmin);
-  });
-
   const tx = await client(admin).mint({
     to: admin.publicKey(),
     role: 3,
@@ -186,19 +185,76 @@ if (tokenId === null) {
 } else {
   console.log(`  member #${tokenId}`);
 }
-const minted = (await client(admin).member({ token_id: tokenId })).result;
-if (minted.external_accounts.accounts.length !== 2) {
-  throw new Error("unexpected member record");
+
+step("update the accounts: a new GitHub handle, attested");
+const renamed = { ...github, handle: `stellar-members-${Date.now()}` };
+const update = await client(admin).set_external_accounts({
+  token_id: tokenId,
+  external_accounts: {
+    accounts: [discord, renamed].map(accountOf),
+    email_hash: undefined,
+  },
+});
+await attest(update, [
+  await signClaim(discord, claimsSecret),
+  await signClaim(renamed, claimsSecret),
+]);
+await update.signAndSend();
+const handles = (await member(tokenId)).external_accounts.accounts.map(
+  (a) => a.handle,
+);
+if (!handles.includes(renamed.handle)) {
+  throw new Error(`GitHub handle not updated, found ${handles.join(", ")}`);
 }
 
+step("publish a profile on IPFS, bound to the set_bio transaction");
+const { cid, car } = await packCar(
+  profileFiles({
+    name: "Stellar Members",
+    description: "Smoke test profile",
+    social: "",
+    image: null,
+  }),
+);
+const setBio = await client(admin).set_bio({
+  caller: admin.publicKey(),
+  token_id: tokenId,
+  bio: cid,
+});
+await setBio.sign();
+const uploaded = await api("/ipfs", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    cid,
+    signedTxXdr: setBio.signed!.toXDR(),
+    car: Buffer.from(car).toString("base64"),
+  }),
+});
+if (!uploaded.ok) throw new Error(`ipfs: ${await uploaded.text()}`);
+await setBio.send();
+if ((await member(tokenId)).bio !== cid) throw new Error("bio not stored");
+console.log(`  profile ${cid}`);
+await (
+  await client(admin).set_bio({
+    caller: admin.publicKey(),
+    token_id: tokenId,
+    bio: "",
+  })
+).signAndSend();
+
 step("set projects");
+const projects = ["daoip-5:scf:project:tansu_-_soroban_versioning"];
 await (
   await client(admin).set_projects({
     caller: admin.publicKey(),
     token_id: tokenId,
-    projects: ["daoip-5:scf:project:tansu_-_soroban_versioning"],
+    projects,
   })
 ).signAndSend();
+if ((await member(tokenId)).projects.join() !== projects.join()) {
+  throw new Error("projects not stored");
+}
 
 step("rotate key to the attester: admin authorizes, attester signs and pays");
 const rotate = await client(attester).rotate_key({
@@ -213,8 +269,8 @@ if ((await owner(tokenId)) !== attester.publicKey()) {
 console.log(`  owner ${attester.publicKey()}`);
 
 step("propose recovery back to the admin with a single account");
-const oneClaim = [await signClaim(discord, secret)];
-await expectFailure("one of two accounts", async () => {
+const oneClaim = [await signClaim(discord, claimsSecret)];
+await expectFailure("one of two accounts", /Prove 2/, async () => {
   const tx = await client(admin).propose_recovery({
     token_id: tokenId,
     new_address: admin.publicKey(),
@@ -230,8 +286,9 @@ const propose = await client(admin).propose_recovery({
 await attest(propose, forAdmin);
 await propose.signAndSend();
 const pending = (await client(admin).recovery({ token_id: tokenId })).result;
+if (!pending) throw new Error("recovery was not recorded");
 console.log(
-  `  pending until ${new Date(Number(pending!.executable_at) * 1000)}`,
+  `  pending until ${new Date(Number(pending.executable_at) * 1000)}`,
 );
 
 step("the current key cancels it");

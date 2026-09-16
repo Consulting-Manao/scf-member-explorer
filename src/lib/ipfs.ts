@@ -42,7 +42,7 @@ export function isEmptyProfile(input: ProfileInput): boolean {
   );
 }
 
-export async function profileFiles(input: ProfileInput): Promise<File[]> {
+export function profileFiles(input: ProfileInput): File[] {
   const profile: Profile = {
     name: input.name.trim(),
     description: input.description.trim(),
@@ -127,7 +127,6 @@ export async function uploadCar(
 }
 
 export async function fetchProfile(cid: string): Promise<Profile | null> {
-  if (!cid) return null;
   const res = await fetch(ipfsUrl(cid, "/profile.json"));
   if (!res.ok) return null;
   const data = (await res.json()) as Partial<Profile>;

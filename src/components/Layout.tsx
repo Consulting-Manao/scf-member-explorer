@@ -1,8 +1,8 @@
 import { Link, Outlet } from "@tanstack/react-router";
 
 import { config, explorerUrl } from "@/lib/config";
-import { cn } from "@/lib/utils";
-import { useAdmin, useMyMembership } from "@/queries/members";
+import { useWallet } from "@/lib/wallet";
+import { useAdmin } from "@/queries/members";
 
 import { ConnectButton } from "./ConnectButton";
 import { Logo } from "./icons";
@@ -21,7 +21,7 @@ function NavLink({ to, children }: { to: string; children: string }) {
 }
 
 export function Layout() {
-  const { address } = useMyMembership();
+  const { address } = useWallet();
   const { data: admin } = useAdmin();
 
   return (
@@ -53,12 +53,8 @@ export function Layout() {
       </main>
 
       <footer className="border-t">
-        <div
-          className={cn(
-            "mx-auto flex max-w-6xl flex-col gap-3 px-4 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6",
-          )}
-        >
-          <p>Your identify on Stellar</p>
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <p>Your identity on Stellar</p>
           <div className="flex flex-wrap gap-4">
             <Link
               className="hover:text-foreground"

@@ -38,8 +38,9 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // the app shell; API and RPC calls are never precached
-        globPatterns: ["**/*.{js,css,html,svg,png,woff2}"],
+        // the shell only: lazy chunks stay lazy, fonts and pictures are
+        // cached as they load
+        globPatterns: ["index.html", "assets/index-*.{js,css}", "*.{svg,png}"],
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
@@ -48,9 +49,15 @@ export default defineConfig({
             handler: "CacheFirst",
             options: {
               cacheName: "ipfs",
-              expiration: { maxEntries: 2000, maxAgeSeconds: 30 * DAY },
+              expiration: { maxEntries: 300, maxAgeSeconds: 30 * DAY },
               cacheableResponse: { statuses: [0, 200] },
             },
+          },
+          {
+            urlPattern: ({ url, sameOrigin }) =>
+              sameOrigin && url.pathname.startsWith("/assets/"),
+            handler: "StaleWhileRevalidate",
+            options: { cacheName: "assets" },
           },
           {
             urlPattern: ({ url }) =>

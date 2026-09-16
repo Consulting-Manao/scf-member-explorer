@@ -1,5 +1,5 @@
 export interface Env {
-  ASSETS: Fetcher;
+  /** Only bound under Workers; the Bun dev server and tests run without. */
   RATE_LIMITER?: RateLimit;
 
   NETWORK: "testnet" | "mainnet";
@@ -14,15 +14,12 @@ export interface Env {
   DISCORD_ROLE_MAP: string;
   DISCORD_CLIENT_ID: string;
   GITHUB_CLIENT_ID: string;
-  /** X is optional: enabled when both id and secret are set. */
-  X_CLIENT_ID?: string;
 
   // secrets
   ATTESTER_SECRET: string;
   CLAIMS_SECRET: string;
   DISCORD_CLIENT_SECRET: string;
   GITHUB_CLIENT_SECRET: string;
-  X_CLIENT_SECRET?: string;
   FILEBASE_TOKEN: string;
 }
 
@@ -64,12 +61,5 @@ export function missingSettings(env: Partial<Env>): string[] {
       missing.push("DISCORD_ROLE_MAP (invalid JSON)");
     }
   }
-  if (Boolean(env.X_CLIENT_ID) !== Boolean(env.X_CLIENT_SECRET)) {
-    missing.push("X_CLIENT_ID and X_CLIENT_SECRET (both or none)");
-  }
   return missing;
-}
-
-export function xEnabled(env: Env): boolean {
-  return Boolean(env.X_CLIENT_ID && env.X_CLIENT_SECRET);
 }

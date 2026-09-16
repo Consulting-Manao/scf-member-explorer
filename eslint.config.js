@@ -10,8 +10,6 @@ export default tseslint.config(
       "dist",
       "packages",
       ".wrangler",
-      "playwright-report",
-      "test-results",
       "worker/worker-configuration.d.ts",
     ],
   },
@@ -20,7 +18,7 @@ export default tseslint.config(
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
       ecmaVersion: 2023,
-      globals: { ...globals.browser, ...globals.serviceworker },
+      globals: globals.browser,
     },
     plugins: {
       "react-hooks": reactHooks,

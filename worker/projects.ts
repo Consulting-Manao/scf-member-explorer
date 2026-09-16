@@ -18,7 +18,7 @@ interface PgAtlasProject {
   git_owner_url: string | null;
 }
 
-const CACHE_SECONDS = 3600;
+export const CACHE_SECONDS = 3600;
 
 function toProject(project: PgAtlasProject): Project {
   return {

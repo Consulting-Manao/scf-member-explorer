@@ -5,11 +5,12 @@ import { useEffect, useMemo, useState } from "react";
 import { ROLES } from "@shared/membership";
 
 import { MemberCard, MemberCardSkeleton } from "@/components/MemberCard";
-import { MemberSearch, ProjectFilterChip } from "@/components/MemberSearch";
+import { MemberSearch } from "@/components/MemberSearch";
+import { ProjectChip } from "@/components/ProjectPicker";
 import { Button } from "@/components/ui/button";
+import { Pill } from "@/components/ui/pill";
 import { useSentinel } from "@/hooks/useSentinel";
 import type { MemberView } from "@/lib/contract";
-import { cn } from "@/lib/utils";
 import { useMemberCount, useMembers, useMyMembership } from "@/queries/members";
 
 /** Cards revealed per scroll step; pages are read 100 at a time. */
@@ -46,15 +47,23 @@ export function Home() {
     [members.data],
   );
   const filtering = Boolean(search.trim() || role !== null || project);
-  const visible = loaded.filter(
-    (m) =>
-      matches(m, search.trim()) &&
-      (role === null || m.role === role) &&
-      (project === null || m.projects.includes(project)),
+  const visible = useMemo(
+    () =>
+      loaded.filter(
+        (m) =>
+          matches(m, search.trim()) &&
+          (role === null || m.role === role) &&
+          (project === null || m.projects.includes(project)),
+      ),
+    [loaded, search, role, project],
   );
   const complete = !members.hasNextPage && !members.isLoading;
-  const countByRole = ROLES.map(
-    (_, i) => loaded.filter((m) => !m.revoked && m.role === i).length,
+  const countByRole = useMemo(
+    () =>
+      ROLES.map(
+        (_, i) => loaded.filter((m) => !m.revoked && m.role === i).length,
+      ),
+    [loaded],
   );
 
   // reveal more cards as the sentinel comes into view, read the next page
@@ -120,16 +129,10 @@ export function Home() {
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <div className="flex flex-wrap gap-1.5">
               {[null, 0, 1, 2, 3].map((value) => (
-                <button
+                <Pill
                   key={String(value)}
-                  type="button"
+                  selected={role === value}
                   onClick={() => setRole(value)}
-                  className={cn(
-                    "inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition",
-                    role === value
-                      ? "border-foreground bg-foreground text-background"
-                      : "hover:bg-muted",
-                  )}
                 >
                   {value === null ? "All" : ROLES[value]}
                   {complete && value !== null && (
@@ -137,13 +140,10 @@ export function Home() {
                       {countByRole[value]}
                     </span>
                   )}
-                </button>
+                </Pill>
               ))}
               {project && (
-                <ProjectFilterChip
-                  id={project}
-                  onRemove={() => setProject(null)}
-                />
+                <ProjectChip id={project} onRemove={() => setProject(null)} />
               )}
             </div>
             <MemberSearch

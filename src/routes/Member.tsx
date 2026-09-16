@@ -17,28 +17,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { explorerUrl } from "@/lib/config";
-import { memberName } from "@/lib/members";
 import { ipfsUrl } from "@/lib/ipfs";
+import type { MemberView } from "@/lib/contract";
+import { useWallet } from "@/lib/wallet";
 import {
   useAdmin,
   useMember,
+  useMemberName,
   useNqg,
-  useProfile,
   useRecovery,
 } from "@/queries/members";
-import { useWallet } from "@/lib/wallet";
 
 export function MemberPage() {
   const { tokenId: param } = useParams({ from: "/members/$tokenId" });
   const tokenId = Number(param);
-  const { address } = useWallet();
   const { data: member, isLoading } = useMember(
     Number.isInteger(tokenId) ? tokenId : null,
   );
-  const { data: profile } = useProfile(member?.bio || undefined);
-  const { data: recovery } = useRecovery(member ? tokenId : null);
-  const { data: nqg } = useNqg(tokenId, Boolean(member && !member.revoked));
-  const { data: admin } = useAdmin();
 
   if (isLoading) {
     return (
@@ -49,7 +44,6 @@ export function MemberPage() {
       </div>
     );
   }
-
   if (!member) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-24 text-center sm:px-6">
@@ -60,7 +54,15 @@ export function MemberPage() {
       </div>
     );
   }
+  return <MemberDetails member={member} />;
+}
 
+function MemberDetails({ member }: { member: MemberView }) {
+  const { address } = useWallet();
+  const { name, profile } = useMemberName(member);
+  const { data: recovery } = useRecovery(member.tokenId);
+  const { data: nqg } = useNqg(member.tokenId, !member.revoked);
+  const { data: admin } = useAdmin();
   const isOwner = Boolean(address && address === member.owner);
 
   return (
@@ -94,7 +96,7 @@ export function MemberPage() {
             </span>
           </div>
           <h1 className="truncate text-3xl font-semibold sm:text-4xl">
-            {memberName(member, profile?.name)}
+            {name}
           </h1>
           {member.owner && <Copyable value={member.owner} />}
         </div>

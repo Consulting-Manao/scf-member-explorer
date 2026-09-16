@@ -17,7 +17,7 @@ export const PROVIDER_ID: Record<ProviderName, number> = {
 export const PROVIDER_HINT: Record<ProviderName, string> = {
   discord: "Required. You need to be on the Stellar Developers server.",
   github: "Links you to your contributions.",
-  x: "If you want it on your profile.",
+  x: "Not offered anymore.",
 };
 
 export const PROVIDER_LABEL: Record<ProviderName, string> = {
@@ -37,8 +37,6 @@ export const ROLES = ["Verified", "Pathfinder", "Navigator", "Pilot"] as const;
 export type RoleName = (typeof ROLES)[number];
 
 export const MAX_PROJECTS = 10;
-export const MAX_PROJECT_LEN = 128;
-export const MAX_BIO_LEN = 128;
 export const MAX_ACCOUNT_LEN = 64;
 export const RECOVERY_DELAY_SECONDS = 7 * 24 * 3600;
 
@@ -94,6 +92,15 @@ export async function hashEmail(email: string): Promise<string> {
   return toHex(new Uint8Array(await crypto.subtle.digest("SHA-256", data)));
 }
 
+/** The contract's account record for a verified claim. */
+export function accountOf(claim: Claim): SocialAccount {
+  return {
+    provider: PROVIDER_ID[claim.provider],
+    id: claim.id,
+    handle: claim.handle,
+  };
+}
+
 /**
  * External accounts of the contract from verified claims, ordered by
  * provider. The email hash is taken from `emailFrom` when it has one.
@@ -104,11 +111,7 @@ export function accountsFromClaims(
 ): { accounts: SocialAccount[]; emailHash?: string } {
   const accounts = [...claims]
     .sort((a, b) => PROVIDER_ID[a.provider] - PROVIDER_ID[b.provider])
-    .map((claim) => ({
-      provider: PROVIDER_ID[claim.provider],
-      id: claim.id,
-      handle: claim.handle,
-    }));
+    .map(accountOf);
   const emailHash = claims.find((c) => c.provider === emailFrom)?.emailHash;
   return { accounts, emailHash };
 }

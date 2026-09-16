@@ -11,7 +11,7 @@ import { Home } from "./routes/Home";
 import { MemberPage } from "./routes/Member";
 import { NotFound } from "./routes/NotFound";
 import { OAuthCallback } from "./routes/OAuthCallback";
-import { Profile } from "./routes/Profile";
+import { Profile } from "./routes/profile";
 
 const rootRoute = createRootRoute({
   component: Layout,

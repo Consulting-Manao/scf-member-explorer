@@ -41,14 +41,13 @@ export function OAuthCallback() {
         <>
           <h1 className="text-2xl font-semibold">Verification failed</h1>
           <p className="text-muted-foreground">{error}</p>
-          <Button onClick={() => window.history.go(-2)}>Go back</Button>
+          <Button onClick={() => navigate({ to: "/profile" })}>Go back</Button>
         </>
       ) : (
         <>
           <LoaderCircleIcon className="size-8 animate-spin" />
           <p className="text-muted-foreground">
-            Confirming your {PROVIDER_LABEL[provider as ProviderName] ?? ""}{" "}
-            account…
+            Confirming your {PROVIDER_LABEL[provider as ProviderName]} account…
           </p>
         </>
       )}

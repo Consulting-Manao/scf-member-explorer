@@ -3,9 +3,8 @@ import { useState } from "react";
 import { PROVIDER_ID } from "@shared/membership";
 
 import type { MemberView } from "@/lib/contract";
-import { memberName } from "@/lib/members";
 import { cn } from "@/lib/utils";
-import { useProfile } from "@/queries/members";
+import { useMemberName } from "@/queries/members";
 
 /** Stable gradient from the token id. */
 function gradient(tokenId: number): string {
@@ -20,7 +19,7 @@ export function MemberAvatar({
   member: MemberView;
   className?: string;
 }) {
-  const { data: profile } = useProfile(member.bio || undefined);
+  const { name, profile } = useMemberName(member);
   const [failed, setFailed] = useState<string | null>(null);
 
   const github = member.accounts.find((a) => a.provider === PROVIDER_ID.github);
@@ -29,7 +28,6 @@ export function MemberAvatar({
     (github
       ? `https://avatars.githubusercontent.com/u/${github.id}?s=160`
       : null);
-  const name = memberName(member, profile?.name);
 
   return (
     <div

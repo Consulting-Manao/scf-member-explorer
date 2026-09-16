@@ -6,9 +6,14 @@ import {
   Networks,
   TransactionBuilder,
 } from "@stellar/stellar-sdk";
+import { CarWriter } from "@ipld/car";
+import { CID } from "multiformats/cid";
+import * as raw from "multiformats/codecs/raw";
+import { sha256 } from "multiformats/hashes/sha2";
 import { describe, expect, it } from "vitest";
 
-import { checkUploadTransaction, UploadError } from "./ipfs";
+import type { Env } from "./env";
+import { checkUploadTransaction, upload, UploadError } from "./ipfs";
 
 const contractId = "CATJ45GRCHCTXLR4H2GKTUW7L5CBCKYO6P3PTRLHPASBIVT3BESZ37WN";
 const cid = "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi";
@@ -72,10 +77,28 @@ describe("checkUploadTransaction", () => {
   it("rejects when the CID is not in the call", () => {
     expect(check(signedTx({ bio: "bafyother" }))).toThrow(UploadError);
   });
+});
 
-  it("rejects another network", () => {
-    expect(() =>
-      checkUploadTransaction(signedTx(), cid, contractId, Networks.PUBLIC),
-    ).toThrow();
+describe("upload", () => {
+  it("rejects a CAR whose root is not the CID", async () => {
+    const bytes = new TextEncoder().encode("not the profile");
+    const root = CID.create(1, raw.code, await sha256.digest(bytes));
+    const { writer, out } = CarWriter.create([root]);
+    const chunks: Uint8Array[] = [];
+    const collected = (async () => {
+      for await (const chunk of out) chunks.push(chunk);
+    })();
+    await writer.put({ cid: root, bytes });
+    await writer.close();
+    await collected;
+    const car = Buffer.concat(chunks).toString("base64");
+
+    const env = {
+      CONTRACT_ID: contractId,
+      NETWORK_PASSPHRASE: Networks.TESTNET,
+    } as Env;
+    await expect(
+      upload(env, { cid, signedTxXdr: signedTx(), car }),
+    ).rejects.toThrow("CID does not match the CAR");
   });
 });

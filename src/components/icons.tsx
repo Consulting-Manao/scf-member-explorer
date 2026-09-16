@@ -20,7 +20,7 @@ export function GithubIcon(props: IconProps) {
   );
 }
 
-export function XIcon(props: IconProps) {
+export function XLogo(props: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden {...props}>
       <path d="M18.9 1.15h3.68l-8.04 9.19L24 22.85h-7.4l-5.8-7.58-6.63 7.58H.49l8.6-9.83L0 1.15h7.59l5.24 6.93 6.07-6.93Zm-1.29 19.5h2.04L6.48 3.24H4.3l13.31 17.41Z" />
@@ -32,7 +32,7 @@ export function ProviderIcon({
   provider,
   ...props
 }: IconProps & { provider: ProviderName }) {
-  const Icon = { discord: DiscordIcon, github: GithubIcon, x: XIcon }[provider];
+  const Icon = { discord: DiscordIcon, github: GithubIcon, x: XLogo }[provider];
   return <Icon {...props} />;
 }
 

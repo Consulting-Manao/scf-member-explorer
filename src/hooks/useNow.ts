@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
 
-/** Current time in ms, refreshed at `interval`. */
-export function useNow(interval = 30_000): number {
+/** The current time, refreshed every second. */
+export function useNow(): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), interval);
-    return () => clearInterval(id);
-  }, [interval]);
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
   return now;
+}
+
+/** Seconds until `at`, counting down. */
+export function useRemaining(at: Date): number {
+  return Math.floor((at.getTime() - useNow()) / 1000);
 }

@@ -9,20 +9,17 @@ import { api } from "./api";
 import { config } from "./config";
 import { rememberEmail } from "./email";
 
-const AUTHORIZE: Record<ProviderName, { url: string; scope: string }> = {
-  discord: {
-    url: "https://discord.com/oauth2/authorize",
-    scope: "identify email guilds.members.read",
-  },
-  github: {
-    url: "https://github.com/login/oauth/authorize",
-    scope: "read:user user:email",
-  },
-  x: {
-    url: "https://x.com/i/oauth2/authorize",
-    scope: "users.read tweet.read",
-  },
-};
+const AUTHORIZE: Partial<Record<ProviderName, { url: string; scope: string }>> =
+  {
+    discord: {
+      url: "https://discord.com/oauth2/authorize",
+      scope: "identify email guilds.members.read",
+    },
+    github: {
+      url: "https://github.com/login/oauth/authorize",
+      scope: "read:user user:email",
+    },
+  };
 
 const PENDING_KEY = "oauth:pending";
 const CLAIMS_KEY = "oauth:claims";
@@ -78,7 +75,9 @@ export function authorizeUrl(
     codeChallenge: string;
   },
 ): string {
-  const { url, scope } = AUTHORIZE[provider];
+  const target = AUTHORIZE[provider];
+  if (!target) throw new Error(`${provider} accounts cannot be verified`);
+  const { url, scope } = target;
   const query = new URLSearchParams({
     response_type: "code",
     client_id: params.clientId,

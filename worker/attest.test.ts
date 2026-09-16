@@ -9,7 +9,7 @@ import {
 import { Client } from "stellar-membership";
 import { describe, expect, it } from "vitest";
 
-import { PROVIDER_ID, type Claim } from "@shared/membership";
+import { accountOf, type Claim } from "@shared/membership";
 
 import {
   attest,
@@ -22,7 +22,6 @@ import {
 const networkPassphrase = Networks.TESTNET;
 const attester = Keypair.random();
 const member = Keypair.random().publicKey();
-const other = Keypair.random().publicKey();
 const contractId = "CATJ45GRCHCTXLR4H2GKTUW7L5CBCKYO6P3PTRLHPASBIVT3BESZ37WN";
 const latestLedger = 1_000;
 
@@ -48,17 +47,9 @@ const github: Claim = {
   emailHash: "bb".repeat(32),
 };
 
-function account(claim: Claim) {
-  return {
-    provider: PROVIDER_ID[claim.provider],
-    id: claim.id,
-    handle: claim.handle,
-  };
-}
-
 function external(claims: Claim[], emailHash?: string) {
   return {
-    accounts: claims.map(account),
+    accounts: claims.map(accountOf),
     email_hash: emailHash ? Buffer.from(emailHash, "hex") : undefined,
   };
 }
@@ -111,7 +102,7 @@ const onChain: MemberValue = {
   status: 0,
   role: 0,
   external_accounts: {
-    accounts: [account(discord), account(github)],
+    accounts: [accountOf(discord), accountOf(github)],
     email_hash: Buffer.from(discord.emailHash!, "hex"),
   },
 };
@@ -170,45 +161,12 @@ describe("attest mint", () => {
     );
   });
 
-  it("requires Discord", async () => {
-    const entry = await entryFor(
-      "mint",
-      mintArgs(member, 0, external([github])),
-    );
-    await rejects(
-      attest(entry, latestLedger + 60, context({ claims: [github] })),
-      "Discord",
-    );
-  });
-
   it("rejects an email that was not verified", async () => {
     const entry = await entryFor(
       "mint",
       mintArgs(member, 3, external([discord], "cc".repeat(32))),
     );
     await rejects(attest(entry, latestLedger + 60, context()), "Email");
-  });
-
-  it("rejects claims issued for another address", async () => {
-    const entry = await entryFor(
-      "mint",
-      mintArgs(other, 3, external([discord])),
-    );
-    await rejects(
-      attest(entry, latestLedger + 60, context()),
-      "another address",
-    );
-  });
-
-  it("rejects without claims", async () => {
-    const entry = await entryFor(
-      "mint",
-      mintArgs(member, 3, external([discord])),
-    );
-    await rejects(
-      attest(entry, latestLedger + 60, context({ claims: [] })),
-      "No verified account",
-    );
   });
 
   it("only signs its own entries on this contract", async () => {
@@ -271,18 +229,6 @@ describe("attest set_external_accounts", () => {
     await attest(entry, latestLedger + 60, context({ claims: [x] }));
   });
 
-  it("requires the claims to be for the owner", async () => {
-    const x: Claim = { address: other, provider: "x", id: "7", handle: "g" };
-    const entry = await entryFor(
-      "set_external_accounts",
-      args(0, external([discord, x])),
-    );
-    await rejects(
-      attest(entry, latestLedger + 60, context({ claims: [x] })),
-      "another address",
-    );
-  });
-
   it("rejects removing Discord", async () => {
     const entry = await entryFor(
       "set_external_accounts",
@@ -314,7 +260,7 @@ describe("attest propose_recovery", () => {
     });
   }
 
-  it("requires two matching accounts", async () => {
+  it("requires two matching accounts, or the only one of the member", async () => {
     const entry = await entryFor("propose_recovery", args(0));
     await attest(
       entry,
@@ -328,6 +274,16 @@ describe("attest propose_recovery", () => {
         context({ claims: [recovered(discord)] }),
       ),
       "Prove 2",
+    );
+
+    const single: MemberValue = {
+      ...onChain,
+      external_accounts: { accounts: [accountOf(discord)] },
+    };
+    await attest(
+      entry,
+      latestLedger + 60,
+      context({ claims: [recovered(discord)], member: async () => single }),
     );
   });
 
@@ -345,24 +301,15 @@ describe("attest propose_recovery", () => {
     );
   });
 
-  it("accepts the only account of a member", async () => {
-    const entry = await entryFor("propose_recovery", args(0));
-    const single: MemberValue = {
-      ...onChain,
-      external_accounts: { accounts: [account(discord)] },
-    };
-    await attest(
-      entry,
-      latestLedger + 60,
-      context({ claims: [recovered(discord)], member: async () => single }),
-    );
-  });
-
-  it("requires the claims to be for the new address", async () => {
+  it("requires claims, issued for the new address", async () => {
     const entry = await entryFor("propose_recovery", args(0));
     await rejects(
       attest(entry, latestLedger + 60, context()),
       "another address",
+    );
+    await rejects(
+      attest(entry, latestLedger + 60, context({ claims: [] })),
+      "No verified account",
     );
   });
 

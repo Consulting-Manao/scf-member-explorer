@@ -5,8 +5,6 @@ dist-ssr
 .wrangler
 .dev.vars
 .env
-playwright-report
-test-results
 
 # Editor directories and files
 .vscode/*
@@ -14,3 +12,7 @@ test-results
 .idea
 .DS_Store
 *.log
+
+# Contract
+contract/target
+contract/test_snapshots

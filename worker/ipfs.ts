@@ -21,7 +21,7 @@ export class UploadError extends Error {}
 /** Contract functions storing a bio CID. */
 const BIO_FUNCTIONS = ["mint", "set_bio"];
 /** 5 MB is plenty for a profile and a picture. */
-export const MAX_CAR_BYTES = 5 * 1024 * 1024;
+const MAX_CAR_BYTES = 5 * 1024 * 1024;
 
 export function checkUploadTransaction(
   signedTxXdr: string,
@@ -49,7 +49,7 @@ export function checkUploadTransaction(
     throw new UploadError("Expected a single contract invocation");
   }
   if (op.func.type !== "hostFunctionTypeInvokeContract") {
-    throw new UploadError("Expected a contract invocation");
+    throw new UploadError("Expected a contract call, not a deploy");
   }
   const call = op.func.invokeContract;
   if (Address.fromScAddress(call.contractAddress).toString() !== contractId) {
@@ -65,7 +65,7 @@ export function checkUploadTransaction(
     throw new UploadError("The CID is not stored by the transaction");
 }
 
-export async function rootCid(car: Uint8Array<ArrayBuffer>): Promise<string> {
+async function rootCid(car: Uint8Array<ArrayBuffer>): Promise<string> {
   const reader = await CarReader.fromBytes(car);
   const [root] = await reader.getRoots();
   if (!root) throw new UploadError("CAR has no root");
@@ -77,15 +77,15 @@ async function importToFilebase(
   cid: string,
   car: Uint8Array<ArrayBuffer>,
 ): Promise<void> {
+  const form = new FormData();
+  form.append(
+    "file",
+    new Blob([car], { type: "application/vnd.ipld.car" }),
+    `${cid}.car`,
+  );
   let lastError: unknown;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const form = new FormData();
-      form.append(
-        "file",
-        new Blob([car], { type: "application/vnd.ipld.car" }),
-        `${cid}.car`,
-      );
       const res = await fetch("https://rpc.filebase.io/api/v0/dag/import", {
         method: "POST",
         headers: { Authorization: `Bearer ${env.FILEBASE_TOKEN}` },
@@ -98,7 +98,9 @@ async function importToFilebase(
       return;
     } catch (error) {
       lastError = error;
-      await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt));
+      if (attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt));
+      }
     }
   }
   throw lastError;
@@ -119,10 +121,11 @@ export async function upload(
     env.NETWORK_PASSPHRASE,
   );
 
-  const bytes = Uint8Array.from(atob(car), (char) => char.charCodeAt(0));
-  if (bytes.length === 0 || bytes.length > MAX_CAR_BYTES) {
+  // base64 is 4/3 of the bytes, checked before decoding
+  if (car.length === 0 || car.length > (MAX_CAR_BYTES * 4) / 3 + 4) {
     throw new UploadError("Invalid CAR size");
   }
+  const bytes = Uint8Array.from(atob(car), (char) => char.charCodeAt(0));
   if ((await rootCid(bytes)) !== cid) {
     throw new UploadError("CID does not match the CAR");
   }

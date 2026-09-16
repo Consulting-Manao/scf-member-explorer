@@ -24,16 +24,18 @@ const CONTRACT_ERRORS: Record<string, string> = {
   NoRecovery: "There is no pending recovery.",
 };
 
-/** The wallets kit rejects with plain `{ code, message }` objects. */
+/**
+ * Whether the user backed out in the wallet. Wallets and the kit reject
+ * with `{ code, message }` objects; errors from the network or the
+ * contract are `Error` instances and never count.
+ */
 export function isCancelled(error: unknown): boolean {
-  const message = rawMessage(error);
   return (
-    (typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      error.code === -1 &&
-      /closed the modal/i.test(message)) ||
-    /reject|declin|cancel/i.test(message)
+    typeof error === "object" &&
+    error !== null &&
+    !(error instanceof Error) &&
+    "code" in error &&
+    /closed the modal|reject|declin|cancel/i.test(rawMessage(error))
   );
 }
 

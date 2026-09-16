@@ -1,11 +1,6 @@
-import { BadgeCheckIcon, XIcon as RemoveIcon } from "lucide-react";
+import { BadgeCheckIcon, XIcon } from "lucide-react";
 
-import {
-  PROVIDER_HINT,
-  PROVIDER_LABEL,
-  ROLES,
-  type ProviderName,
-} from "@shared/membership";
+import { PROVIDER_HINT, PROVIDER_LABEL, ROLES } from "@shared/membership";
 
 import { enabledProviders, forgetClaim, startOAuth } from "@/lib/oauth";
 import { notify } from "@/lib/toast";
@@ -19,12 +14,10 @@ export function VerifyAccounts({
   address,
   returnTo,
   showRole = false,
-  hints = PROVIDER_HINT,
 }: {
   address: string;
   returnTo: string;
   showRole?: boolean;
-  hints?: Partial<Record<ProviderName, string>>;
 }) {
   const claims = useClaims(address);
   const providers = enabledProviders();
@@ -50,7 +43,7 @@ export function VerifyAccounts({
                 </p>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  {hints[provider]}
+                  {PROVIDER_HINT[provider]}
                 </p>
               )}
             </div>
@@ -61,7 +54,7 @@ export function VerifyAccounts({
                 aria-label={`Remove ${PROVIDER_LABEL[provider]}`}
                 onClick={() => forgetClaim(address, provider)}
               >
-                <RemoveIcon />
+                <XIcon />
               </Button>
             ) : (
               <Button

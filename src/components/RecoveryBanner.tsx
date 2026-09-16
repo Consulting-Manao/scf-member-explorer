@@ -1,6 +1,6 @@
 import { ShieldAlertIcon, ShieldOffIcon } from "lucide-react";
 
-import { useNow } from "@/hooks/useNow";
+import { useRemaining } from "@/hooks/useNow";
 import type { MemberView, Recovery } from "@/lib/contract";
 import { membershipClient } from "@/lib/contract";
 import { notify } from "@/lib/toast";
@@ -25,8 +25,7 @@ export function RecoveryBanner({
 }) {
   const { address, signTransaction } = useWallet();
   const invalidate = useInvalidateMembers();
-  const now = useNow();
-  const remaining = Math.floor((recovery.executableAt.getTime() - now) / 1000);
+  const remaining = useRemaining(recovery.executableAt);
 
   return (
     <Alert variant="warning" className="items-start">

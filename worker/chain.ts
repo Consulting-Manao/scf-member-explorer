@@ -16,7 +16,7 @@ export async function latestLedger(env: Env): Promise<number> {
   return (await new rpc.Server(env.RPC_URL).getLatestLedger()).sequence;
 }
 
-/** Current address of an active token, null otherwise. */
+/** Address of an active token; null when absent, revoked or unreachable. */
 export async function readOwner(
   env: Env,
   tokenId: number,
@@ -28,6 +28,7 @@ export async function readOwner(
   }
 }
 
+/** Record of a token; null when absent or unreachable. */
 export async function readMember(
   env: Env,
   tokenId: number,

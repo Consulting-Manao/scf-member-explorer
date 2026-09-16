@@ -4,7 +4,6 @@ import { useDeferredValue, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useProjects } from "@/queries/members";
 
-import { ProjectChip } from "./ProjectPicker";
 import { Input } from "./ui/input";
 
 /**
@@ -48,7 +47,7 @@ export function MemberSearch({
           setActive(0);
         }}
         onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onBlur={() => setOpen(false)}
         onKeyDown={(e) => {
           if (!listed || suggestions.length === 0) {
             if (e.key === "Escape") onText("");
@@ -71,7 +70,15 @@ export function MemberSearch({
           project ? "Search within the project" : "Search members or projects"
         }
         aria-label="Search members or projects"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-controls="member-search-projects"
         aria-expanded={listed}
+        aria-activedescendant={
+          listed && suggestions[active]
+            ? `project-option-${suggestions[active].id}`
+            : undefined
+        }
         className="pr-9 pl-9"
       />
       {text && (
@@ -86,6 +93,7 @@ export function MemberSearch({
       )}
       {listed && (projects.isLoading || suggestions.length > 0) && (
         <ul
+          id="member-search-projects"
           role="listbox"
           className="absolute z-30 mt-1 max-h-64 w-max max-w-md min-w-full overflow-auto rounded-xl border bg-card p-1 shadow-lg"
         >
@@ -95,9 +103,12 @@ export function MemberSearch({
             </li>
           )}
           {suggestions.map((item, i) => (
-            <li key={item.id} role="option" aria-selected={i === active}>
+            <li key={item.id}>
               <button
                 type="button"
+                role="option"
+                id={`project-option-${item.id}`}
+                aria-selected={i === active}
                 onMouseDown={(e) => e.preventDefault()}
                 onMouseEnter={() => setActive(i)}
                 onClick={() => pick(item.id)}
@@ -124,14 +135,4 @@ export function MemberSearch({
       )}
     </div>
   );
-}
-
-export function ProjectFilterChip({
-  id,
-  onRemove,
-}: {
-  id: string;
-  onRemove: () => void;
-}) {
-  return <ProjectChip id={id} onRemove={onRemove} />;
 }

@@ -34,7 +34,7 @@ async function json<T>(res: Response, what: string): Promise<T> {
 
 const MAX_EMAIL_LEN = 254;
 
-/** The normalized email and its hash, or nothing. */
+/** Nothing when the provider has no verified email for the account. */
 async function verifiedEmail(
   email: string | null | undefined,
 ): Promise<Pick<Identity, "email" | "emailHash">> {
@@ -43,7 +43,8 @@ async function verifiedEmail(
   return { email: normalized, emailHash: await hashEmail(normalized) };
 }
 
-function checkIdentity(identity: Identity): Identity {
+/** Reject an unusable account id, clamp the handle to what the contract stores. */
+function normalizeIdentity(identity: Identity): Identity {
   if (!identity.id || identity.id.length > MAX_ACCOUNT_LEN) {
     throw new OAuthError("Invalid account id");
   }
@@ -158,39 +159,9 @@ async function github(env: Env, exchange: CodeExchange): Promise<Identity> {
   };
 }
 
-async function x(env: Env, exchange: CodeExchange): Promise<Identity> {
-  if (!env.X_CLIENT_ID || !env.X_CLIENT_SECRET) {
-    throw new OAuthError("X is not enabled");
-  }
-  const token = await json<{ access_token: string }>(
-    await fetch("https://api.x.com/2/oauth2/token", {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${btoa(`${env.X_CLIENT_ID}:${env.X_CLIENT_SECRET}`)}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code: exchange.code,
-        redirect_uri: exchange.redirectUri,
-        code_verifier: exchange.codeVerifier,
-      }),
-    }),
-    "X token exchange",
-  );
-  const user = await json<{ data: { id: string; username: string } }>(
-    await fetch("https://api.x.com/2/users/me", {
-      headers: { Authorization: `Bearer ${token.access_token}` },
-    }),
-    "X user",
-  );
-  return { provider: "x", id: user.data.id, handle: user.data.username };
-}
-
-const PROVIDERS: Record<
-  ProviderName,
-  (env: Env, exchange: CodeExchange) => Promise<Identity>
-> = { discord, github, x };
+const EXCHANGES: Partial<
+  Record<ProviderName, (env: Env, exchange: CodeExchange) => Promise<Identity>>
+> = { discord, github };
 
 /** Exchange an authorization code for the verified identity. */
 export async function exchangeCode(
@@ -198,5 +169,7 @@ export async function exchangeCode(
   env: Env,
   exchange: CodeExchange,
 ): Promise<Identity> {
-  return checkIdentity(await PROVIDERS[provider](env, exchange));
+  const run = EXCHANGES[provider];
+  if (!run) throw new OAuthError(`${provider} accounts cannot be verified`);
+  return normalizeIdentity(await run(env, exchange));
 }

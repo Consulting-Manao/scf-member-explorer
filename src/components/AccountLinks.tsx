@@ -7,15 +7,13 @@ import { ProviderIcon } from "./icons";
 
 export function AccountLinks({
   accounts,
-  className,
   withHandles = false,
 }: {
   accounts: SocialAccount[];
-  className?: string;
   withHandles?: boolean;
 }) {
   return (
-    <div className={cn("flex flex-wrap items-center gap-2", className)}>
+    <div className="flex flex-wrap items-center gap-2">
       {accounts.map((account) => {
         const provider = providerName(account.provider);
         const title = `${provider}: ${account.handle || account.id}`;

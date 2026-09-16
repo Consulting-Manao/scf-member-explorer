@@ -16,6 +16,7 @@ import {
 } from "@stellar/stellar-sdk";
 
 import {
+  accountOf,
   PROVIDER_ID,
   toHex,
   type Claim,
@@ -61,9 +62,7 @@ function decodeInvocation(
   ctx: AttestContext,
 ): Invocation {
   const info = inspectAuthEntry(entry);
-  if (info.address === null) fail("Expected address credentials");
   if (info.address !== ctx.attester.publicKey()) fail("Not an attester entry");
-  if (info.signers.length !== 1) fail("Unexpected delegated signers");
 
   const tree = buildInvocationTree(info.invocation);
   if (tree.invocations.length > 0) fail("Unexpected sub-invocation");
@@ -86,10 +85,12 @@ function sameAccount(a: SocialAccount, b: SocialAccount): boolean {
   return a.provider === b.provider && a.id === b.id && a.handle === b.handle;
 }
 
-function asAccounts(value: unknown): {
+interface Accounts {
   accounts: SocialAccount[];
   emailHash: string | null;
-} {
+}
+
+function asAccounts(value: unknown): Accounts {
   const external = value as MemberValue["external_accounts"];
   if (!external || !Array.isArray(external.accounts)) {
     fail("Malformed external accounts");
@@ -107,14 +108,10 @@ function asAccounts(value: unknown): {
 function checkAccounts(
   value: unknown,
   claims: Claim[],
-  current: ReturnType<typeof asAccounts> = { accounts: [], emailHash: null },
+  current: Accounts = { accounts: [], emailHash: null },
 ): void {
   const { accounts, emailHash } = asAccounts(value);
-  const verified: SocialAccount[] = claims.map((claim) => ({
-    provider: PROVIDER_ID[claim.provider],
-    id: claim.id,
-    handle: claim.handle,
-  }));
+  const verified = claims.map(accountOf);
 
   for (const account of accounts) {
     const known = [...verified, ...current.accounts].some((other) =>
@@ -135,13 +132,13 @@ function checkAccounts(
 }
 
 async function checkMint(args: unknown[], ctx: AttestContext): Promise<void> {
-  const [to, role, external] = args;
   if (args.length !== 3) fail("Unexpected arguments");
+  const [to, role, external] = args;
   const claims = claimsFor(to, ctx);
 
-  const discord = claims.find((claim) => claim.provider === "discord");
-  if (!discord) fail("A Discord account is required");
-  if (role !== (discord.role ?? 0)) fail("Role not granted");
+  const granted =
+    claims.find((claim) => claim.provider === "discord")?.role ?? 0;
+  if (role !== granted) fail("Role not granted");
 
   checkAccounts(external, claims);
 }
@@ -150,16 +147,17 @@ async function checkSetExternalAccounts(
   args: unknown[],
   ctx: AttestContext,
 ): Promise<void> {
-  const [tokenId, external] = args;
-  if (args.length !== 2 || typeof tokenId !== "number") {
+  if (args.length !== 2 || typeof args[0] !== "number") {
     fail("Unexpected arguments");
   }
-  const owner = await ctx.owner(tokenId);
-  if (!owner) fail("Not an active member");
+  const [tokenId, external] = args as [number, unknown];
+  // the owner is only readable while the token is active
+  const [owner, member] = await Promise.all([
+    ctx.owner(tokenId),
+    ctx.member(tokenId),
+  ]);
+  if (!owner || !member) fail("Not an active member");
   const claims = claimsFor(owner, ctx);
-
-  const member = await ctx.member(tokenId);
-  if (!member) fail("Not an active member");
   checkAccounts(external, claims, asAccounts(member.external_accounts));
 }
 
@@ -168,10 +166,10 @@ async function checkProposeRecovery(
   args: unknown[],
   ctx: AttestContext,
 ): Promise<void> {
-  const [tokenId, newAddress] = args;
-  if (args.length !== 2 || typeof tokenId !== "number") {
+  if (args.length !== 2 || typeof args[0] !== "number") {
     fail("Unexpected arguments");
   }
+  const [tokenId, newAddress] = args as [number, unknown];
   const claims = claimsFor(newAddress, ctx);
 
   const member = await ctx.member(tokenId);

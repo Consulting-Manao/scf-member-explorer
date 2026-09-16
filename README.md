@@ -1,26 +1,39 @@
-# Stellar Members
+# Stellar Membership
 
-Onboarding, directory and management of the Stellar community membership.
+The membership of the Stellar community: a soulbound token per person, the
+contract that holds it, and the app to claim and manage it.
 
-A member is a soulbound NFT of the `stellar-membership` contract
-(`contracts/stellar-membership` in the Tansu repository). **The token id is the identity of a person**: the address holding
-it is only the current key, which can be rotated or recovered.
+**The token id is the identity of a person.** The address holding it is only
+the current key, which can be rotated or recovered. On-chain, a member has a
+role, verified external accounts (Discord id and handle, GitHub id and
+handle), the sha256 of a verified email (the same hash PG Atlas uses for
+contributors), the IPFS CID of a profile and DAOIP-5 project ids.
 
-- Join: verify Discord (required, must be on the Stellar Discord server),
-  GitHub and X, list projects from [PG Atlas](https://www.pgatlas.xyz), write
-  a profile, mint.
-- Manage: edit profile, projects and accounts, rotate the key.
-- Recover: lost key, prove two accounts from a new account. The membership
-  moves after 7 days unless the current key or an admin cancels it. An admin
-  can approve earlier.
-- Admin: pending recoveries, roles, revocation, attester rotation.
+- Claim: verify Discord (required, on the Stellar Developers server) and
+  GitHub, write a profile, list projects from
+  [PG Atlas](https://www.pgatlas.xyz), mint.
+- Manage: edit the profile, the projects and the accounts, rotate the key.
+- Recover: from a new account, prove two of the membership's accounts, or its
+  only one. The membership moves after 7 days unless the current key or an
+  admin cancels; an admin can approve sooner.
+- Admin: pending recoveries, roles, projects, revocation, moving a
+  membership to a new key, attester rotation.
+
+| Path               | Content                                                     |
+| ------------------ | ----------------------------------------------------------- |
+| `contract/`        | Soroban contract, Rust                                      |
+| `src/`             | React app: TanStack Router and Query, Tailwind, Wallets Kit |
+| `worker/`          | Hono API, deployed with the app as a Cloudflare Worker      |
+| `shared/`          | Types and helpers used by the app and the worker            |
+| `packages/`        | Contract bindings, generated from the WASM                  |
+| `scripts/smoke.ts` | End-to-end flows on testnet                                 |
 
 ## Architecture
 
 ```
 browser ──── Stellar RPC     reads (ledger entries) and transactions
    │
-   └── /api  Cloudflare Worker (same deployment as the app)
+   └── /api  Cloudflare Worker
              ├─ oauth    code exchange, returns a signed claim
              ├─ attest   co-signs auth entries matching verified claims
              ├─ ipfs     uploads profile CARs to Filebase
@@ -33,17 +46,26 @@ and `propose_recovery` after checking the arguments against OAuth claims.
 The member always authorizes the call too, so the attester alone cannot act
 on anyone's membership. It never signs transactions nor holds funds.
 
-On-chain data per member: role, external accounts (provider id and handle),
-sha256 of a verified email (same hash as PG Atlas contributors), IPFS CID of
-the profile, DAOIP-5 project ids.
+### Contract
 
-| Path               | Content                                                     |
-| ------------------ | ----------------------------------------------------------- |
-| `src/`             | React app: TanStack Router and Query, Tailwind, Wallets Kit |
-| `worker/`          | Hono API                                                    |
-| `shared/`          | Types and helpers used by both                              |
-| `packages/`        | Contract bindings, generated                                |
-| `scripts/smoke.ts` | End-to-end flows on testnet                                 |
+`contract/src/lib.rs` documents every function. In short:
+
+- `mint(to, role, external_accounts, bio, projects)`: the member and the
+  attester both authorize; the attester only over `(to, role,
+external_accounts)`.
+- `set_role` (admin), `set_bio` and `set_projects` (owner or admin),
+  `set_external_accounts` (owner and attester).
+- `rotate_key(token_id, new_address)`: both keys sign.
+- `propose_recovery` (attester and new key), `cancel_recovery` (owner or
+  admin), `finalize_recovery` (anyone after 7 days, the admin before),
+  `recover` (admin only, also reinstates a revoked token).
+- `revoke` (admin): the address is released, the record and accounts stay.
+- `governance(token_id)`: role and NQG score, read from the NQG contract.
+
+Every change is published as an event with the token id as topic. Other
+services read the contract directly: `token_by_account(provider, id)` maps a
+Discord or GitHub id to a member, `member(token_id)` returns the record,
+`owner_of`, `token_of` and `governance` the rest. No database is needed.
 
 ## Development
 
@@ -54,42 +76,30 @@ bun dev                          # app and worker on http://127.0.0.1:5173
 ```
 
 Open the app on `127.0.0.1`, not `localhost`: the OAuth redirect URIs are
-registered for `127.0.0.1`.
-
-The worker refuses every request until its configuration is complete and
-`/api/config` names what is missing. Public values live in `wrangler.jsonc`,
-secrets in `.dev.vars` locally and in `wrangler secret put` in production.
+registered for `127.0.0.1`. The worker refuses every request until its
+configuration is complete and `/api/config` names what is missing. Public
+values live in `wrangler.jsonc`, secrets in `.dev.vars` locally and in
+`wrangler secret put` in production.
 
 If the local Cloudflare runtime cannot reach the network on your machine,
-run the worker with Bun instead and let Vite proxy `/api` to it:
+run the worker with Bun and let Vite proxy `/api` to it:
 
 ```bash
 bun run dev:api                  # http://127.0.0.1:8787
 bun run dev:app                  # Vite with API_PROXY set
 ```
 
-```bash
-bun run lint
-bun run typecheck
-bun run test
-bun run smoke                    # testnet flows with the kept identities
-bun run card                     # render public/social-card.png
-```
-
-The smoke test only uses the two Stellar CLI identities of the deployment,
-`stellar-members-testnet` (admin, also the member) and the attester from
-`.dev.vars`, and leaves the admin holding its membership.
-
-After a contract change, regenerate the bindings:
+Contract work goes through `make` (`make help` lists the targets):
 
 ```bash
-CONTRACT_ID=C… bun run bindings
+make test                        # contract tests
+make lint                        # clippy and rustfmt
+make bindings                    # regenerate packages/stellar-membership
 ```
 
 ### OAuth apps
 
-Discord and GitHub are required, X is optional. Register one app per
-provider; the redirect URI is `<origin>/oauth/callback/<provider>`.
+One app per provider; the redirect URI is `<origin>/oauth/callback/<provider>`.
 
 **Discord**, https://discord.com/developers/applications, New Application:
 
@@ -111,27 +121,26 @@ provider; the redirect URI is `<origin>/oauth/callback/<provider>`.
 - Client ID to `GITHUB_CLIENT_ID`, generate a client secret to
   `GITHUB_CLIENT_SECRET`. Scopes used: `read:user user:email`.
 
-**X**, https://console.x.com, only if wanted: app type Web App (confidential),
-callback `http://127.0.0.1:5173/oauth/callback/x` exact, `X_CLIENT_ID` and
-`X_CLIENT_SECRET`. The X API is pay-per-use, about $0.01 per verification
-from prepaid credits; an empty balance blocks verification.
+The contract also knows an X provider (id 2) for accounts bound before X
+verification was dropped; the app displays them and never offers to verify
+one.
 
 ### Roles during the migration
 
 With `ROLE_SOURCE=discord`, the role at mint comes from the member's roles on
 the Discord server through `DISCORD_ROLE_MAP`. Once existing members are
 onboarded, set `ROLE_SOURCE=verified`: new members mint as Verified and
-roles change with `set_role` from the admin.
+roles change with `set_role` from the admin panel.
 
 ### Wallets
 
 Any wallet of Stellar Wallets Kit connects. Rotating the key needs a wallet
 that signs authorization entries (Freighter, Lobstr, Albedo); xBull does not.
 The admin moves a membership with its own signature only, since the member
-is not present. xBull is listed only when its extension is injected
-on the page: in Brave, allow the extension on all sites.
+is not present. xBull is listed only when its extension is injected on the
+page: in Brave, allow the extension on all sites.
 
-## Caching
+### Caching
 
 Members are read straight from the ledger, 100 per RPC call (two keys
 each), newest first, and only when the list scrolls that far. A filter by
@@ -147,38 +156,45 @@ API calls and the RPC are never cached by it.
 
 ## Testing
 
-Unit tests cover the worker checks and the shared helpers. There is no
-browser end-to-end suite yet: the wallet flows need a wallet mock. The
-smoke script exercises the on-chain flows through the worker instead.
+```bash
+make test                        # contract: one test per user flow
+bun run test                     # worker checks and shared helpers
+bun run smoke                    # end to end on testnet
+bun run lint && bun run build
+```
+
+The contract tests cover each flow with its authorizations, events and
+errors. The worker tests cover what guards identity: the attester's checks,
+the claim signatures, the Discord guild and roles, the CID bound to a signed
+transaction and the configuration. The smoke script runs the real flows
+against testnet through the worker: mint, accounts update, profile on IPFS,
+projects, key rotation, recovery proposal and cancellation, admin recover.
+It uses only the two identities of the deployment, `stellar-members-testnet`
+(admin, also the member) and the attester from `.dev.vars`, and leaves the
+admin holding its membership. There is no browser suite: the wallet flows
+would need a wallet mock.
 
 ## Deployment
 
-```bash
-wrangler secret put ATTESTER_SECRET   # and the other secrets of .dev.vars.example
-bun run deploy                        # staging, on testnet
-```
-
 Users never pick a network: staging runs on testnet and production on
 mainnet, and the app shows no trace of which one it is on. The only values
-that differ between the two are `NETWORK`, `NETWORK_PASSPHRASE`, `RPC_URL`,
-`CONTRACT_ID` and `ATTESTER_PUBLIC` (with its secret). OAuth apps, IPFS and
-the other secrets are shared. Production is added as an `env.mainnet` block
-in `wrangler.jsonc` once the contract is deployed there.
+that differ are `NETWORK`, `NETWORK_PASSPHRASE`, `RPC_URL`, `CONTRACT_ID`
+and `ATTESTER_PUBLIC` (with its secret). OAuth apps, IPFS and the other
+secrets are shared. Production is added as an `env.mainnet` block in
+`wrangler.jsonc` once the contract is deployed there.
 
-The attester is an unfunded account. If its key leaks, the admin calls
-`set_attester` with a new key and the secret is replaced.
+```bash
+make deploy network=testnet           # deploy the contract, writes .stellar/
+make upgrade network=testnet          # upgrade it in place
+make invoke fn=member args="--token_id 0"
+wrangler secret put ATTESTER_SECRET   # and the other secrets of .dev.vars.example
+bun run deploy                        # build and deploy the app and worker
+```
 
-## Reading members from other services
+The contract is deployed by the `stellar-members-<network>` identity of the
+Stellar CLI (the admin) with `stellar-members-attester-<network>` as the
+attester. The attester is an unfunded account: if its key leaks, the admin
+replaces it from the admin panel and the worker secret is updated.
 
-No database is needed, read the contract:
-
-- `token_by_account(provider, id)`: token of a Discord (0), GitHub (1) or X
-  (2) account id, e.g. to map a Discord user to a member.
-- `member(token_id)`: role, status, accounts, email hash, profile CID,
-  projects.
-- `owner_of(token_id)`, `token_of(address)`, `governance(token_id)`.
-
-Changes are published as events with the token id as topic: `minted`,
-`role_set`, `external_accounts_set`, `bio_set`, `projects_set`,
-`key_rotated`, `recovery_proposed`, `recovery_cancelled`, `recovered`,
-`revoked`. Subscribe with RPC `getEvents` filtered on the contract.
+The NQG score comes from the Neural Quorum Governance contract of the
+Stellar Community Fund; Tansu documents how its own governance uses it.

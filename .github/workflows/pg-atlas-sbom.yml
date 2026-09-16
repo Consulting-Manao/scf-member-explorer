@@ -18,5 +18,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - name: Fetch and submit SBOM
-        uses: SCF-Public-Goods-Maintenance/pg-atlas-sbom-action@main
+        uses: SCF-Public-Goods-Maintenance/pg-atlas-sbom-action@b876c74c601e8e6b5fdad7e4b9161be86b35dfcf # main

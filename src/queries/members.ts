@@ -15,9 +15,11 @@ import {
   getNqg,
   getRecoveries,
   getTokenOf,
+  type Instance,
   type MemberView,
 } from "@/lib/contract";
 import { fetchProfile } from "@/lib/ipfs";
+import { memberName } from "@/lib/members";
 import { claimsFor } from "@/lib/oauth";
 import { useWallet } from "@/lib/wallet";
 
@@ -27,10 +29,14 @@ const MINUTE = 60_000;
 
 export const queryKeys = {
   instance: ["instance"] as const,
-  members: ["members", "list"] as const,
+  /** The pages, keyed by the page holding the newest member. */
+  members: (topPage: number) => ["members", "list", topPage] as const,
   member: (tokenId: number) => ["members", "detail", tokenId] as const,
   recovery: (tokenId: number) => ["members", "recovery", tokenId] as const,
+  recoveries: (count: number) => ["members", "recoveries", count] as const,
+  tokenOfAll: ["members", "tokenOf"] as const,
   tokenOf: (address: string | null) => ["members", "tokenOf", address] as const,
+  tokenByAccounts: (ids: string[]) => ["members", "byAccounts", ids] as const,
   nqg: (tokenId: number) => ["members", "nqg", tokenId] as const,
   profile: (cid: string) => ["profile", cid] as const,
   projects: (search: string) => ["projects", search] as const,
@@ -41,6 +47,7 @@ type Pages = InfiniteData<(MemberView | null)[], number>;
 
 /** Page `n` holds the token ids `[n * PAGE_SIZE, (n + 1) * PAGE_SIZE)`. */
 const pageOf = (tokenId: number) => Math.floor(tokenId / PAGE_SIZE);
+const topPage = (count: number) => pageOf(Math.max(count - 1, 0));
 
 function pageIds(page: number, count: number): number[] {
   const top = Math.min(count, (page + 1) * PAGE_SIZE) - 1;
@@ -69,9 +76,9 @@ export function useAdmin() {
 /** Newest members first, one RPC call per page. */
 export function useMembers(count: number | undefined) {
   return useInfiniteQuery({
-    queryKey: queryKeys.members,
+    queryKey: queryKeys.members(topPage(count ?? 0)),
     enabled: count !== undefined && count > 0,
-    initialPageParam: pageOf(Math.max((count ?? 1) - 1, 0)),
+    initialPageParam: topPage(count ?? 0),
     queryFn: ({ pageParam }) => getMembers(pageIds(pageParam, count ?? 0)),
     getNextPageParam: (_last, _pages, lastParam) =>
       lastParam > 0 ? lastParam - 1 : undefined,
@@ -90,19 +97,25 @@ function findInPages(pages: Pages | undefined, tokenId: number) {
 export function useMember(tokenId: number | null | undefined) {
   const client = useQueryClient();
   const enabled = tokenId !== null && tokenId !== undefined && tokenId >= 0;
+  // already read as part of a page
+  const list = client
+    .getQueryCache()
+    .findAll({ queryKey: ["members", "list"] })[0];
   return useQuery({
     queryKey: queryKeys.member(tokenId ?? -1),
     enabled,
     queryFn: () => getMember(tokenId!),
     staleTime: 10 * MINUTE,
-    // already read as part of a page
     initialData: () =>
-      enabled
-        ? findInPages(client.getQueryData<Pages>(queryKeys.members), tokenId)
-        : undefined,
-    initialDataUpdatedAt: () =>
-      client.getQueryState(queryKeys.members)?.dataUpdatedAt,
+      enabled ? findInPages(list?.state.data as Pages, tokenId) : undefined,
+    initialDataUpdatedAt: () => list?.state.dataUpdatedAt,
   });
+}
+
+/** Display name of a member, from its profile when it has one. */
+export function useMemberName(member: MemberView) {
+  const { data: profile } = useProfile(member.bio || undefined);
+  return { name: memberName(member, profile?.name), profile };
 }
 
 export function useRecovery(tokenId: number | null | undefined) {
@@ -203,7 +216,9 @@ function mergeIntoPages(pages: Pages, members: MemberView[]): Pages {
     const at = current.findIndex((m) => m?.tokenId === member.tokenId);
     const updated =
       at === -1
-        ? [member, ...current].sort((a, b) => b!.tokenId - a!.tokenId)
+        ? [member, ...current].sort(
+            (a, b) => (b?.tokenId ?? -1) - (a?.tokenId ?? -1),
+          )
         : current.map((m, i) => (i === at ? member : m));
     next = {
       ...next,
@@ -227,16 +242,15 @@ export function useInvalidateMembers() {
       for (const member of members) {
         client.setQueryData(queryKeys.member(member.tokenId), member);
       }
-      client.setQueryData<Pages>(queryKeys.members, (pages) =>
-        pages ? mergeIntoPages(pages, members) : pages,
+      client.setQueriesData<Pages>(
+        { queryKey: ["members", "list"] },
+        (pages) => (pages ? mergeIntoPages(pages, members) : pages),
       );
-      const count = client.getQueryData<
-        Awaited<ReturnType<typeof getInstance>>
-      >(queryKeys.instance);
+      const instance = client.getQueryData<Instance>(queryKeys.instance);
       const top = Math.max(...tokenIds) + 1;
-      if (count && top > count.nextTokenId) {
+      if (instance && top > instance.nextTokenId) {
         client.setQueryData(queryKeys.instance, {
-          ...count,
+          ...instance,
           nextTokenId: top,
         });
       }
@@ -244,7 +258,7 @@ export function useInvalidateMembers() {
         ...tokenIds.map((id) =>
           client.invalidateQueries({ queryKey: queryKeys.recovery(id) }),
         ),
-        client.invalidateQueries({ queryKey: ["members", "tokenOf"] }),
+        client.invalidateQueries({ queryKey: queryKeys.tokenOfAll }),
       ]);
     },
     [client],

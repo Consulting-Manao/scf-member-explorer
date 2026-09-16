@@ -23,11 +23,8 @@ const complete: Partial<Env> = {
 };
 
 describe("missingSettings", () => {
-  it("accepts a complete configuration", () => {
+  it("names exactly the missing settings", () => {
     expect(missingSettings(complete)).toEqual([]);
-  });
-
-  it("names every missing value", () => {
     expect(
       missingSettings({
         ...complete,
@@ -53,15 +50,6 @@ describe("missingSettings", () => {
         ROLE_SOURCE: "verified",
         DISCORD_ROLE_MAP: "{}",
       }),
-    ).toEqual([]);
-  });
-
-  it("wants X fully configured or absent", () => {
-    expect(missingSettings({ ...complete, X_CLIENT_ID: "x" })).toEqual([
-      "X_CLIENT_ID and X_CLIENT_SECRET (both or none)",
-    ]);
-    expect(
-      missingSettings({ ...complete, X_CLIENT_ID: "x", X_CLIENT_SECRET: "y" }),
     ).toEqual([]);
   });
 });

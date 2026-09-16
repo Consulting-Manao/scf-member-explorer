@@ -11,10 +11,10 @@ import {
 import { attest, AttestError } from "./attest";
 import { latestLedger, readMember, readOwner } from "./chain";
 import { signClaim, verifyClaim } from "./claims";
-import { missingSettings, xEnabled, type Env } from "./env";
+import { missingSettings, type Env } from "./env";
 import { upload, UploadError } from "./ipfs";
 import { exchangeCode, OAuthError } from "./oauth";
-import { getProject, searchProjects } from "./projects";
+import { CACHE_SECONDS, getProject, searchProjects } from "./projects";
 
 type AppEnv = { Bindings: Env };
 
@@ -58,11 +58,7 @@ app.get("/config", (c) => {
     attester: env.ATTESTER_PUBLIC,
     ipfsGateway: env.IPFS_GATEWAY,
     roleSource: env.ROLE_SOURCE,
-    oauth: {
-      discord: env.DISCORD_CLIENT_ID,
-      github: env.GITHUB_CLIENT_ID,
-      ...(xEnabled(env) ? { x: env.X_CLIENT_ID } : {}),
-    },
+    oauth: { discord: env.DISCORD_CLIENT_ID, github: env.GITHUB_CLIENT_ID },
   };
   return c.json(config);
 });
@@ -113,16 +109,6 @@ app.post("/attest", rateLimit, async (c) => {
     owner: (tokenId) => readOwner(env, tokenId),
     member: (tokenId) => readMember(env, tokenId),
   });
-  console.log(
-    JSON.stringify({
-      event: "attested",
-      claims: claims.map(({ address, provider, id }) => ({
-        address,
-        provider,
-        id,
-      })),
-    }),
-  );
   return c.json({ entry });
 });
 
@@ -131,15 +117,17 @@ app.post("/ipfs", rateLimit, async (c) => {
   return c.json({ cid });
 });
 
-const PROJECTS_CACHE = { "Cache-Control": "public, max-age=3600" };
+const PROJECTS_CACHE = { "Cache-Control": `public, max-age=${CACHE_SECONDS}` };
 
-app.get("/projects", async (c) =>
+app.get("/projects", rateLimit, async (c) =>
   c.json(
     await searchProjects(c.env, c.req.query("search") ?? ""),
     200,
     PROJECTS_CACHE,
   ),
 );
+
+app.use("/projects/*", rateLimit);
 
 app.get("/projects/:id", async (c) => {
   const project = await getProject(c.env, c.req.param("id"));

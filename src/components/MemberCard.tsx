@@ -2,9 +2,8 @@ import { Link } from "@tanstack/react-router";
 
 import { useInView } from "@/hooks/useInView";
 import type { MemberView } from "@/lib/contract";
-import { memberName } from "@/lib/members";
 import { cn } from "@/lib/utils";
-import { useNqg, useProfile } from "@/queries/members";
+import { useMemberName, useNqg } from "@/queries/members";
 
 import { MemberAvatar } from "./MemberAvatar";
 import { RoleBadge } from "./RoleBadge";
@@ -12,7 +11,7 @@ import { Badge } from "./ui/badge";
 import { Skeleton } from "./ui/skeleton";
 
 export function MemberCard({ member }: { member: MemberView }) {
-  const { data: profile } = useProfile(member.bio || undefined);
+  const { name, profile } = useMemberName(member);
   // the score is one simulation per member, read once the card is on screen
   const { ref, inView } = useInView<HTMLAnchorElement>();
   const { data: nqg } = useNqg(member.tokenId, inView && !member.revoked);
@@ -31,9 +30,7 @@ export function MemberCard({ member }: { member: MemberView }) {
         </span>
       </div>
       <div className="min-w-0 space-y-1">
-        <p className="truncate font-display text-lg font-semibold">
-          {memberName(member, profile?.name)}
-        </p>
+        <p className="truncate font-display text-lg font-semibold">{name}</p>
         <p className="line-clamp-2 min-h-10 text-sm text-muted-foreground">
           {profile?.description || " "}
         </p>
@@ -50,13 +47,7 @@ export function MemberCard({ member }: { member: MemberView }) {
   );
 }
 
-export function NqgScore({
-  value,
-  className,
-}: {
-  value: number;
-  className?: string;
-}) {
+function NqgScore({ value, className }: { value: number; className?: string }) {
   return (
     <span
       className={cn(

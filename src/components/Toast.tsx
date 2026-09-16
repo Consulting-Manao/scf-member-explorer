@@ -11,10 +11,10 @@ import { cn } from "@/lib/utils";
 
 import { Button } from "./ui/button";
 
-export type Tone = "success" | "failure" | "progress";
+export type ToastTone = "success" | "failure" | "progress";
 
 export interface ToastProps {
-  tone: Tone;
+  tone: ToastTone;
   title: string;
   detail?: string;
   /** Link shown after the detail. */
@@ -25,7 +25,7 @@ export interface ToastProps {
   onDismiss?: () => void;
 }
 
-const DISC: Record<Tone, string> = {
+const DISC: Record<ToastTone, string> = {
   success: "bg-success/20 text-success-foreground dark:text-success",
   failure: "bg-destructive/15 text-destructive dark:bg-destructive/25",
   progress: "bg-muted text-foreground",

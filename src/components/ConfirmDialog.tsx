@@ -4,10 +4,9 @@ import { useState, type ReactNode } from "react";
 import { ROLES } from "@shared/membership";
 
 import type { MemberView } from "@/lib/contract";
-import { memberName } from "@/lib/members";
 import type { Step } from "@/lib/tx";
 import { cn, errorMessage, isCancelled, shortAddress } from "@/lib/utils";
-import { useProfile } from "@/queries/members";
+import { useMemberName } from "@/queries/members";
 
 import { MemberAvatar } from "./MemberAvatar";
 import { TxProgress } from "./TxProgress";
@@ -24,16 +23,19 @@ import {
   DialogTrigger,
 } from "./ui/dialog";
 
-export type Tone = "destructive" | "warning" | "default";
+export type ConfirmTone = "destructive" | "warning" | "default";
 
-const DISC: Record<Tone, string> = {
+const DISC: Record<ConfirmTone, string> = {
   destructive: "bg-destructive/15 text-destructive dark:bg-destructive/25",
   warning: "bg-warning/25 text-warning-foreground dark:text-warning",
   default:
     "bg-accent/40 text-accent-foreground dark:bg-accent/25 dark:text-accent",
 };
 
-const ACTION: Record<Tone, "destructive" | "accent" | "default"> = {
+/** Every confirmed action is a plain signed call. */
+const STEPS: Step[] = ["sign", "submit"];
+
+const ACTION: Record<ConfirmTone, "destructive" | "accent" | "default"> = {
   destructive: "destructive",
   warning: "accent",
   default: "default",
@@ -51,24 +53,18 @@ export function ConfirmDialog({
   description,
   children,
   actionLabel,
-  busyLabel,
   cancelLabel = "Cancel",
-  steps = ["sign", "submit"],
-  disabled,
   onConfirm,
 }: {
   trigger: ReactNode;
-  tone?: Tone;
+  tone?: ConfirmTone;
   icon: ReactNode;
   title: string;
   description: string;
   /** The facts block. */
   children?: ReactNode;
   actionLabel: string;
-  busyLabel?: string;
   cancelLabel?: string;
-  steps?: Step[];
-  disabled?: boolean;
   /** Runs the action; a thrown error is shown in the dialog. */
   onConfirm: (onStep: (step: Step) => void) => Promise<void>;
 }) {
@@ -79,7 +75,7 @@ export function ConfirmDialog({
 
   const confirm = async () => {
     setError(null);
-    setStep(steps[0] ?? "sign");
+    setStep("sign");
     try {
       await onConfirm(setStep);
       setOpen(false);
@@ -99,9 +95,7 @@ export function ConfirmDialog({
         if (!next) setError(null);
       }}
     >
-      <DialogTrigger asChild disabled={disabled}>
-        {trigger}
-      </DialogTrigger>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent hideClose={busy}>
         <div
           className={cn(
@@ -116,7 +110,7 @@ export function ConfirmDialog({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         {children}
-        {busy && <TxProgress steps={steps} current={step} />}
+        {busy && <TxProgress steps={STEPS} current={step} />}
         {error && <Alert variant="destructive">{error}</Alert>}
         <DialogFooter>
           <Button
@@ -127,7 +121,7 @@ export function ConfirmDialog({
             {cancelLabel}
           </Button>
           <Button variant={ACTION[tone]} disabled={busy} onClick={confirm}>
-            {busy ? (busyLabel ?? `${actionLabel}…`) : actionLabel}
+            {busy ? `${actionLabel}…` : actionLabel}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -136,20 +130,9 @@ export function ConfirmDialog({
 }
 
 /** Who and what is affected. */
-export function Facts({
-  className,
-  children,
-}: {
-  className?: string;
-  children: ReactNode;
-}) {
+export function Facts({ children }: { children: ReactNode }) {
   return (
-    <div
-      className={cn(
-        "space-y-2 rounded-xl border bg-muted/60 px-3 py-2.5 text-sm",
-        className,
-      )}
-    >
+    <div className="space-y-2 rounded-xl border bg-muted/60 px-3 py-2.5 text-sm">
       {children}
     </div>
   );
@@ -162,14 +145,12 @@ export function MemberFact({
   member: MemberView;
   badge?: { label: string; variant?: "destructive" | "warning" | "default" };
 }) {
-  const { data: profile } = useProfile(member.bio || undefined);
+  const { name } = useMemberName(member);
   return (
     <div className="flex items-center gap-2.5">
       <MemberAvatar member={member} className="size-8 text-xs ring-0" />
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">
-          {memberName(member, profile?.name)}
-        </p>
+        <p className="truncate font-medium">{name}</p>
         <p className="text-xs text-muted-foreground">
           Member #{member.tokenId} ·{" "}
           {member.revoked ? "Revoked" : ROLES[member.role]}
