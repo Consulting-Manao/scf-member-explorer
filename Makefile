@@ -23,6 +23,7 @@ lint:  ## clippy and rustfmt
 
 bindings: build  ## regenerate the TypeScript bindings from the WASM
 	stellar contract bindings typescript --wasm $(wasm) --output-dir packages/stellar-membership --overwrite && \
+	rm packages/stellar-membership/README.md && \
 	cd packages/stellar-membership && bun install && bun run build
 
 deploy: build  ## deploy the contract with the admin and attester identities

@@ -177,7 +177,7 @@ if (tokenId === null) {
     role: 3,
     external_accounts: { accounts, email_hash: undefined },
     bio: "",
-    projects: ["daoip-5:scf:project:tansu_-_soroban_versioning"],
+    projects: ["daoip-5:scf:project:pg_atlas"],
   });
   await attest(tx, forAdmin);
   tokenId = (await tx.signAndSend()).result;
@@ -244,7 +244,7 @@ await (
 ).signAndSend();
 
 step("set projects");
-const projects = ["daoip-5:scf:project:tansu_-_soroban_versioning"];
+const projects = ["daoip-5:scf:project:stellar_community_forum"];
 await (
   await client(admin).set_projects({
     caller: admin.publicKey(),

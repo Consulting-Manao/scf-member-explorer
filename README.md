@@ -197,4 +197,5 @@ attester. The attester is an unfunded account: if its key leaks, the admin
 replaces it from the admin panel and the worker secret is updated.
 
 The NQG score comes from the Neural Quorum Governance contract of the
-Stellar Community Fund; Tansu documents how its own governance uses it.
+Stellar Community Fund. Its address is given to the membership contract at
+deployment, `nqg_contract` in the Makefile.

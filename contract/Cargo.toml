@@ -4,6 +4,7 @@ version = "2.0.0"
 description = "Soulbound membership token of the Stellar community"
 edition = "2024"
 license = "BSD-3"
+repository = "https://radicle.network/nodes/radicle.consulting-manao.com/rad%3Az4KRDyBiL6kP6n5FWP6kJWga6BXJV"
 authors = ["Consulting Manao GmbH"]
 publish = false
 

@@ -5,7 +5,7 @@
 //! owning it is only the current key and can be rotated or recovered.
 //!
 //! Onboarding is done by the member with an attester co-signing the
-//! verified external accounts (Discord, GitHub, X, email hash). The member
+//! verified external accounts (Discord, GitHub, email hash). The member
 //! manages its bio (IPFS CID) and projects (DAOIP-5 identifiers).
 //!
 //! Additional traits are defined following ERC-7496:

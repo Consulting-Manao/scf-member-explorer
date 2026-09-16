@@ -1,6 +1,6 @@
 /**
- * Member profile stored on IPFS as a directory, compatible with Tansu:
- * `profile.json` and an optional `profile-image.<ext>`.
+ * Member profile stored on IPFS as a directory: `profile.json` and an
+ * optional `profile-image.<ext>`.
  */
 
 import { api } from "./api";

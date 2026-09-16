@@ -2,7 +2,7 @@ use soroban_sdk::{Address, BytesN, String, Vec, contracttype};
 
 /// Maximum number of projects a member can declare.
 pub const MAX_PROJECTS: u32 = 10;
-/// Maximum length of a project identifier, e.g. `daoip-5:scf:application:tansu`.
+/// Maximum length of a project identifier, e.g. `daoip-5:scf:project:pg_atlas`.
 pub const MAX_PROJECT_LEN: u32 = 128;
 /// Maximum length of the bio IPFS CID.
 pub const MAX_BIO_LEN: u32 = 128;
