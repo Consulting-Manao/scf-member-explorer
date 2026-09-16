@@ -8,8 +8,9 @@
   ],
   "scripts": {
     "dev": "vite",
+    "dev:local": "bun run dev:api & bun run dev:app; wait",
     "dev:api": "bun scripts/dev-api.ts",
-    "dev:app": "API_PROXY=http://127.0.0.1:8787 vite",
+    "dev:app": "API_PROXY=http://127.0.0.1:8787 vite --host 127.0.0.1 --strictPort",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "deploy": "bun run build && wrangler deploy",

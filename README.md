@@ -85,8 +85,7 @@ If the local Cloudflare runtime cannot reach the network on your machine,
 run the worker with Bun and let Vite proxy `/api` to it:
 
 ```bash
-bun run dev:api                  # http://127.0.0.1:8787
-bun run dev:app                  # Vite with API_PROXY set
+bun run dev:local                # both: worker on 8787, Vite proxies /api to it
 ```
 
 Contract work goes through `make` (`make help` lists the targets):

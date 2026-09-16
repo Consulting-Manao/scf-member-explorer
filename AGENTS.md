@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 Guidance for agents working in this repository.
 
@@ -29,7 +29,7 @@ deployment.
 ```bash
 bun install && cp .dev.vars.example .dev.vars
 bun dev                          # app and worker on http://127.0.0.1:5173
-bun run dev:api && bun run dev:app   # worker under Bun when workerd has no network
+bun run dev:local                # same, worker under Bun when workerd has no network
 bun run lint && bun run build    # prettier, eslint, tsc, vite
 bun run test                     # vitest: worker and shared
 bun run smoke                    # testnet flows through the worker
@@ -37,6 +37,8 @@ make test && make lint           # contract tests, clippy, rustfmt
 make bindings                    # after a contract change
 make deploy network=testnet      # or upgrade, invoke; see make help
 ```
+
+`.claude/launch.json` starts the local stack for the browser preview tool.
 
 ## Conventions
 

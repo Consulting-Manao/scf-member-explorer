@@ -113,7 +113,9 @@ async function expectFailure(
   } catch (error) {
     const message = (error as Error).message;
     if (!expected.test(message)) {
-      throw new Error(`${label} failed for the wrong reason: ${message}`);
+      throw new Error(`${label} failed for the wrong reason: ${message}`, {
+        cause: error,
+      });
     }
     console.log(`  rejected as expected: ${message}`);
     return;

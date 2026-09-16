@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "app",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "dev:local"],
+      "port": 5173,
+      "url": "http://127.0.0.1:5173"
+    }
+  ]
+}
