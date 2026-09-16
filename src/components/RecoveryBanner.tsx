@@ -1,24 +1,25 @@
-import { ShieldAlertIcon } from "lucide-react";
-import { toast } from "sonner";
+import { ShieldAlertIcon, ShieldOffIcon } from "lucide-react";
 
 import { useNow } from "@/hooks/useNow";
-import type { Recovery } from "@/lib/contract";
+import type { MemberView, Recovery } from "@/lib/contract";
 import { membershipClient } from "@/lib/contract";
+import { notify } from "@/lib/toast";
 import { execute } from "@/lib/tx";
-import { errorMessage, formatDuration, shortAddress } from "@/lib/utils";
+import { formatDuration, shortAddress } from "@/lib/utils";
 import { useWallet } from "@/lib/wallet";
 import { useInvalidateMembers } from "@/queries/members";
 
+import { AddressFact, ConfirmDialog, Facts, MemberFact } from "./ConfirmDialog";
 import { Alert } from "./ui/alert";
 import { Button } from "./ui/button";
 
 /** Pending recovery, with a cancel action for the owner or the admin. */
 export function RecoveryBanner({
-  tokenId,
+  member,
   recovery,
   canCancel,
 }: {
-  tokenId: number;
+  member: MemberView;
   recovery: Recovery;
   canCancel: boolean;
 }) {
@@ -26,21 +27,6 @@ export function RecoveryBanner({
   const invalidate = useInvalidateMembers();
   const now = useNow();
   const remaining = Math.floor((recovery.executableAt.getTime() - now) / 1000);
-
-  const cancel = async () => {
-    if (!address) return;
-    try {
-      const tx = await membershipClient(address).cancel_recovery({
-        caller: address,
-        token_id: tokenId,
-      });
-      await execute(tx, { signTransaction });
-      toast.success("Recovery cancelled");
-      await invalidate();
-    } catch (error) {
-      toast.error(errorMessage(error));
-    }
-  };
 
   return (
     <Alert variant="warning" className="items-start">
@@ -56,10 +42,34 @@ export function RecoveryBanner({
           . If that is not you, cancel it now.
         </p>
       </div>
-      {canCancel && (
-        <Button variant="destructive" size="sm" onClick={cancel}>
-          Cancel recovery
-        </Button>
+      {canCancel && address && (
+        <ConfirmDialog
+          trigger={
+            <Button variant="destructive" size="sm">
+              Cancel recovery
+            </Button>
+          }
+          tone="destructive"
+          icon={<ShieldOffIcon />}
+          title="Cancel this recovery?"
+          description="Your membership stays with this key. Whoever asked for the recovery will have to prove your accounts again."
+          actionLabel="Cancel recovery"
+          cancelLabel="Keep it"
+          onConfirm={async (onStep) => {
+            const tx = await membershipClient(address).cancel_recovery({
+              caller: address,
+              token_id: member.tokenId,
+            });
+            const sent = await execute(tx, { signTransaction, onStep });
+            await invalidate([member.tokenId]);
+            notify.success("Recovery cancelled", { tx: sent });
+          }}
+        >
+          <Facts>
+            <MemberFact member={member} />
+            <AddressFact from={member.owner} to={recovery.newAddress} />
+          </Facts>
+        </ConfirmDialog>
       )}
     </Alert>
   );

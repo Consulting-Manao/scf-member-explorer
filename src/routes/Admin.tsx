@@ -1,15 +1,28 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ShieldCheckIcon } from "lucide-react";
+import {
+  EraserIcon,
+  KeyRoundIcon,
+  ShieldCheckIcon,
+  ShieldOffIcon,
+  UserRoundXIcon,
+  ZapIcon,
+} from "lucide-react";
 import { StrKey } from "@stellar/stellar-sdk";
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { ROLES } from "@shared/membership";
 
+import {
+  AddressFact,
+  ConfirmDialog,
+  Facts,
+  MemberFact,
+} from "@/components/ConfirmDialog";
 import { Copyable } from "@/components/Copyable";
 import { MemberAvatar } from "@/components/MemberAvatar";
 import { PageHeader } from "@/components/PageHeader";
+import { ProjectPicker } from "@/components/ProjectPicker";
 import { RoleBadge } from "@/components/RoleBadge";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -21,15 +34,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input, Label } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNow } from "@/hooks/useNow";
@@ -42,48 +46,67 @@ import {
   type Recovery,
 } from "@/lib/contract";
 import { memberName } from "@/lib/members";
-import { execute } from "@/lib/tx";
-import { cn, errorMessage, formatDuration } from "@/lib/utils";
+import { notify } from "@/lib/toast";
+import { execute, type Step } from "@/lib/tx";
+import { cn, formatDuration } from "@/lib/utils";
 import { useWallet } from "@/lib/wallet";
 import {
   useAdmin,
+  useInstance,
+  useInvalidateInstance,
   useInvalidateMembers,
   useMember,
   useMemberCount,
   useProfile,
 } from "@/queries/members";
 
+type Build = (
+  client: ReturnType<typeof membershipClient>,
+  admin: string,
+) => Promise<Parameters<typeof execute>[0]>;
+
+/**
+ * Signs and submits an admin call. `perform` is for dialogs, which show
+ * the outcome themselves; `run` notifies.
+ */
 function useAdminAction() {
   const { address, signTransaction } = useWallet();
   const invalidate = useInvalidateMembers();
   const [busy, setBusy] = useState(false);
-  const run = async (
-    label: string,
-    build: (
-      client: ReturnType<typeof membershipClient>,
-      admin: string,
-    ) => Promise<Parameters<typeof execute>[0]>,
+
+  const perform = async (
+    build: Build,
+    touched: number[],
+    onStep?: (step: Step) => void,
   ) => {
-    if (!address) return;
+    if (!address) throw new Error("Connect the admin account");
+    const tx = await execute(await build(membershipClient(address), address), {
+      signTransaction,
+      onStep,
+    });
+    await invalidate(touched);
+    return tx;
+  };
+
+  const run = async (title: string, build: Build, touched: number[]) => {
     setBusy(true);
     try {
-      await execute(await build(membershipClient(address), address), {
-        signTransaction,
-      });
-      toast.success(label);
-      await invalidate();
+      const tx = await perform(build, touched);
+      notify.success(title, { tx });
     } catch (error) {
-      toast.error(errorMessage(error));
+      notify.failure(`${title.replace(/ed$/, "")} failed`, error, {
+        onRetry: () => run(title, build, touched),
+      });
     } finally {
       setBusy(false);
     }
   };
-  return { busy, run };
+
+  return { busy, run, perform };
 }
 
 function PendingRecoveries() {
   const { data: count } = useMemberCount();
-  const { busy, run } = useAdminAction();
   const pending = useQuery({
     queryKey: ["members", "recoveries", count],
     enabled: count !== undefined,
@@ -119,20 +142,7 @@ function PendingRecoveries() {
               key={member.tokenId}
               member={member}
               recovery={recovery}
-              busy={busy}
-              onApprove={() =>
-                run("Recovery approved", (client) =>
-                  client.finalize_recovery({ token_id: member.tokenId }),
-                )
-              }
-              onCancel={() =>
-                run("Recovery cancelled", (client, admin) =>
-                  client.cancel_recovery({
-                    caller: admin,
-                    token_id: member.tokenId,
-                  }),
-                )
-              }
+              onDone={() => pending.refetch()}
             />
           ))}
         </ul>
@@ -144,19 +154,18 @@ function PendingRecoveries() {
 function RecoveryRow({
   member,
   recovery,
-  busy,
-  onApprove,
-  onCancel,
+  onDone,
 }: {
   member: MemberView;
   recovery: Recovery;
-  busy: boolean;
-  onApprove: () => void;
-  onCancel: () => void;
+  onDone: () => void;
 }) {
   const { data: profile } = useProfile(member.bio || undefined);
+  const { perform } = useAdminAction();
   const now = useNow();
   const remaining = Math.floor((recovery.executableAt.getTime() - now) / 1000);
+  const wait = remaining > 0 ? formatDuration(remaining) : null;
+
   return (
     <li className="flex flex-wrap items-center gap-4 py-3">
       <MemberAvatar member={member} className="size-10" />
@@ -170,17 +179,71 @@ function RecoveryRow({
         </Link>
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           to <Copyable value={recovery.newAddress} />
-          <Badge variant="outline">
-            {remaining > 0 ? `in ${formatDuration(remaining)}` : "ready"}
-          </Badge>
+          <Badge variant="outline">{wait ? `in ${wait}` : "ready"}</Badge>
         </div>
       </div>
-      <Button size="sm" variant="outline" disabled={busy} onClick={onCancel}>
-        Cancel
-      </Button>
-      <Button size="sm" disabled={busy} onClick={onApprove}>
-        Approve now
-      </Button>
+      <ConfirmDialog
+        trigger={
+          <Button size="sm" variant="outline">
+            Cancel
+          </Button>
+        }
+        tone="destructive"
+        icon={<ShieldOffIcon />}
+        title="Cancel this recovery?"
+        description="The membership stays with its current key. Whoever asked for the recovery will have to prove the accounts again."
+        actionLabel="Cancel recovery"
+        cancelLabel="Keep it"
+        onConfirm={async (onStep) => {
+          const tx = await perform(
+            (client, admin) =>
+              client.cancel_recovery({
+                caller: admin,
+                token_id: member.tokenId,
+              }),
+            [member.tokenId],
+            onStep,
+          );
+          notify.success(`Recovery of #${member.tokenId} cancelled`, { tx });
+          onDone();
+        }}
+      >
+        <Facts>
+          <MemberFact member={member} />
+          <AddressFact from={member.owner} to={recovery.newAddress} />
+        </Facts>
+      </ConfirmDialog>
+      <ConfirmDialog
+        trigger={<Button size="sm">Approve now</Button>}
+        tone="warning"
+        icon={<ZapIcon />}
+        title={wait ? "Approve the recovery now?" : "Finalize the recovery?"}
+        description={
+          wait
+            ? `The membership moves to the new key today instead of in ${wait}. Talk to the member first.`
+            : "The waiting period is over. The membership moves to the new key."
+        }
+        actionLabel={wait ? "Approve now" : "Finalize"}
+        onConfirm={async (onStep) => {
+          const tx = await perform(
+            (client) => client.finalize_recovery({ token_id: member.tokenId }),
+            [member.tokenId],
+            onStep,
+          );
+          notify.success(`Member #${member.tokenId} recovered`, { tx });
+          onDone();
+        }}
+      >
+        <Facts>
+          <MemberFact
+            member={member}
+            badge={
+              wait ? { label: `${wait} early`, variant: "warning" } : undefined
+            }
+          />
+          <AddressFact from={member.owner} to={recovery.newAddress} />
+        </Facts>
+      </ConfirmDialog>
     </li>
   );
 }
@@ -189,9 +252,6 @@ function ManageMember() {
   const [input, setInput] = useState("");
   const tokenId = /^\d+$/.test(input) ? Number(input) : null;
   const { data: member, isFetching } = useMember(tokenId);
-  const { data: profile } = useProfile(member?.bio || undefined);
-  const { busy, run } = useAdminAction();
-  const [role, setRole] = useState<number | null>(null);
 
   return (
     <Card>
@@ -205,140 +265,207 @@ function ManageMember() {
             id="token-id"
             inputMode="numeric"
             value={input}
-            onChange={(e) => {
-              setInput(e.target.value.trim());
-              setRole(null);
-            }}
+            onChange={(e) => setInput(e.target.value.trim())}
             placeholder="0"
           />
         </div>
 
-        {tokenId !== null && !member && !isFetching && (
-          <p className="text-sm text-muted-foreground">No member #{tokenId}.</p>
+        {tokenId !== null && isFetching && !member && (
+          <Skeleton className="h-24" />
+        )}
+        {tokenId !== null && !isFetching && member === null && (
+          <p className="text-sm text-muted-foreground">
+            No member with this id.
+          </p>
         )}
 
-        {member && (
-          <div className="animate-fade-in space-y-6">
-            <div className="flex items-center gap-4">
-              <MemberAvatar member={member} />
-              <div className="space-y-1">
-                <p className="font-medium">
-                  {memberName(member, profile?.name)}
-                </p>
-                <div className="flex items-center gap-2">
-                  {member.revoked ? (
-                    <Badge variant="destructive">Revoked</Badge>
-                  ) : (
-                    <RoleBadge role={member.role} />
-                  )}
-                  {member.owner && <Copyable value={member.owner} />}
-                </div>
-              </div>
-            </div>
-
-            <section className="space-y-2">
-              <h4 className="text-sm font-medium">Role</h4>
-              <div className="flex flex-wrap items-center gap-2">
-                {ROLES.map((name, i) => (
-                  <button
-                    key={name}
-                    type="button"
-                    onClick={() => setRole(i)}
-                    className={cn(
-                      "cursor-pointer rounded-full border px-3 py-1 text-sm",
-                      (role ?? member.role) === i
-                        ? "border-foreground bg-foreground text-background"
-                        : "hover:bg-muted",
-                    )}
-                  >
-                    {name}
-                  </button>
-                ))}
-                <Button
-                  size="sm"
-                  disabled={busy || role === null || role === member.role}
-                  onClick={() =>
-                    run("Role updated", (client) =>
-                      client.set_role({
-                        token_id: member.tokenId,
-                        role: role!,
-                      }),
-                    )
-                  }
-                >
-                  Save role
-                </Button>
-              </div>
-            </section>
-
-            <section className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={busy || member.revoked || !member.bio}
-                onClick={() =>
-                  run("Profile cleared", (client, admin) =>
-                    client.set_bio({
-                      caller: admin,
-                      token_id: member.tokenId,
-                      bio: "",
-                    }),
-                  )
-                }
-              >
-                Clear profile
-              </Button>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    disabled={busy || member.revoked}
-                  >
-                    Revoke
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Revoke member #{member.tokenId}?</DialogTitle>
-                    <DialogDescription>
-                      The address is released and the member loses its role. The
-                      record and accounts are kept, so they cannot be used for
-                      another membership. Moving the token to a new key
-                      reinstates it.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="flex justify-end gap-2">
-                    <DialogClose asChild>
-                      <Button variant="ghost">Keep</Button>
-                    </DialogClose>
-                    <DialogClose asChild>
-                      <Button
-                        variant="destructive"
-                        onClick={() =>
-                          run("Member revoked", (client) =>
-                            client.revoke({ token_id: member.tokenId }),
-                          )
-                        }
-                      >
-                        Revoke
-                      </Button>
-                    </DialogClose>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </section>
-
-            <MoveToKey tokenId={member.tokenId} />
-          </div>
-        )}
+        {member && <MemberEditor key={member.tokenId} member={member} />}
       </CardContent>
     </Card>
   );
 }
 
-function MoveToKey({ tokenId }: { tokenId: number }) {
-  const { busy, run } = useAdminAction();
+/** Mounted per member, so the drafts start from its current values. */
+function MemberEditor({ member }: { member: MemberView }) {
+  const { data: profile } = useProfile(member.bio || undefined);
+  const { busy, run, perform } = useAdminAction();
+  const [role, setRole] = useState<number | null>(null);
+  const [projects, setProjects] = useState<string[] | null>(null);
+  const draft = projects ?? member.projects;
+  const projectsChanged = draft.join() !== member.projects.join();
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-4">
+        <MemberAvatar member={member} />
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-lg font-semibold">
+            {memberName(member, profile?.name)}
+          </p>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            {member.revoked ? (
+              <Badge variant="destructive">Revoked</Badge>
+            ) : (
+              <RoleBadge role={member.role} />
+            )}
+            {member.owner && <Copyable value={member.owner} />}
+          </div>
+        </div>
+      </div>
+
+      <section className="space-y-3 rounded-xl border p-4">
+        <h4 className="font-medium">Role</h4>
+        <div className="flex flex-wrap gap-1.5">
+          {ROLES.map((name, i) => (
+            <button
+              key={name}
+              type="button"
+              onClick={() => setRole(i)}
+              className={cn(
+                "cursor-pointer rounded-full border px-3 py-1 text-sm transition",
+                (role ?? member.role) === i
+                  ? "border-foreground bg-foreground text-background"
+                  : "hover:bg-muted",
+              )}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+        <Button
+          size="sm"
+          disabled={busy || role === null || role === member.role}
+          onClick={() =>
+            run(
+              `Member #${member.tokenId} is now ${ROLES[role!]}`,
+              (client) =>
+                client.set_role({
+                  token_id: member.tokenId,
+                  role: role!,
+                }),
+              [member.tokenId],
+            ).then(() => setRole(null))
+          }
+        >
+          Save role
+        </Button>
+      </section>
+
+      <section className="space-y-3 rounded-xl border p-4">
+        <div>
+          <h4 className="font-medium">Projects</h4>
+          <p className="text-sm text-muted-foreground">
+            The Stellar projects this member builds or maintains, from PG Atlas.
+          </p>
+        </div>
+        <ProjectPicker value={draft} onChange={setProjects} />
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            disabled={busy || !projectsChanged}
+            onClick={() =>
+              run(
+                `Projects of #${member.tokenId} updated`,
+                (client, admin) =>
+                  client.set_projects({
+                    caller: admin,
+                    token_id: member.tokenId,
+                    projects: draft,
+                  }),
+                [member.tokenId],
+              ).then(() => setProjects(null))
+            }
+          >
+            Save projects
+          </Button>
+          {projectsChanged && (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => setProjects(null)}
+            >
+              Discard
+            </Button>
+          )}
+        </div>
+      </section>
+
+      <section className="flex flex-wrap items-center gap-3 rounded-xl border p-4">
+        <div className="min-w-0 flex-1">
+          <h4 className="font-medium">Profile and status</h4>
+          <p className="text-sm text-muted-foreground">
+            Clear an inappropriate profile, or revoke the membership.
+          </p>
+        </div>
+        <ConfirmDialog
+          trigger={
+            <Button variant="outline" size="sm" disabled={!member.bio}>
+              Clear profile
+            </Button>
+          }
+          icon={<EraserIcon />}
+          title="Clear this profile?"
+          description="The name, picture and description go away. The member can publish a new profile at any time."
+          actionLabel="Clear profile"
+          onConfirm={async (onStep) => {
+            const tx = await perform(
+              (client, admin) =>
+                client.set_bio({
+                  caller: admin,
+                  token_id: member.tokenId,
+                  bio: "",
+                }),
+              [member.tokenId],
+              onStep,
+            );
+            notify.success(`Profile of #${member.tokenId} cleared`, {
+              tx,
+            });
+          }}
+        >
+          <Facts>
+            <MemberFact member={member} />
+          </Facts>
+        </ConfirmDialog>
+        <ConfirmDialog
+          trigger={
+            <Button variant="destructive" size="sm" disabled={member.revoked}>
+              Revoke
+            </Button>
+          }
+          tone="destructive"
+          icon={<UserRoundXIcon />}
+          title="Revoke this membership?"
+          description="The key is released and the role is lost. The accounts stay bound, so they cannot be used for another membership. Moving the token to a new key reinstates it."
+          actionLabel="Revoke"
+          cancelLabel="Keep"
+          onConfirm={async (onStep) => {
+            const tx = await perform(
+              (client) => client.revoke({ token_id: member.tokenId }),
+              [member.tokenId],
+              onStep,
+            );
+            notify.success(`Member #${member.tokenId} revoked`, { tx });
+          }}
+        >
+          <Facts>
+            <MemberFact
+              member={member}
+              badge={{ label: "Irreversible", variant: "destructive" }}
+            />
+            {member.owner && <AddressFact to={member.owner} />}
+          </Facts>
+        </ConfirmDialog>
+      </section>
+
+      <MoveToKey member={member} />
+    </div>
+  );
+}
+
+function MoveToKey({ member }: { member: MemberView }) {
+  const { perform } = useAdminAction();
   const [newAddress, setNewAddress] = useState("");
   const valid =
     StrKey.isValidEd25519PublicKey(newAddress) ||
@@ -364,27 +491,47 @@ function MoveToKey({ tokenId }: { tokenId: number }) {
           spellCheck={false}
         />
       </div>
-      <Button
-        disabled={!valid || busy}
-        onClick={() =>
-          run(`Member #${tokenId} moved`, (client) =>
-            client.recover({ token_id: tokenId, new_address: newAddress }),
-          ).then(() => setNewAddress(""))
+      <ConfirmDialog
+        trigger={<Button disabled={!valid}>Move</Button>}
+        tone="warning"
+        icon={<KeyRoundIcon />}
+        title="Move this membership?"
+        description={
+          member.revoked
+            ? "The membership is reinstated on the new key, with its role and accounts."
+            : "The current key loses the membership at once. Same member, same history, new key."
         }
+        actionLabel="Move"
+        onConfirm={async (onStep) => {
+          const tx = await perform(
+            (client) =>
+              client.recover({
+                token_id: member.tokenId,
+                new_address: newAddress,
+              }),
+            [member.tokenId],
+            onStep,
+          );
+          notify.success(`Member #${member.tokenId} moved`, { tx });
+          setNewAddress("");
+        }}
       >
-        Move
-      </Button>
+        <Facts>
+          <MemberFact member={member} />
+          <AddressFact from={member.owner} to={newAddress} />
+        </Facts>
+      </ConfirmDialog>
     </section>
   );
 }
 
 function Attester() {
-  const { busy, run } = useAdminAction();
+  const { perform } = useAdminAction();
+  const invalidateInstance = useInvalidateInstance();
   const [attester, setAttester] = useState("");
-  const current = useQuery({
-    queryKey: ["attester"],
-    queryFn: async () => (await membershipClient().attester()).result,
-  });
+  const { data: instance } = useInstance();
+  const current = instance?.attester;
+  const valid = StrKey.isValidEd25519PublicKey(attester);
 
   return (
     <Card>
@@ -396,8 +543,8 @@ function Attester() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {current.data && <Copyable value={current.data} short={false} />}
-        {current.data && current.data !== config().attester && (
+        {current && <Copyable value={current} short={false} />}
+        {current && current !== config().attester && (
           <Alert variant="warning">
             The worker is configured with another attester.
           </Alert>
@@ -409,16 +556,28 @@ function Attester() {
             placeholder="New attester G…"
             className="font-mono"
           />
-          <Button
-            disabled={busy || !attester}
-            onClick={() =>
-              run("Attester replaced", (client) =>
-                client.set_attester({ attester }),
-              )
-            }
+          <ConfirmDialog
+            trigger={<Button disabled={!valid}>Replace</Button>}
+            tone="warning"
+            icon={<ShieldCheckIcon />}
+            title="Replace the attester?"
+            description="Verifications stop until the worker is configured with the new secret. Every claim signed for the old key becomes useless."
+            actionLabel="Replace"
+            onConfirm={async (onStep) => {
+              const tx = await perform(
+                (client) => client.set_attester({ attester }),
+                [],
+                onStep,
+              );
+              await invalidateInstance();
+              notify.success("Attester replaced", { tx });
+              setAttester("");
+            }}
           >
-            Replace
-          </Button>
+            <Facts>
+              <AddressFact from={current} to={attester} label="Attester" />
+            </Facts>
+          </ConfirmDialog>
         </div>
       </CardContent>
     </Card>

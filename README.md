@@ -131,6 +131,20 @@ The admin moves a membership with its own signature only, since the member
 is not present. xBull is listed only when its extension is injected
 on the page: in Brave, allow the extension on all sites.
 
+## Caching
+
+Members are read straight from the ledger, 100 per RPC call (two keys
+each), newest first, and only when the list scrolls that far. A filter by
+role, project or text loads the remaining pages while it shows results. The
+NQG score is one simulation per member through the contract, read when its
+card is on screen.
+
+The member queries are kept in the browser (IndexedDB) between visits and
+refreshed in the background after ten minutes. A transaction refreshes only
+the members it touched. The app is a PWA: the service worker caches the
+app shell, profiles and pictures from IPFS, avatars and project lookups;
+API calls and the RPC are never cached by it.
+
 ## Testing
 
 Unit tests cover the worker checks and the shared helpers. There is no

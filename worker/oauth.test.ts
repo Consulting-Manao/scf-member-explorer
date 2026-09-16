@@ -70,6 +70,7 @@ describe("discord", () => {
       id: "123",
       handle: "grogu",
       role: 2,
+      email: "grogu@example.com",
       emailHash: await hashEmail("grogu@example.com"),
     });
   });
@@ -136,6 +137,7 @@ describe("discord", () => {
     );
     expect(identity.role).toBe(0);
     expect(identity.emailHash).toBeUndefined();
+    expect(identity.email).toBeUndefined();
   });
 });
 
@@ -157,6 +159,7 @@ describe("github", () => {
       provider: "github",
       id: "42",
       handle: "grogu",
+      email: "grogu@example.com",
       emailHash: await hashEmail("grogu@example.com"),
     });
   });

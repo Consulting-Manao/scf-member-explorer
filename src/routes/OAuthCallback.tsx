@@ -1,7 +1,6 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { LoaderCircleIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
 
 import {
   PROVIDER_LABEL,
@@ -11,6 +10,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { completeOAuth } from "@/lib/oauth";
+import { notify } from "@/lib/toast";
 import { errorMessage } from "@/lib/utils";
 
 export function OAuthCallback() {
@@ -27,7 +27,9 @@ export function OAuthCallback() {
     const name = provider as ProviderName;
     completeOAuth(name, new URLSearchParams(window.location.search))
       .then(({ claim, returnTo }) => {
-        toast.success(`${PROVIDER_LABEL[name]} verified as ${claim.handle}`);
+        notify.success(`${PROVIDER_LABEL[name]} verified`, {
+          detail: claim.handle,
+        });
         navigate({ href: returnTo, replace: true });
       })
       .catch((e) => setFailure(errorMessage(e)));

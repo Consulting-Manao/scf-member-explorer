@@ -1,10 +1,9 @@
 import { BadgeCheckIcon, XIcon as RemoveIcon } from "lucide-react";
-import { toast } from "sonner";
 
 import { PROVIDER_LABEL, ROLES, type ProviderName } from "@shared/membership";
 
 import { enabledProviders, forgetClaim, startOAuth } from "@/lib/oauth";
-import { errorMessage } from "@/lib/utils";
+import { notify } from "@/lib/toast";
 import { useClaims } from "@/queries/members";
 
 import { ProviderIcon } from "./icons";
@@ -71,7 +70,7 @@ export function VerifyAccounts({
                 size="sm"
                 onClick={() =>
                   startOAuth(provider, address, returnTo).catch((error) =>
-                    toast.error(errorMessage(error)),
+                    notify.failure("Verification not started", error),
                   )
                 }
               >

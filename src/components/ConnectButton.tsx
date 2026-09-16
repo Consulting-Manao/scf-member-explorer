@@ -6,10 +6,10 @@ import {
   UserRoundIcon,
   WalletIcon,
 } from "lucide-react";
-import { toast } from "sonner";
 
 import { explorerUrl } from "@/lib/config";
-import { errorMessage, shortAddress } from "@/lib/utils";
+import { notify } from "@/lib/toast";
+import { shortAddress } from "@/lib/utils";
 import { useWallet } from "@/lib/wallet";
 import { useMyMembership } from "@/queries/members";
 
@@ -29,7 +29,7 @@ export function ConnectButton() {
   const { member } = useMyMembership();
 
   const onConnect = () =>
-    connect().catch((error) => toast.error(errorMessage(error)));
+    connect().catch((error) => notify.failure("Not connected", error));
 
   if (!address) {
     return (

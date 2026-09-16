@@ -18,6 +18,14 @@ export interface ExecuteOptions {
   onStep?: (step: Step) => void;
 }
 
+export interface Executed<T> {
+  result: T;
+  /** Transaction hash, to link the explorer. */
+  hash: string;
+  /** Ledger of inclusion. */
+  ledger: number | null;
+}
+
 /**
  * Collect the authorizations, sign and submit a contract call.
  *
@@ -27,7 +35,7 @@ export interface ExecuteOptions {
 export async function execute<T>(
   tx: AssembledTransaction<T>,
   options: ExecuteOptions,
-): Promise<T> {
+): Promise<Executed<T>> {
   const { onStep = () => {} } = options;
   let resimulate = false;
 
@@ -71,5 +79,10 @@ export async function execute<T>(
 
   onStep("submit");
   const sent = await tx.send();
-  return sent.result;
+  const response = sent.getTransactionResponse;
+  return {
+    result: sent.result,
+    hash: sent.sendTransactionResponse?.hash ?? "",
+    ledger: response && "ledger" in response ? response.ledger : null,
+  };
 }

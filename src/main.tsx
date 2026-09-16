@@ -1,17 +1,41 @@
 import "./styles.css";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { Toaster } from "sonner";
+import { registerSW } from "virtual:pwa-register";
 
-import { loadConfig } from "./lib/config";
+import { ThemedToaster } from "./components/ThemedToaster";
 import { WalletProvider } from "./components/WalletProvider";
+import { config, loadConfig } from "./lib/config";
+import {
+  MAX_AGE,
+  persister,
+  requestPersistentStorage,
+  shouldPersist,
+} from "./lib/persist";
+import { notify } from "./lib/toast";
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 30_000, refetchOnWindowFocus: false },
+    queries: {
+      staleTime: 30_000,
+      gcTime: MAX_AGE,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+requestPersistentStorage();
+
+const updateSW = registerSW({
+  onNeedRefresh() {
+    notify.info("A new version is ready", undefined, {
+      label: "Reload",
+      onClick: () => void updateSW(true),
+    });
   },
 });
 
@@ -23,12 +47,20 @@ loadConfig()
     const { router } = await import("./router");
     root.render(
       <StrictMode>
-        <QueryClientProvider client={queryClient}>
+        <PersistQueryClientProvider
+          client={queryClient}
+          persistOptions={{
+            persister,
+            maxAge: MAX_AGE,
+            buster: config().contractId,
+            dehydrateOptions: { shouldDehydrateQuery: shouldPersist },
+          }}
+        >
           <WalletProvider>
             <RouterProvider router={router} />
-            <Toaster richColors position="bottom-right" />
+            <ThemedToaster />
           </WalletProvider>
-        </QueryClientProvider>
+        </PersistQueryClientProvider>
       </StrictMode>,
     );
   })

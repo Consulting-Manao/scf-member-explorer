@@ -1,8 +1,10 @@
 import { Link } from "@tanstack/react-router";
 
+import { useInView } from "@/hooks/useInView";
 import type { MemberView } from "@/lib/contract";
 import { memberName } from "@/lib/members";
-import { useProfile } from "@/queries/members";
+import { cn } from "@/lib/utils";
+import { useNqg, useProfile } from "@/queries/members";
 
 import { AccountLinks } from "./AccountLinks";
 import { MemberAvatar } from "./MemberAvatar";
@@ -12,9 +14,13 @@ import { Skeleton } from "./ui/skeleton";
 
 export function MemberCard({ member }: { member: MemberView }) {
   const { data: profile } = useProfile(member.bio || undefined);
+  // the score is one simulation per member, read once the card is on screen
+  const { ref, inView } = useInView<HTMLAnchorElement>();
+  const { data: nqg } = useNqg(member.tokenId, inView && !member.revoked);
 
   return (
     <Link
+      ref={ref}
       to="/members/$tokenId"
       params={{ tokenId: String(member.tokenId) }}
       className="group flex animate-fade-in flex-col gap-4 rounded-xl border bg-card p-5 shadow-xs transition hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-md"
@@ -34,14 +40,37 @@ export function MemberCard({ member }: { member: MemberView }) {
         </p>
       </div>
       <div className="mt-auto flex items-center justify-between gap-2">
-        {member.revoked ? (
-          <Badge variant="destructive">Revoked</Badge>
-        ) : (
-          <RoleBadge role={member.role} />
-        )}
+        <div className="flex items-center gap-2">
+          {member.revoked ? (
+            <Badge variant="destructive">Revoked</Badge>
+          ) : (
+            <RoleBadge role={member.role} />
+          )}
+          {nqg ? <NqgScore value={nqg} /> : null}
+        </div>
         <AccountLinks accounts={member.accounts} asLinks={false} />
       </div>
     </Link>
+  );
+}
+
+export function NqgScore({
+  value,
+  className,
+}: {
+  value: number;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-xs text-muted-foreground",
+        className,
+      )}
+      title="Neural quorum governance score"
+    >
+      NQG {value.toFixed(2)}
+    </span>
   );
 }
 

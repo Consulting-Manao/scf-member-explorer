@@ -10,7 +10,13 @@ import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Skeleton } from "./ui/skeleton";
 
-function ProjectChip({ id, onRemove }: { id: string; onRemove?: () => void }) {
+export function ProjectChip({
+  id,
+  onRemove,
+}: {
+  id: string;
+  onRemove?: () => void;
+}) {
   const { data } = useProject(id);
   return (
     <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-muted py-1 pr-1.5 pl-3 text-sm">

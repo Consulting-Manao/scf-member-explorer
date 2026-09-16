@@ -45,6 +45,8 @@ export interface Claim {
   handle: string;
   /** Hex sha256 of the normalized verified email, if the provider has one. */
   emailHash?: string;
+  /** The verified email itself, for its owner to see; never stored. */
+  email?: string;
   /** Role derived from the Discord roles, only on Discord claims. */
   role?: number;
 }

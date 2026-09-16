@@ -28,12 +28,15 @@
     "@fontsource-variable/space-grotesk": "^5.3.0",
     "@ipld/car": "^5.4.7",
     "@stellar/stellar-sdk": "^17.1.0",
-    "@tanstack/react-query": "^5.102.8",
+    "@tanstack/query-async-storage-persister": "^5.103.0",
+    "@tanstack/react-query": "^5.103.0",
+    "@tanstack/react-query-persist-client": "^5.103.0",
     "@tanstack/react-router": "^1.170.36",
     "buffer": "^6.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "hono": "^4.13.8",
+    "idb-keyval": "^6.3.0",
     "ipfs-car": "^3.1.0",
     "lucide-react": "^1.46.0",
     "radix-ui": "^1.6.7",
@@ -41,7 +44,8 @@
     "react-dom": "^19.3.0",
     "sonner": "^2.0.8",
     "stellar-membership": "workspace:*",
-    "tailwind-merge": "^3.7.0"
+    "tailwind-merge": "^3.7.0",
+    "workbox-window": "^7.4.1"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.54.10",
@@ -64,6 +68,7 @@
     "typescript": "^6",
     "typescript-eslint": "^8.70.0",
     "vite": "^8.3.0",
+    "vite-plugin-pwa": "^1.3.0",
     "vitest": "^5.0.1",
     "wrangler": "^4.132.0"
   }

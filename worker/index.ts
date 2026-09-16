@@ -131,14 +131,20 @@ app.post("/ipfs", rateLimit, async (c) => {
   return c.json({ cid });
 });
 
+const PROJECTS_CACHE = { "Cache-Control": "public, max-age=3600" };
+
 app.get("/projects", async (c) =>
-  c.json(await searchProjects(c.env, c.req.query("search") ?? "")),
+  c.json(
+    await searchProjects(c.env, c.req.query("search") ?? ""),
+    200,
+    PROJECTS_CACHE,
+  ),
 );
 
 app.get("/projects/:id", async (c) => {
   const project = await getProject(c.env, c.req.param("id"));
   if (!project) throw new HTTPException(404, { message: "Unknown project" });
-  return c.json(project);
+  return c.json(project, 200, PROJECTS_CACHE);
 });
 
 app.onError((error, c) => {

@@ -74,7 +74,7 @@ export function MemberPage() {
 
       {recovery && (
         <RecoveryBanner
-          tokenId={tokenId}
+          member={member}
           recovery={recovery}
           canCancel={Boolean(address && (isOwner || address === admin))}
         />

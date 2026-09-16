@@ -159,12 +159,53 @@ export async function getRecoveries(
   });
 }
 
-export async function getNextTokenId(): Promise<number> {
-  return (await membershipClient().next_token_id()).result;
+export interface Instance {
+  nextTokenId: number;
+  admin: string;
+  attester: string;
 }
 
-export async function getAdmin(): Promise<string> {
-  return (await membershipClient().admin()).result;
+/** Key of the contract instance, whose storage holds the `DataKey` values. */
+export function instanceKey(): xdr.LedgerKey {
+  return xdr.LedgerKey.contractData(
+    new xdr.LedgerKeyContractData({
+      contract: new Address(config().contractId).toScAddress(),
+      key: xdr.ScVal.scvLedgerKeyContractInstance(),
+      durability: xdr.ContractDataDurability.persistent,
+    }),
+  );
+}
+
+/** Next token id, admin and attester in one ledger read. */
+export async function getInstance(): Promise<Instance> {
+  const { entries } = await server().getLedgerEntries(instanceKey());
+  const entry = entries[0];
+  if (!entry || entry.val.type !== "contractData") {
+    throw new Error("Contract instance not found");
+  }
+  const value = entry.val.contractData.val;
+  if (value.type !== "scvContractInstance") {
+    throw new Error("Unexpected contract instance");
+  }
+  const values = new Map<string, unknown>();
+  for (const item of value.instance.storage ?? []) {
+    const key = scValToNative(item.key) as unknown;
+    // unit variants of `DataKey` are one-symbol vectors
+    if (Array.isArray(key) && key.length === 1) {
+      values.set(String(key[0]), scValToNative(item.val));
+    }
+  }
+  const nextTokenId = values.get("NextTokenId");
+  const admin = values.get("Admin");
+  const attester = values.get("Attester");
+  if (
+    typeof nextTokenId !== "number" ||
+    typeof admin !== "string" ||
+    typeof attester !== "string"
+  ) {
+    throw new Error("Unexpected contract instance");
+  }
+  return { nextTokenId, admin, attester };
 }
 
 export async function getNqg(tokenId: number): Promise<number | null> {

@@ -3,10 +3,10 @@ import { ROLES } from "@shared/membership";
 import { cn } from "@/lib/utils";
 
 const STYLES = [
-  "bg-slate-500/12 text-slate-600 dark:text-slate-300",
-  "bg-sky-500/12 text-sky-700 dark:text-sky-300",
-  "bg-violet-500/12 text-violet-700 dark:text-violet-300",
-  "bg-amber-400/20 text-amber-700 dark:text-amber-300",
+  "bg-slate-500/15 text-slate-700 dark:bg-slate-300/20 dark:text-slate-200",
+  "bg-sky-500/15 text-sky-800 dark:bg-sky-300/20 dark:text-sky-200",
+  "bg-violet-500/15 text-violet-800 dark:bg-violet-300/20 dark:text-violet-200",
+  "bg-amber-400/25 text-amber-800 dark:bg-amber-300/20 dark:text-amber-200",
 ];
 
 export function RoleBadge({

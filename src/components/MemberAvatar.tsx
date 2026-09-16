@@ -10,7 +10,7 @@ import { useProfile } from "@/queries/members";
 /** Stable gradient from the token id. */
 function gradient(tokenId: number): string {
   const hue = (tokenId * 137.508) % 360;
-  return `linear-gradient(135deg, oklch(0.78 0.14 ${hue}), oklch(0.55 0.16 ${(hue + 60) % 360}))`;
+  return `linear-gradient(135deg, oklch(0.62 0.15 ${hue}), oklch(0.45 0.16 ${(hue + 60) % 360}))`;
 }
 
 export function MemberAvatar({

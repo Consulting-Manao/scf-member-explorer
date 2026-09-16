@@ -2,10 +2,10 @@ import { StrKey } from "@stellar/stellar-sdk";
 import type { AssembledTransaction } from "@stellar/stellar-sdk/contract";
 import { ArrowRightIcon, KeyRoundIcon } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { getTokenOf } from "@/lib/contract";
-import { cn, errorMessage, shortAddress } from "@/lib/utils";
+import { notify } from "@/lib/toast";
+import { cn, shortAddress } from "@/lib/utils";
 import { UNSUPPORTED, useWallet } from "@/lib/wallet";
 
 import { Alert } from "./ui/alert";
@@ -77,7 +77,7 @@ export function KeyHandover({
       await tx.simulate();
       setAuthorized(tx);
     } catch (error) {
-      toast.error(errorMessage(error));
+      notify.failure("Not authorized", error);
     } finally {
       setBusy(false);
     }
@@ -96,13 +96,19 @@ export function KeyHandover({
         signTransaction: (xdr, opts) =>
           signTransaction(xdr, { ...opts, address: newAddress }),
       });
-      await authorized.send();
-      toast.success("Key updated");
+      const sent = await authorized.send();
       setAuthorized(null);
       if (adoptNewKey) adopt(newAddress);
       await onDone(newAddress);
+      notify.success("Key updated", {
+        tx: {
+          result: null,
+          hash: sent.sendTransactionResponse?.hash ?? "",
+          ledger: null,
+        },
+      });
     } catch (error) {
-      toast.error(errorMessage(error));
+      notify.failure("Key not updated", error);
     } finally {
       setBusy(false);
     }

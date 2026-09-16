@@ -17,6 +17,7 @@ export async function signClaim(
       id: claim.id,
       handle: claim.handle,
       ...(claim.emailHash ? { email_hash: claim.emailHash } : {}),
+      ...(claim.email ? { email: claim.email } : {}),
       ...(claim.role !== undefined ? { role: claim.role } : {}),
       iat: now,
       exp: now + CLAIM_TTL_SECONDS,
@@ -48,6 +49,7 @@ export async function verifyClaim(
     handle: payload.handle,
     emailHash:
       typeof payload.email_hash === "string" ? payload.email_hash : undefined,
+    email: typeof payload.email === "string" ? payload.email : undefined,
     role: typeof payload.role === "number" ? payload.role : undefined,
   };
 }

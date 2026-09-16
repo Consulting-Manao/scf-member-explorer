@@ -1,8 +1,8 @@
 import { ImagePlusIcon, XIcon } from "lucide-react";
 import { useEffect, useMemo } from "react";
-import { toast } from "sonner";
 
 import { MAX_IMAGE_BYTES, type ProfileInput } from "@/lib/ipfs";
+import { notify } from "@/lib/toast";
 
 import { Button } from "./ui/button";
 import { Input, Label, Textarea } from "./ui/input";
@@ -51,7 +51,10 @@ export function ProfileForm({
               const file = e.target.files?.[0];
               if (!file) return;
               if (file.size > MAX_IMAGE_BYTES) {
-                toast.error("Pick a picture under 1 MB.");
+                notify.failure(
+                  "Picture too large",
+                  new Error("Pick a picture under 1 MB."),
+                );
                 return;
               }
               set({ image: file });

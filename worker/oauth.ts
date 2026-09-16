@@ -32,6 +32,17 @@ async function json<T>(res: Response, what: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+const MAX_EMAIL_LEN = 254;
+
+/** The normalized email and its hash, or nothing. */
+async function verifiedEmail(
+  email: string | null | undefined,
+): Promise<Pick<Identity, "email" | "emailHash">> {
+  const normalized = email?.trim().toLowerCase();
+  if (!normalized || normalized.length > MAX_EMAIL_LEN) return {};
+  return { email: normalized, emailHash: await hashEmail(normalized) };
+}
+
 function checkIdentity(identity: Identity): Identity {
   if (!identity.id || identity.id.length > MAX_ACCOUNT_LEN) {
     throw new OAuthError("Invalid account id");
@@ -92,8 +103,7 @@ async function discord(env: Env, exchange: CodeExchange): Promise<Identity> {
     provider: "discord",
     id: user.id,
     handle: user.username,
-    emailHash:
-      user.email && user.verified ? await hashEmail(user.email) : undefined,
+    ...(await verifiedEmail(user.verified ? user.email : null)),
     role:
       env.ROLE_SOURCE === "discord"
         ? roleFromDiscordRoles(guildMember.roles, env.DISCORD_ROLE_MAP)
@@ -144,7 +154,7 @@ async function github(env: Env, exchange: CodeExchange): Promise<Identity> {
     provider: "github",
     id: String(user.id),
     handle: user.login,
-    emailHash: primary ? await hashEmail(primary.email) : undefined,
+    ...(await verifiedEmail(primary?.email)),
   };
 }
 

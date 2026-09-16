@@ -32,8 +32,9 @@ export function TxProgress({
           <span
             className={cn(
               "flex size-6 items-center justify-center rounded-full border",
-              i < index && "border-success bg-success text-white",
+              i < index && "border-success bg-success text-success-foreground",
               i === index && "border-foreground",
+              i > index && "border-muted-foreground/40",
             )}
           >
             {i < index ? (

@@ -10,7 +10,6 @@ import {
   WalletIcon,
 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 
 import {
   accountsFromClaims,
@@ -64,7 +63,8 @@ import {
 } from "@/lib/ipfs";
 import { memberName } from "@/lib/members";
 import { execute, type Step } from "@/lib/tx";
-import { cn, errorMessage, formatDuration } from "@/lib/utils";
+import { notify } from "@/lib/toast";
+import { cn, formatDuration } from "@/lib/utils";
 import { useWallet } from "@/lib/wallet";
 import {
   useClaims,
@@ -147,17 +147,19 @@ function Onboarding({ address }: { address: string }) {
         bio,
         projects,
       });
-      const tokenId = await execute(tx, {
+      const sent = await execute(tx, {
         signTransaction,
         claims: claims.map((c) => c.token),
         beforeSubmit: car ? (signed) => uploadCar(bio, car, signed) : undefined,
         onStep: setProgress,
       });
-      toast.success(`Welcome aboard, you are member #${tokenId}`);
-      await invalidate();
+      await invalidate([sent.result]);
+      notify.success(`Welcome aboard, you are member #${sent.result}`, {
+        tx: sent,
+      });
       window.scrollTo({ top: 0 });
     } catch (error) {
-      toast.error(errorMessage(error));
+      notify.failure("Membership not minted", error, { onRetry: mint });
     } finally {
       setProgress(null);
     }
@@ -215,9 +217,9 @@ function Onboarding({ address }: { address: string }) {
                 Link a verified email
               </legend>
               <p className="text-sm text-muted-foreground">
-                Its hash connects you to your commits in PG Atlas. A hash can be
-                matched against a known email, so skip it if you would rather
-                not.
+                Only its hash goes on-chain. It connects you to your commits in
+                PG Atlas, and a hash can be matched against a known email, so
+                skip it if you would rather not.
               </p>
               <Choice
                 value={emailFrom}
@@ -226,7 +228,7 @@ function Onboarding({ address }: { address: string }) {
                   ["", "No email"],
                   ...emailSources.map((c): [string, string] => [
                     c.provider,
-                    `${PROVIDER_LABEL[c.provider]} email`,
+                    c.email ?? `${PROVIDER_LABEL[c.provider]} email`,
                   ]),
                 ]}
               />
@@ -299,7 +301,8 @@ function Onboarding({ address }: { address: string }) {
               <dt className="text-sm text-muted-foreground">Email</dt>
               <dd className="text-sm">
                 {emailFrom
-                  ? `${PROVIDER_LABEL[emailFrom]} email hash`
+                  ? (emailSources.find((c) => c.provider === emailFrom)
+                      ?.email ?? `${PROVIDER_LABEL[emailFrom]} email`)
                   : "Not linked"}
               </dd>
             </div>
@@ -394,18 +397,21 @@ function Recovery({ address }: { address: string }) {
     build: () => Promise<AssembledTransaction<unknown>>,
     attested: boolean,
     done: string,
+    failed: string,
   ) => {
     try {
       const tx = await build();
-      await execute(tx, {
+      const sent = await execute(tx, {
         signTransaction,
         claims: attested ? claims.map((c) => c.token) : undefined,
         onStep: setProgress,
       });
-      toast.success(done);
-      await invalidate();
+      if (tokenId !== null) await invalidate([tokenId]);
+      notify.success(done, { tx: sent });
     } catch (error) {
-      toast.error(errorMessage(error));
+      notify.failure(failed, error, {
+        onRetry: () => run(build, attested, done, failed),
+      });
     } finally {
       setProgress(null);
     }
@@ -526,6 +532,7 @@ function Recovery({ address }: { address: string }) {
                         }),
                       false,
                       "Membership recovered",
+                      "Recovery not finalized",
                     )
                   }
                 >
@@ -545,7 +552,8 @@ function Recovery({ address }: { address: string }) {
                           new_address: address,
                         }),
                       true,
-                      "Recovery proposed",
+                      "Recovery started",
+                      "Recovery not started",
                     )
                   }
                 >
@@ -615,7 +623,7 @@ function ProfileEditor({
         ({ cid: bio, car } = await packCar(await profileFiles(files)));
       }
       if (bio === member.bio) {
-        toast.info("Nothing changed");
+        notify.info("Nothing changed");
         return;
       }
       const tx = await membershipClient(address).set_bio({
@@ -623,15 +631,15 @@ function ProfileEditor({
         token_id: member.tokenId,
         bio,
       });
-      await execute(tx, {
+      const sent = await execute(tx, {
         signTransaction,
         beforeSubmit: car ? (signed) => uploadCar(bio, car, signed) : undefined,
         onStep: setProgress,
       });
-      toast.success("Profile updated");
-      await invalidate();
+      await invalidate([member.tokenId]);
+      notify.success("Profile updated", { tx: sent });
     } catch (error) {
-      toast.error(errorMessage(error));
+      notify.failure("Profile not updated", error, { onRetry: save });
     } finally {
       setProgress(null);
     }
@@ -680,11 +688,11 @@ function ProjectsSection({ member }: { member: MemberView }) {
         token_id: member.tokenId,
         projects,
       });
-      await execute(tx, { signTransaction });
-      toast.success("Projects updated");
-      await invalidate();
+      const sent = await execute(tx, { signTransaction });
+      await invalidate([member.tokenId]);
+      notify.success("Projects updated", { tx: sent });
     } catch (error) {
-      toast.error(errorMessage(error));
+      notify.failure("Projects not updated", error, { onRetry: save });
     } finally {
       setBusy(false);
     }
@@ -753,17 +761,17 @@ function AccountsSection({ member }: { member: MemberView }) {
           email_hash: emailHash ? Buffer.from(fromHex(emailHash)) : undefined,
         },
       });
-      await execute(tx, {
+      const sent = await execute(tx, {
         signTransaction,
         claims: claims.map((c) => c.token),
         onStep: setProgress,
       });
-      toast.success("Accounts updated");
       setRemoved([]);
       setEditing(false);
-      await invalidate();
+      await invalidate([member.tokenId]);
+      notify.success("Accounts updated", { tx: sent });
     } catch (error) {
-      toast.error(errorMessage(error));
+      notify.failure("Accounts not updated", error, { onRetry: save });
     } finally {
       setProgress(null);
     }
@@ -845,7 +853,7 @@ function AccountsSection({ member }: { member: MemberView }) {
               ["none", "Remove"],
               ...emailClaims.map((c): [string, string] => [
                 c.claim.provider,
-                `${PROVIDER_LABEL[c.claim.provider]} email`,
+                c.claim.email ?? `${PROVIDER_LABEL[c.claim.provider]} email`,
               ]),
             ]}
           />
@@ -898,7 +906,7 @@ function KeySection({ member }: { member: MemberView }) {
             })
           }
           onDone={async () => {
-            await invalidate();
+            await invalidate([member.tokenId]);
             window.scrollTo({ top: 0 });
           }}
         />
@@ -944,7 +952,7 @@ function MemberProfile({
       </div>
 
       {recovery && (
-        <RecoveryBanner tokenId={tokenId} recovery={recovery} canCancel />
+        <RecoveryBanner member={member} recovery={recovery} canCancel />
       )}
       {member.revoked && (
         <Alert variant="destructive">
@@ -984,7 +992,7 @@ export function Profile() {
             <Button
               size="lg"
               onClick={() =>
-                connect().catch((e) => toast.error(errorMessage(e)))
+                connect().catch((e) => notify.failure("Not connected", e))
               }
             >
               Connect wallet
