@@ -31,7 +31,7 @@ export function Layout() {
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-lg">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2.5">
-            <Logo className="size-8" />
+            <Logo className="size-7" />
             <span className="hidden font-display text-lg font-semibold sm:inline">
               Stellar Members
             </span>

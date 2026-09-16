@@ -53,6 +53,14 @@ cp .dev.vars.example .dev.vars   # secrets, can override any var
 bun dev                          # app and worker on http://localhost:5173
 ```
 
+If the local Cloudflare runtime cannot reach the network on your machine,
+run the worker with Bun instead and let Vite proxy `/api` to it:
+
+```bash
+bun run dev:api                  # http://127.0.0.1:8787
+bun run dev:app                  # Vite with API_PROXY set
+```
+
 Public configuration is in `wrangler.jsonc` and served to the app on
 `/api/config`. Set `CONTRACT_ID` and `ATTESTER_PUBLIC` there, or in
 `.dev.vars` for local testing.
@@ -61,8 +69,13 @@ Public configuration is in `wrangler.jsonc` and served to the app on
 bun run lint
 bun run typecheck
 bun run test
-bun run smoke                    # testnet, uses .dev.vars
+bun run smoke                    # testnet flows with the kept identities
+bun run card                     # render public/social-card.png
 ```
+
+The smoke test only uses the two Stellar CLI identities of the deployment,
+`stellar-members-testnet` (admin, also the member) and the attester from
+`.dev.vars`, and leaves the admin holding its membership.
 
 After a contract change, regenerate the bindings:
 
@@ -89,6 +102,12 @@ the Discord server through `DISCORD_ROLE_MAP` (Discord role id to 0 Verified,
 1 Pathfinder, 2 Navigator, 3 Pilot). Once existing members are onboarded,
 set `ROLE_SOURCE=verified`: new members mint as Verified and roles change
 with `set_role` from the admin.
+
+## Testing
+
+Unit tests cover the worker checks and the shared helpers. There is no
+browser end-to-end suite yet: the wallet flows need a wallet mock. The
+smoke script exercises the on-chain flows through the worker instead.
 
 ## Deployment
 

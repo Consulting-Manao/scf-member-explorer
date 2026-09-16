@@ -8,6 +8,8 @@
   ],
   "scripts": {
     "dev": "vite",
+    "dev:api": "bun scripts/dev-api.ts",
+    "dev:app": "API_PROXY=http://127.0.0.1:8787 vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "deploy": "bun run build && wrangler deploy",
@@ -17,7 +19,8 @@
     "test": "vitest run",
     "cf-typegen": "wrangler types worker/worker-configuration.d.ts",
     "bindings": "stellar contract bindings typescript --network testnet --contract-id \"$CONTRACT_ID\" --output-dir packages/stellar-membership --overwrite && cd packages/stellar-membership && bun install && bun run build",
-    "smoke": "bun scripts/smoke.ts"
+    "smoke": "bun scripts/smoke.ts",
+    "card": "rsvg-convert -w 1200 -h 630 assets/social-card.svg -o public/social-card.png"
   },
   "dependencies": {
     "@creit-tech/stellar-wallets-kit": "npm:@jsr/creit-tech__stellar-wallets-kit@^2.5.0",
