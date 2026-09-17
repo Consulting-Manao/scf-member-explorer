@@ -13,23 +13,9 @@ export function kit(): Promise<typeof StellarWalletsKit> {
   loading ??= Promise.all([
     import("@creit-tech/stellar-wallets-kit/sdk"),
     import("@creit-tech/stellar-wallets-kit/modules/utils"),
-    import("@creit-tech/stellar-wallets-kit/modules/xbull"),
-  ]).then(([{ StellarWalletsKit }, { defaultModules }, xbull]) => {
-    // xBull declares itself available even when its extension is not
-    // injected on this origin, then hangs on a blocked popup. Only offer
-    // it when the extension is really here.
-    class XBullExtension extends xbull.xBullModule {
-      override isAvailable(): Promise<boolean> {
-        return Promise.resolve("xBullSDK" in window);
-      }
-    }
+  ]).then(([{ StellarWalletsKit }, { defaultModules }]) => {
     StellarWalletsKit.init({
-      modules: [
-        ...defaultModules().filter(
-          (module) => module.productId !== xbull.XBULL_ID,
-        ),
-        new XBullExtension(),
-      ],
+      modules: defaultModules(),
       network: config().networkPassphrase as never,
     });
     return StellarWalletsKit;

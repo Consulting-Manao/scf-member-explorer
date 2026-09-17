@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:app": "API_PROXY=http://127.0.0.1:8787 vite --host 127.0.0.1 --strictPort",
+    "dev": "vite --host localhost --strictPort",
+    "dev:app": "API_PROXY=http://127.0.0.1:8787 vite --host localhost --strictPort",
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "wrangler deploy",

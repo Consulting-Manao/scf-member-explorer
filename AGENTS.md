@@ -29,7 +29,7 @@ deployment.
 
 ```bash
 bun install && cp .dev.vars.example .dev.vars
-bun dev                          # app and worker on http://127.0.0.1:5173
+bun dev                          # app and worker on http://localhost:5173
 bun run dev:local                # same, worker under Bun when workerd has no network
 bun run lint && bun run build    # prettier, eslint, tsc, vite
 bun run test                     # vitest: worker and shared

@@ -73,11 +73,12 @@ Discord or GitHub id to a member, `member(token_id)` returns the record,
 ```bash
 bun install
 cp .dev.vars.example .dev.vars   # secrets, can override any var
-bun dev                          # app and worker on http://127.0.0.1:5173
+bun dev                          # app and worker on http://localhost:5173
 ```
 
-Open the app on `127.0.0.1`, not `localhost`: the OAuth redirect URIs are
-registered for `127.0.0.1`. The worker refuses every request until its
+Open the app on `localhost`, not `127.0.0.1`: browser wallet extensions
+such as xBull only inject themselves on `localhost` and `https` origins,
+and the OAuth redirect URIs are registered for `localhost`. The worker refuses every request until its
 configuration is complete and `/api/config` names what is missing. Public
 values live in `wrangler.jsonc`, secrets in `.dev.vars` locally and in
 `wrangler secret put` in production.
@@ -106,7 +107,7 @@ One app per provider; the redirect URI is `<origin>/oauth/callback/<provider>`.
 - OAuth2, Client ID to `DISCORD_CLIENT_ID`, Client Secret to
   `DISCORD_CLIENT_SECRET`.
 - Redirects, exact match including the port:
-  `http://127.0.0.1:5173/oauth/callback/discord` and the production URL.
+  `http://localhost:5173/oauth/callback/discord` and the production URL.
 - No bot is needed. Scopes used: `identify email guilds.members.read`.
 - `DISCORD_GUILD_ID` is the Stellar Developers server, `897514728459468821`.
 - `DISCORD_ROLE_MAP` maps the server's role ids to 0 Verified, 1 Pathfinder,
@@ -115,9 +116,8 @@ One app per provider; the redirect URI is `<origin>/oauth/callback/<provider>`.
 
 **GitHub**, Settings, Developer settings, OAuth Apps, New OAuth App:
 
-- Callback URLs: `http://127.0.0.1/oauth/callback/github` (no port, GitHub
-  accepts any loopback port) and the production URL. Disable wildcard
-  matching.
+- Callback URLs: `http://localhost:5173/oauth/callback/github` and the
+  production URL. Disable wildcard matching.
 - Client ID to `GITHUB_CLIENT_ID`, generate a client secret to
   `GITHUB_CLIENT_SECRET`. Scopes used: `read:user user:email`.
 
@@ -137,8 +137,7 @@ roles change with `set_role` from the admin panel.
 Any wallet of Stellar Wallets Kit connects. Rotating the key needs a wallet
 that signs authorization entries (Freighter, Lobstr, Albedo); xBull does not.
 The admin moves a membership with its own signature only, since the member
-is not present. xBull is listed only when its extension is injected on the
-page: in Brave, allow the extension on all sites.
+is not present.
 
 ### Caching
 
