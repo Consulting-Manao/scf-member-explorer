@@ -1,6 +1,6 @@
-dist
 node_modules
-packages
+dist
+bindings
 .wrangler
 bun.lock
 worker/worker-configuration.d.ts

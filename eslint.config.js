@@ -7,9 +7,9 @@ import tseslint from "typescript-eslint";
 export default tseslint.config(
   {
     ignores: [
-      "dist",
-      "packages",
-      ".wrangler",
+      "**/dist",
+      "bindings",
+      "**/.wrangler",
       "worker/worker-configuration.d.ts",
     ],
   },

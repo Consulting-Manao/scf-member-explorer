@@ -184,7 +184,7 @@ secrets are shared. Production is added as an `env.mainnet` block in
 `wrangler.jsonc` once the contract is deployed there.
 
 ```bash
-make deploy network=testnet           # deploy the contract, writes .stellar_id/
+make deploy network=testnet           # deploy the contract, writes contracts/deployments/
 make upgrade network=testnet          # upgrade it in place
 make invoke fn=member args="--token_id 0"
 wrangler secret put ATTESTER_SECRET   # and the other secrets of .dev.vars.example

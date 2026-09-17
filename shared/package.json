@@ -1,0 +1,9 @@
+{
+  "name": "@stellar-membership/shared",
+  "private": true,
+  "type": "module",
+  "exports": "./membership.ts",
+  "scripts": {
+    "test": "vitest run"
+  }
+}

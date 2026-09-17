@@ -18,10 +18,14 @@ import {
 } from "@stellar/stellar-sdk/contract";
 import { Client } from "stellar-membership";
 
-import { accountOf, type AppConfig, type Claim } from "../shared/membership";
-import { packCar, profileFiles } from "../src/lib/ipfs";
-import { signClaim } from "../worker/claims";
-import { app } from "../worker/index";
+import {
+  accountOf,
+  type AppConfig,
+  type Claim,
+} from "@stellar-membership/shared";
+import { packCar, profileFiles } from "../dapp/src/lib/ipfs";
+import { signClaim } from "../worker/src/claims";
+import { app } from "../worker/src/index";
 import { localEnv } from "./env";
 
 const origin = process.argv[2];
@@ -203,6 +207,12 @@ const handles = (await member(tokenId)).external_accounts.accounts.map(
 if (!handles.includes(renamed.handle)) {
   throw new Error(`GitHub handle not updated, found ${handles.join(", ")}`);
 }
+const restore = await client(admin).set_external_accounts({
+  token_id: tokenId,
+  external_accounts: { accounts, email_hash: undefined },
+});
+await attest(restore, forAdmin);
+await restore.signAndSend();
 
 step("publish a profile on IPFS, bound to the set_bio transaction");
 const { cid, car } = await packCar(

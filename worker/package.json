@@ -1,0 +1,20 @@
+{
+  "name": "@stellar-membership/worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "cf-typegen": "wrangler types worker-configuration.d.ts"
+  },
+  "dependencies": {
+    "@ipld/car": "^5.4.7",
+    "@stellar-membership/shared": "workspace:*",
+    "@stellar/stellar-sdk": "^17.1.0",
+    "hono": "^4.13.8",
+    "stellar-membership": "workspace:*"
+  },
+  "devDependencies": {
+    "multiformats": "^14.0.5",
+    "wrangler": "^4.132.0"
+  }
+}

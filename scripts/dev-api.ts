@@ -6,7 +6,7 @@
  *   API_PROXY=http://127.0.0.1:8787 bun dev
  */
 
-import { app } from "../worker/index";
+import { app } from "../worker/src/index";
 import { localEnv } from "./env";
 
 const env = await localEnv();

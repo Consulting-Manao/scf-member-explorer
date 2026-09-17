@@ -6,7 +6,7 @@ network ?= testnet
 admin ?= stellar-members-$(network)
 attester ?= stellar-members-attester-$(network)
 wasm = target/wasm32v1-none/release/stellar_membership.wasm
-contract_id = $(shell cat .stellar_id/stellar_membership_id-$(network))
+contract_id = $(shell cat contracts/deployments/stellar-membership-$(network))
 nqg_contract = CAM3VZX47TCQWCEYGXEDTSIJYKIVM6AWMFR7VTFYTETXFO53I5LOZGBT
 
 help:  ## list the targets
@@ -22,9 +22,9 @@ lint:  ## clippy and rustfmt
 	cargo clippy --all-targets --all-features -- -Dwarnings && cargo fmt --check
 
 bindings: build  ## regenerate the TypeScript bindings from the WASM
-	stellar contract bindings typescript --wasm $(wasm) --output-dir packages/stellar-membership --overwrite && \
-	rm -f packages/stellar-membership/README.md && \
-	cd packages/stellar-membership && bun install && bun run build
+	stellar contract bindings typescript --wasm $(wasm) --output-dir bindings --overwrite && \
+	rm -f bindings/README.md && \
+	cd bindings && bun install && bun run build
 
 deploy: build  ## deploy the contract with the admin and attester identities
 	stellar contract deploy \
@@ -39,8 +39,8 @@ deploy: build  ## deploy the contract with the admin and attester identities
 		--uri https://ipfs.io/ipfs/QmVTqJ4EzJThVWobgyaWCetcrXCjftQhgi24E4giJ5EgXr \
 		--uri_trait https://ipfs.io/ipfs/Qmddf2UgGTQ3z2SZfg2ziZJzDJDRS3Dk7Z3phZ76fMzdLf \
 		--nqg_contract $(nqg_contract) \
-		> .stellar_id/stellar_membership_id-$(network) && \
-	cat .stellar_id/stellar_membership_id-$(network)
+		> contracts/deployments/stellar-membership-$(network) && \
+	cat contracts/deployments/stellar-membership-$(network)
 
 upgrade: build  ## upgrade the deployed contract in place
 	stellar contract invoke \

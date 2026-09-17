@@ -1,0 +1,41 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "stellar-members-testnet",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"],
+  },
+  "observability": { "enabled": true },
+  // Public configuration, also served to the app on /api/config.
+  // Secrets are set with `wrangler secret put`, see .dev.vars.example.
+  "vars": {
+    // Staging runs on testnet, production on mainnet: these five values are the
+    // only ones that differ. Users never pick a network.
+    "NETWORK": "testnet",
+    "NETWORK_PASSPHRASE": "Test SDF Network ; September 2015",
+    "RPC_URL": "https://soroban-testnet.stellar.org",
+    "CONTRACT_ID": "CB5O6XFNHMMW6H42M7H3HOA736EOGHNTBWUA5B3T4LPIJXRFQ6WCLFZE",
+    "ATTESTER_PUBLIC": "GBAWJQEPO6KF3EWRYV4NQXJOUSCEYY3JNL6GZWKUKWAJKXOMPYUDPQ6C",
+    "IPFS_GATEWAY": "https://ipfs.filebase.io/ipfs/",
+    "PGATLAS_URL": "https://api.pgatlas.xyz",
+    // "discord": role comes from the SDF Discord roles (migration),
+    // "verified": every new member is Verified.
+    "ROLE_SOURCE": "discord",
+    "DISCORD_GUILD_ID": "897514728459468821",
+    // Stellar Developers server roles: Pilot 3, Navigator 2, Pathfinder 1, Verified 0
+    "DISCORD_ROLE_MAP": "{\"1082331251899379762\":3,\"1082353855041392731\":2,\"1082357854926807111\":1,\"1116373909504274534\":0}",
+    "DISCORD_CLIENT_ID": "1549691188368642078",
+    "GITHUB_CLIENT_ID": "Ov23lifVUXCy7ULe8eHz",
+  },
+  "ratelimits": [
+    {
+      "name": "RATE_LIMITER",
+      // any id, unique per account
+      "namespace_id": "1001",
+      "simple": { "limit": 30, "period": 60 },
+    },
+  ],
+}

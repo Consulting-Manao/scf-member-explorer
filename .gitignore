@@ -2,9 +2,6 @@ node_modules
 dist
 .wrangler
 .dev.vars
-.env
-
-# Editor directories and files
 .idea
 .DS_Store
 *.log
