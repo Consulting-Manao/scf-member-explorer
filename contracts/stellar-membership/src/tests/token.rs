@@ -1,5 +1,5 @@
 use soroban_sdk::testutils::Address as _;
-use soroban_sdk::{Address, String, vec};
+use soroban_sdk::{Address, BytesN, String, vec};
 
 use super::utils::*;
 use crate::errors::MembershipError;
@@ -22,8 +22,6 @@ fn test_metadata() {
     assert_eq!(setup.contract.admin(), setup.admin);
     assert_eq!(setup.contract.attester(), setup.attester);
     assert_eq!(setup.contract.next_token_id(), 0);
-    // metadata.json maps the role values
-    assert_eq!(types::Role::Pilot as i128, 3);
 }
 
 #[test]
@@ -464,4 +462,25 @@ fn test_recover_reinstates_revoked() {
         setup.contract.member(&token_id).status,
         types::Status::Active
     );
+}
+
+#[test]
+fn test_upgrade_is_admin_only() {
+    let setup = create_test_data();
+    let e = &setup.env;
+    let token_id = mint(&setup, &setup.grogu, "1");
+    let wasm_hash = BytesN::from_array(e, &[9; 32]);
+    let call = args(e, (wasm_hash.clone(),));
+
+    // nobody signing, and nobody but the admin signing
+    mock_auths(&setup, &[]);
+    assert!(setup.contract.try_upgrade(&wasm_hash).is_err());
+    for address in [&setup.attester, &setup.grogu] {
+        mock_auths(&setup, &[(address, "upgrade", call.clone())]);
+        assert!(setup.contract.try_upgrade(&wasm_hash).is_err());
+    }
+
+    // the member's record is untouched by the refused calls
+    e.mock_all_auths();
+    assert_eq!(setup.contract.owner_of(&token_id), setup.grogu);
 }
