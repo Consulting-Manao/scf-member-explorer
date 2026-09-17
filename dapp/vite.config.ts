@@ -25,6 +25,9 @@ export default defineConfig(({ mode }) => {
     new RegExp(
       `^${apiUrl ? new URL(apiUrl).origin.replaceAll(".", "\\.") : "[^?#]*"}/api/${path}`,
     );
+  // BASE is not in scope once a route is serialised, so it is baked in here
+  const own = (path: string) =>
+    new RegExp(`^[^?#]*${BASE.replaceAll(".", "\\.")}${path}`);
   return {
     base: BASE,
     plugins: [
@@ -70,8 +73,7 @@ export default defineConfig(({ mode }) => {
               },
             },
             {
-              urlPattern: ({ url, sameOrigin }) =>
-                sameOrigin && url.pathname.startsWith(`${BASE}assets/`),
+              urlPattern: own("assets/"),
               handler: "StaleWhileRevalidate",
               options: { cacheName: "assets" },
             },

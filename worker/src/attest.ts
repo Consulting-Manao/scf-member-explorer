@@ -17,11 +17,13 @@ import {
 
 import {
   accountOf,
+  addsAccounts,
+  type AccountSet,
   PROVIDER_ID,
+  sameAccount,
   toHex,
   type Claim,
   type MemberRecord,
-  type SocialAccount,
 } from "@shared/membership";
 
 /** Maximum validity of a signature, about 10 minutes. */
@@ -66,23 +68,19 @@ function decodeInvocation(
 }
 
 /** Every claim must have been issued for the address the call is about. */
-function requireClaimsFor(address: unknown, ctx: AttestContext): void {
-  if (ctx.claims.length === 0) fail("No verified account");
+function claimsAreFor(address: unknown, ctx: AttestContext): void {
   if (ctx.claims.some((claim) => claim.address !== address)) {
     fail("Accounts were verified for another address");
   }
 }
 
-function sameAccount(a: SocialAccount, b: SocialAccount): boolean {
-  return a.provider === b.provider && a.id === b.id && a.handle === b.handle;
+/** The same, and at least one account verified. */
+function requireClaimsFor(address: unknown, ctx: AttestContext): void {
+  if (ctx.claims.length === 0) fail("No verified account");
+  claimsAreFor(address, ctx);
 }
 
-interface Accounts {
-  accounts: SocialAccount[];
-  emailHash: string | null;
-}
-
-function asAccounts(value: unknown): Accounts {
+function asAccounts(value: unknown): AccountSet {
   const external = value as MemberRecord["external_accounts"];
   if (!external || !Array.isArray(external.accounts)) {
     fail("Malformed external accounts");
@@ -100,7 +98,7 @@ function asAccounts(value: unknown): Accounts {
 function checkAccounts(
   value: unknown,
   claims: Claim[],
-  current: Accounts = { accounts: [], emailHash: null },
+  current: AccountSet = { accounts: [], emailHash: null },
 ): void {
   const { accounts, emailHash } = asAccounts(value);
   const verified = claims.map(accountOf);
@@ -149,8 +147,16 @@ async function checkSetExternalAccounts(
     ctx.member(tokenId),
   ]);
   if (!owner || !member) fail("Not an active member");
-  requireClaimsFor(owner, ctx);
-  checkAccounts(external, ctx.claims, asAccounts(member.external_accounts));
+  claimsAreFor(owner, ctx);
+
+  // A change that adds nothing leaves the attester nothing to vouch for, so a
+  // removal needs no claim; `checkAccounts` still keeps a Discord account.
+  const current = asAccounts(member.external_accounts);
+  if (addsAccounts(asAccounts(external), current) && ctx.claims.length === 0) {
+    fail("No verified account");
+  }
+
+  checkAccounts(external, ctx.claims, current);
 }
 
 /** At least two matching accounts, or the only one the member has. */

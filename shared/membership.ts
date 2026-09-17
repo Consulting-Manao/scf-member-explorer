@@ -126,6 +126,32 @@ export function accountOf(claim: Claim): SocialAccount {
   };
 }
 
+/** The same account, down to the handle: nothing to verify again. */
+export function sameAccount(a: SocialAccount, b: SocialAccount): boolean {
+  return a.provider === b.provider && a.id === b.id && a.handle === b.handle;
+}
+
+/** The accounts of a membership, as a change to them is expressed. */
+export interface AccountSet {
+  accounts: SocialAccount[];
+  emailHash: string | null;
+}
+
+/**
+ * Whether a change to the external accounts brings in anything the attester
+ * has to vouch for. Dropping accounts, or the email, brings in nothing: the
+ * member's own key authorizes the call as well, and that is the whole of what
+ * a removal needs.
+ */
+export function addsAccounts(next: AccountSet, current: AccountSet): boolean {
+  return (
+    next.accounts.some(
+      (account) => !current.accounts.some((had) => sameAccount(account, had)),
+    ) ||
+    (next.emailHash !== null && next.emailHash !== current.emailHash)
+  );
+}
+
 /**
  * External accounts of the contract from verified claims, ordered by
  * provider. The email hash is taken from `emailFrom` when it has one.

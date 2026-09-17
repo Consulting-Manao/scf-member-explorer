@@ -1,18 +1,17 @@
 # Copy to .dev.vars for local development. Any public var of wrangler.jsonc can
-# be overridden here too, for the local run only.
-#
-# `make deploy-secrets` pushes the whole file to Cloudflare in one call, so a
-# var left overridden here goes up as a production secret, and a secret shadows
-# the deployed vars with nothing to show for it in wrangler.jsonc. Keep the
-# overrides out of the file before pushing, or set the secrets one by one with
-# `wrangler secret put <NAME>`. Removing a line here never removes a secret;
+# be overridden here too, for the local run only: `make deploy-secrets` leaves
+# every name wrangler.jsonc declares behind and pushes the rest, so an override
+# stays local. Removing a line here never removes a secret;
 # `wrangler secret delete <NAME>` does.
 
 # Secret key of the attester identity, one per network of NETWORKS. Signs auth
 # entries and OAuth claims for that network only, never pays fees.
 TESTNET_ATTESTER_SECRET=
-# OAuth apps, see README
+# OAuth apps, see README. A GitHub app holds a single callback URL, so the one
+# for localhost is a second app: its client id belongs here too, overriding the
+# deployed one of wrangler.jsonc.
 DISCORD_CLIENT_SECRET=
+GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
 # Filebase IPFS pinning token
 FILEBASE_TOKEN=

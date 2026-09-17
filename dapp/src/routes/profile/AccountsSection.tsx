@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import {
   accountOf,
+  addsAccounts,
   fromHex,
   PROVIDER_HINT,
   PROVIDER_ID,
@@ -88,10 +89,14 @@ export function AccountsSection({
     .map((c) => c.claim)
     .filter((c) => c.emailHash && c.emailHash !== emailHash);
 
-  const changed =
-    removed.length > 0 ||
-    emailHash !== member.emailHash ||
-    accounts.some((a) => bound.get(a.provider)?.id !== a.id);
+  // A change that only drops accounts, or the email, needs no claim: the
+  // attester has nothing to vouch for and co-signs on the member's key alone.
+  const adds = addsAccounts(
+    { accounts, emailHash },
+    { accounts: member.accounts, emailHash: member.emailHash },
+  );
+  const changed = adds || removed.length > 0 || emailHash !== member.emailHash;
+  const missingClaim = adds && claims.length === 0;
 
   const discard = () => {
     setRemoved([]);
@@ -136,6 +141,7 @@ export function AccountsSection({
               key={provider}
               provider={provider}
               address={address}
+              canVerify={enabledProviders().includes(provider)}
               bound={bound.get(PROVIDER_ID[provider])}
               claim={fresh.get(PROVIDER_ID[provider])}
               removed={removed.includes(PROVIDER_ID[provider])}
@@ -206,15 +212,17 @@ export function AccountsSection({
       {changed && (
         <CardFooter className="flex-wrap justify-between gap-3">
           <p className="text-sm text-muted-foreground">
-            {claims.length === 0
+            {missingClaim
               ? "Verify one of your accounts to sign the change."
-              : "The attester co-signs your verified accounts."}
+              : adds
+                ? "The attester co-signs your verified accounts."
+                : "Removals are signed by your key alone."}
           </p>
           <div className="flex gap-2">
             <Button variant="ghost" disabled={busy} onClick={discard}>
               Discard
             </Button>
-            <Button disabled={claims.length === 0 || busy} onClick={save}>
+            <Button disabled={missingClaim || busy} onClick={save}>
               Save changes
             </Button>
           </div>
@@ -227,6 +235,7 @@ export function AccountsSection({
 function AccountRow({
   provider,
   address,
+  canVerify,
   bound,
   claim,
   removed,
@@ -234,6 +243,7 @@ function AccountRow({
 }: {
   provider: ProviderName;
   address: string;
+  canVerify: boolean;
   bound: SocialAccount | undefined;
   claim: Claim | undefined;
   removed: boolean;
@@ -241,6 +251,9 @@ function AccountRow({
 }) {
   const isNew = Boolean(claim) && bound?.id !== claim?.id;
   const handle = claim?.handle ?? bound?.handle ?? bound?.id;
+  // Discord is what the membership is anchored on: it can be verified again,
+  // to prove it or to change the account, but never removed.
+  const canRemove = Boolean(handle) && provider !== "discord";
   return (
     <li className={cn("flex items-center gap-4 p-4", removed && "opacity-60")}>
       <span className="flex size-10 items-center justify-center rounded-full bg-muted">
@@ -261,29 +274,32 @@ function AccountRow({
         <Button variant="ghost" size="sm" onClick={() => onRemove(false)}>
           Undo
         </Button>
-      ) : handle ? (
-        provider !== "discord" && (
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={`Remove ${PROVIDER_LABEL[provider]}`}
-            onClick={() => onRemove(true)}
-          >
-            <XIcon />
-          </Button>
-        )
       ) : (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            startOAuth(provider, address, "/profile").catch((error) =>
-              notify.failure("Verification not started", error),
-            )
-          }
-        >
-          Verify
-        </Button>
+        <div className="flex items-center gap-1">
+          {canVerify && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                startOAuth(provider, address, "/profile").catch((error) =>
+                  notify.failure("Verification not started", error),
+                )
+              }
+            >
+              {handle ? "Re-verify" : "Verify"}
+            </Button>
+          )}
+          {canRemove && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Remove ${PROVIDER_LABEL[provider]}`}
+              onClick={() => onRemove(true)}
+            >
+              <XIcon />
+            </Button>
+          )}
+        </div>
       )}
     </li>
   );

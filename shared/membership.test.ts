@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   accountsFromClaims,
+  addsAccounts,
   clampToBytes,
   fromHex,
   hashEmail,
   toHex,
   type Claim,
+  type SocialAccount,
 } from "./membership";
 
 describe("hashEmail", () => {
@@ -47,5 +49,43 @@ describe("clampToBytes", () => {
     // three bytes each, so 8 leaves room for two
     expect(clampToBytes("ありがとう", 8)).toBe("あり");
     expect(clampToBytes("a".repeat(70), 64)).toHaveLength(64);
+  });
+});
+
+describe("addsAccounts", () => {
+  const discord: SocialAccount = { provider: 0, id: "1", handle: "grogu" };
+  const github: SocialAccount = { provider: 1, id: "2", handle: "grogu-gh" };
+  const current = { accounts: [discord, github], emailHash: "aa" };
+
+  it("sees nothing to attest in a removal", () => {
+    // what the profile card does when GitHub is dropped
+    expect(
+      addsAccounts({ accounts: [discord], emailHash: "aa" }, current),
+    ).toBe(false);
+    // and unlinking the email is a removal too
+    expect(
+      addsAccounts({ accounts: [discord, github], emailHash: null }, current),
+    ).toBe(false);
+    expect(addsAccounts(current, current)).toBe(false);
+  });
+
+  it("sees an account, a rename and an email as new", () => {
+    const x: SocialAccount = { provider: 2, id: "3", handle: "g" };
+    expect(
+      addsAccounts(
+        { accounts: [...current.accounts, x], emailHash: "aa" },
+        current,
+      ),
+    ).toBe(true);
+    expect(
+      addsAccounts(
+        {
+          accounts: [discord, { ...github, handle: "moved" }],
+          emailHash: "aa",
+        },
+        current,
+      ),
+    ).toBe(true);
+    expect(addsAccounts({ ...current, emailHash: "bb" }, current)).toBe(true);
   });
 });

@@ -211,6 +211,33 @@ const handles = (await member(tokenId)).external_accounts.accounts.map(
 if (!handles.includes(renamed.handle)) {
   throw new Error(`GitHub handle not updated, found ${handles.join(", ")}`);
 }
+step("remove GitHub with no claim: the attester co-signs a plain removal");
+const dropped = await client(admin).set_external_accounts({
+  token_id: tokenId,
+  external_accounts: {
+    accounts: [accountOf(discord)],
+    email_hash: undefined,
+  },
+});
+await attest(dropped, []);
+await dropped.signAndSend();
+const left = (await member(tokenId)).external_accounts.accounts;
+if (left.length !== 1) {
+  throw new Error(`GitHub not removed, ${left.length} accounts left`);
+}
+
+await expectFailure(
+  "adding an account back without a claim",
+  /No verified account/,
+  async () => {
+    const tx = await client(admin).set_external_accounts({
+      token_id: tokenId,
+      external_accounts: { accounts, email_hash: undefined },
+    });
+    await attest(tx, []);
+  },
+);
+
 const restore = await client(admin).set_external_accounts({
   token_id: tokenId,
   external_accounts: { accounts, email_hash: undefined },

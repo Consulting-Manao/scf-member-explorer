@@ -138,6 +138,13 @@ async function github(env: Env, exchange: CodeExchange): Promise<Identity> {
     "GitHub token exchange",
   );
   if (!token.access_token) {
+    // A GitHub OAuth app holds one callback URL, so this is what an app
+    // registered for another origin, or another base path, looks like.
+    if (token.error === "redirect_uri_mismatch") {
+      throw new OAuthError(
+        `The GitHub app is not registered for ${exchange.redirectUri}`,
+      );
+    }
     throw new OAuthError(token.error ?? "GitHub token exchange failed");
   }
   const headers = {

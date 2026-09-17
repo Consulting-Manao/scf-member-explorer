@@ -43,7 +43,10 @@ The worker is small and stateless. It holds the **attester** key, which
 only signs `SorobanAuthorizationEntry` for `mint`, `set_external_accounts`
 and `propose_recovery` after checking the arguments against OAuth claims.
 For a mint and an accounts change the member signs too, so the attester
-alone cannot touch a membership. A recovery is the exception by design: it
+alone cannot touch a membership. A change that only drops accounts, or the
+email, is asked for no claim: there is nothing new in it to vouch for, the
+member's own key authorizes it, and a Discord account still has to remain.
+A recovery is the exception by design: it
 is proposed by the attester and the new key, which is why it only takes
 effect after seven days, lapses seven days later, and can be cancelled by
 the member or the admin — and why replacing the attester voids everything
@@ -142,7 +145,10 @@ package keeps its own copy so that it resolves them like its own code.
 
 ### OAuth apps
 
-One app per provider; the redirect URI is `<origin>/oauth/callback/<provider>`.
+One app per provider; the redirect URI is `<origin><base>/oauth/callback/<provider>`,
+the base path being the one the app is served under, `/` in development.
+A provider only redirects to a URI its app has registered, so every origin the
+app is served from has to be listed — Discord takes several per app, GitHub one.
 
 **Discord**, https://discord.com/developers/applications, New Application:
 
@@ -156,12 +162,20 @@ One app per provider; the redirect URI is `<origin>/oauth/callback/<provider>`.
   2 Navigator, 3 Pilot. Copy role ids from Server Settings, Roles, with
   Developer Mode on.
 
-**GitHub**, Settings, Developer settings, OAuth Apps, New OAuth App:
+**GitHub**, Settings, Developer settings, OAuth Apps, New OAuth App. An OAuth
+app has **one** Authorization callback URL, so this is two apps, one per
+environment:
 
-- Callback URLs: `http://localhost:5173/oauth/callback/github` and the
-  production URL. Disable wildcard matching.
-- Client ID to `GITHUB_CLIENT_ID`, generate a client secret to
-  `GITHUB_CLIENT_SECRET`. Scopes used: `read:user user:email`.
+- The deployed app: callback
+  `https://consulting-manao.radicle.page/stellar-members/oauth/callback/github`,
+  wildcard matching disabled. Its Client ID is `GITHUB_CLIENT_ID` in
+  `worker/wrangler.jsonc`, its secret `GITHUB_CLIENT_SECRET` in Cloudflare.
+- The development app: callback `http://localhost:5173/oauth/callback/github`.
+  Both its Client ID and its secret go in `worker/.dev.vars`, where the id
+  overrides the deployed one for the local run only — `make deploy-secrets`
+  never pushes a name `wrangler.jsonc` declares.
+- Scopes used: `read:user user:email`. GitHub ignores PKCE, which is why the
+  callback URL is the whole of what keeps the code exchange honest there.
 
 The contract also knows an X provider (id 2) for accounts bound before X
 verification was dropped: the app shows them and lets their owner remove
@@ -261,7 +275,9 @@ it back through `import.meta.env.BASE_URL`. A domain of its own is the
 default, `make deploy-pages base=/`. Whatever the path is, each provider's
 OAuth app must list its callback: today
 `https://consulting-manao.radicle.page/stellar-members/oauth/callback/discord`
-and the same for GitHub.
+and the same for GitHub. Changing the host or the base path means repointing
+both apps, in the same move: a provider refuses a redirect URI it has not
+been given, and the app reports which one it was refused.
 
 Any other static host works the same way: upload `dapp/dist` somewhere that
 serves `index.html` for unknown paths, with `VITE_API_URL` set to the

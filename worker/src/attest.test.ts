@@ -245,6 +245,61 @@ describe("attest set_external_accounts", () => {
     await attest(entry, latestLedger + 60, context({ claims: [x] }));
   });
 
+  it("signs a removal with no claim at all", async () => {
+    // dropping GitHub, keeping the email the record already has
+    const dropped = await entryFor(
+      "set_external_accounts",
+      args(0, external([discord], discord.emailHash)),
+    );
+    await attest(dropped, latestLedger + 60, context({ claims: [] }));
+
+    // and unlinking the email is a removal too
+    const unlinked = await entryFor(
+      "set_external_accounts",
+      args(0, external([discord, github])),
+    );
+    await attest(unlinked, latestLedger + 60, context({ claims: [] }));
+  });
+
+  it("still requires a claim for anything new", async () => {
+    const x: Claim = { address: member, provider: "x", id: "7", handle: "g" };
+    const added = await entryFor(
+      "set_external_accounts",
+      args(0, external([discord, github, x], discord.emailHash)),
+    );
+    await rejects(
+      attest(added, latestLedger + 60, context({ claims: [] })),
+      "No verified account",
+    );
+
+    // a rename is a new account too, its handle goes on-chain
+    const renamed = await entryFor(
+      "set_external_accounts",
+      args(0, external([discord, { ...github, handle: "moved" }])),
+    );
+    await rejects(
+      attest(renamed, latestLedger + 60, context({ claims: [] })),
+      "No verified account",
+    );
+  });
+
+  it("rejects claims issued for another address", async () => {
+    const entry = await entryFor(
+      "set_external_accounts",
+      args(0, external([discord], discord.emailHash)),
+    );
+    await rejects(
+      attest(
+        entry,
+        latestLedger + 60,
+        context({
+          claims: [{ ...discord, address: Keypair.random().publicKey() }],
+        }),
+      ),
+      "another address",
+    );
+  });
+
   it("rejects removing Discord", async () => {
     const entry = await entryFor(
       "set_external_accounts",
