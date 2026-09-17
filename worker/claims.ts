@@ -1,55 +1,52 @@
-import { sign, verify } from "hono/jwt";
+/**
+ * A claim is what the worker hands back after an OAuth exchange, so that a
+ * later attestation request can prove the worker itself verified the
+ * account. It is signed by the attester key: `base64url(payload).base64url(signature)`.
+ */
+
+import type { Keypair } from "@stellar/stellar-sdk";
 
 import { PROVIDERS, type Claim } from "@shared/membership";
 
 /** Claims are valid for a day: long enough to finish onboarding. */
 export const CLAIM_TTL_SECONDS = 24 * 3600;
 
-export async function signClaim(
+const encode = (bytes: Uint8Array) => Buffer.from(bytes).toString("base64url");
+const decode = (text: string) => Buffer.from(text, "base64url");
+
+export function signClaim(
   claim: Claim,
-  secret: string,
+  attester: Keypair,
   now = Math.floor(Date.now() / 1000),
-): Promise<string> {
-  return sign(
-    {
-      sub: claim.address,
-      provider: claim.provider,
-      id: claim.id,
-      handle: claim.handle,
-      ...(claim.emailHash ? { email_hash: claim.emailHash } : {}),
-      ...(claim.email ? { email: claim.email } : {}),
-      ...(claim.role !== undefined ? { role: claim.role } : {}),
-      iat: now,
-      exp: now + CLAIM_TTL_SECONDS,
-    },
-    secret,
-    "HS256",
+): string {
+  const payload = Buffer.from(
+    JSON.stringify({ ...claim, exp: now + CLAIM_TTL_SECONDS }),
   );
+  return `${encode(payload)}.${encode(attester.sign(payload))}`;
 }
 
 /** Verify signature and expiry of a claim token. */
-export async function verifyClaim(
-  token: string,
-  secret: string,
-): Promise<Claim> {
-  const payload = await verify(token, secret, "HS256");
-  const provider = payload.provider as Claim["provider"];
+export function verifyClaim(token: string, attester: Keypair): Claim {
+  const [payload, signature] = token.split(".");
+  if (!payload || !signature) throw new Error("Malformed claim");
+  const bytes = decode(payload);
+  if (!attester.verify(bytes, decode(signature))) {
+    throw new Error("Claim not signed by the attester");
+  }
+  const data = JSON.parse(bytes.toString()) as Partial<Claim> & {
+    exp?: number;
+  };
+  const { exp, ...claim } = data;
+  if (typeof exp !== "number" || exp <= Math.floor(Date.now() / 1000)) {
+    throw new Error("Claim expired");
+  }
   if (
-    typeof payload.sub !== "string" ||
-    !PROVIDERS.includes(provider) ||
-    typeof payload.id !== "string" ||
-    typeof payload.handle !== "string"
+    typeof claim.address !== "string" ||
+    !PROVIDERS.includes(claim.provider as Claim["provider"]) ||
+    typeof claim.id !== "string" ||
+    typeof claim.handle !== "string"
   ) {
     throw new Error("Malformed claim");
   }
-  return {
-    address: payload.sub,
-    provider,
-    id: payload.id,
-    handle: payload.handle,
-    emailHash:
-      typeof payload.email_hash === "string" ? payload.email_hash : undefined,
-    email: typeof payload.email === "string" ? payload.email : undefined,
-    role: typeof payload.role === "number" ? payload.role : undefined,
-  };
+  return claim as Claim;
 }

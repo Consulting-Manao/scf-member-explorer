@@ -6,7 +6,7 @@ network ?= testnet
 admin ?= stellar-members-$(network)
 attester ?= stellar-members-attester-$(network)
 wasm = target/wasm32v1-none/release/stellar_membership.wasm
-contract_id = $(shell cat .stellar/stellar_membership_id-$(network))
+contract_id = $(shell cat .stellar_id/stellar_membership_id-$(network))
 nqg_contract = CAM3VZX47TCQWCEYGXEDTSIJYKIVM6AWMFR7VTFYTETXFO53I5LOZGBT
 
 help:  ## list the targets
@@ -39,8 +39,8 @@ deploy: build  ## deploy the contract with the admin and attester identities
 		--uri https://ipfs.io/ipfs/QmVTqJ4EzJThVWobgyaWCetcrXCjftQhgi24E4giJ5EgXr \
 		--uri_trait https://ipfs.io/ipfs/Qmddf2UgGTQ3z2SZfg2ziZJzDJDRS3Dk7Z3phZ76fMzdLf \
 		--nqg_contract $(nqg_contract) \
-		> .stellar/stellar_membership_id-$(network) && \
-	cat .stellar/stellar_membership_id-$(network)
+		> .stellar_id/stellar_membership_id-$(network) && \
+	cat .stellar_id/stellar_membership_id-$(network)
 
 upgrade: build  ## upgrade the deployed contract in place
 	stellar contract invoke \

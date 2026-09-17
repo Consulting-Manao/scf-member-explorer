@@ -17,7 +17,6 @@ export interface Env {
 
   // secrets
   ATTESTER_SECRET: string;
-  CLAIMS_SECRET: string;
   DISCORD_CLIENT_SECRET: string;
   GITHUB_CLIENT_SECRET: string;
   FILEBASE_TOKEN: string;
@@ -30,7 +29,6 @@ const REQUIRED = [
   "CONTRACT_ID",
   "ATTESTER_PUBLIC",
   "ATTESTER_SECRET",
-  "CLAIMS_SECRET",
   "IPFS_GATEWAY",
   "PGATLAS_URL",
   "ROLE_SOURCE",

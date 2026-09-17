@@ -9,7 +9,6 @@ const complete: Partial<Env> = {
   CONTRACT_ID: "C",
   ATTESTER_PUBLIC: "G",
   ATTESTER_SECRET: "S",
-  CLAIMS_SECRET: "x",
   IPFS_GATEWAY: "https://ipfs.filebase.io/ipfs/",
   PGATLAS_URL: "https://api.pgatlas.xyz",
   ROLE_SOURCE: "discord",

@@ -2,10 +2,10 @@
  * End-to-end flows on testnet with the two kept identities only:
  * the admin (member) and the attester (also used as the rotated key).
  *
- *   bun scripts/smoke.ts                          # worker in-process, .dev.vars
- *   CLAIMS_SECRET=… bun scripts/smoke.ts <origin>  # a running worker
+ *   bun scripts/smoke.ts                            # worker in-process, .dev.vars
+ *   ATTESTER_SECRET=… bun scripts/smoke.ts <origin>  # a running worker
  *
- * OAuth is skipped: claims are signed with the worker's CLAIMS_SECRET.
+ * OAuth is skipped: claims are signed with the attester key directly.
  * Idempotent: the admin ends up holding its membership, whatever the state.
  */
 
@@ -33,8 +33,6 @@ function api(path: string, init?: RequestInit): Promise<Response> {
     : Promise.resolve(app.request(`/api${path}`, init, env));
 }
 
-const claimsSecret = process.env.CLAIMS_SECRET ?? env?.CLAIMS_SECRET;
-if (!claimsSecret) throw new Error("CLAIMS_SECRET is required");
 const attesterSecret = process.env.ATTESTER_SECRET ?? env?.ATTESTER_SECRET;
 if (!attesterSecret) throw new Error("ATTESTER_SECRET is required");
 
@@ -153,10 +151,7 @@ const github: Claim = {
   handle: "stellar-members",
 };
 const accounts = [discord, github].map(accountOf);
-const forAdmin = [
-  await signClaim(discord, claimsSecret),
-  await signClaim(github, claimsSecret),
-];
+const forAdmin = [signClaim(discord, attester), signClaim(github, attester)];
 
 step("reset: the admin holds its membership");
 let tokenId = await tokenOf(admin.publicKey());
@@ -198,8 +193,8 @@ const update = await client(admin).set_external_accounts({
   },
 });
 await attest(update, [
-  await signClaim(discord, claimsSecret),
-  await signClaim(renamed, claimsSecret),
+  signClaim(discord, attester),
+  signClaim(renamed, attester),
 ]);
 await update.signAndSend();
 const handles = (await member(tokenId)).external_accounts.accounts.map(
@@ -271,7 +266,7 @@ if ((await owner(tokenId)) !== attester.publicKey()) {
 console.log(`  owner ${attester.publicKey()}`);
 
 step("propose recovery back to the admin with a single account");
-const oneClaim = [await signClaim(discord, claimsSecret)];
+const oneClaim = [signClaim(discord, attester)];
 await expectFailure("one of two accounts", /Prove 2/, async () => {
   const tx = await client(admin).propose_recovery({
     token_id: tokenId,

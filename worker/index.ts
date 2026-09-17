@@ -79,7 +79,8 @@ app.post("/oauth/:provider/exchange", rateLimit, async (c) => {
     redirectUri: body.redirectUri,
   });
   const claim = { ...identity, address: body.address };
-  return c.json({ claim, token: await signClaim(claim, c.env.CLAIMS_SECRET) });
+  const attester = Keypair.fromSecret(c.env.ATTESTER_SECRET);
+  return c.json({ claim, token: signClaim(claim, attester) });
 });
 
 app.post("/attest", rateLimit, async (c) => {
@@ -92,17 +93,18 @@ app.post("/attest", rateLimit, async (c) => {
     throw new HTTPException(400, { message: "Missing parameters" });
   }
   const env = c.env;
-  const claims = await Promise.all(
-    body.claims.map((token) =>
-      verifyClaim(token, env.CLAIMS_SECRET).catch(() => {
-        throw new AttestError("Invalid or expired verification");
-      }),
-    ),
-  );
+  const attester = Keypair.fromSecret(env.ATTESTER_SECRET);
+  const claims = body.claims.map((token) => {
+    try {
+      return verifyClaim(token, attester);
+    } catch {
+      throw new AttestError("Invalid or expired verification");
+    }
+  });
 
   const entry = await attest(body.entry, body.validUntilLedger, {
     contractId: env.CONTRACT_ID,
-    attester: Keypair.fromSecret(env.ATTESTER_SECRET),
+    attester,
     networkPassphrase: env.NETWORK_PASSPHRASE,
     latestLedger: await latestLedger(env),
     claims,
