@@ -1,7 +1,7 @@
 # Copy to .dev.vars for local development. In production: `wrangler secret put <NAME>`.
 # Any public var of wrangler.jsonc can be overridden here too.
 
-# Secret key of the attester identity. Unfunded, signs auth entries and OAuth claims.
+# Secret key of the attester identity. Signs auth entries and OAuth claims, never pays fees.
 ATTESTER_SECRET=
 # OAuth apps, see README
 DISCORD_CLIENT_SECRET=

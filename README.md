@@ -44,7 +44,8 @@ The worker is small and stateless. It holds the **attester** key, which
 only signs `SorobanAuthorizationEntry` for `mint`, `set_external_accounts`
 and `propose_recovery` after checking the arguments against OAuth claims.
 The member always authorizes the call too, so the attester alone cannot act
-on anyone's membership. It never signs transactions nor holds funds.
+on anyone's membership. It never submits a transaction: the member's wallet
+is the source and pays the fees.
 
 ### Contract
 
@@ -192,8 +193,10 @@ bun run deploy                        # build and deploy the app and worker
 
 The contract is deployed by the `stellar-members-<network>` identity of the
 Stellar CLI (the admin) with `stellar-members-attester-<network>` as the
-attester. The attester is an unfunded account: if its key leaks, the admin
-replaces it from the admin panel and the worker secret is updated.
+attester. The attester account only needs to exist on the ledger, with the
+minimum balance, for its signatures to verify; it never pays fees. If its
+key leaks, the admin replaces it from the admin panel and the worker secret
+is updated.
 
 The NQG score comes from the Neural Quorum Governance contract of the
 Stellar Community Fund. Its address is given to the membership contract at
