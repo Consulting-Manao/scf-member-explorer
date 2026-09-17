@@ -11,16 +11,15 @@
     "worker"
   ],
   "scripts": {
-    "dev": "bun run --cwd dapp dev",
-    "dev:local": "bun scripts/dev-api.ts & bun run --cwd dapp dev:app; wait",
+    "dev": "bun scripts/dev-api.ts & bun run --cwd dapp dev; wait",
     "build": "bun run typecheck && bun run --cwd dapp build",
-    "deploy": "bun run build && bun run --cwd dapp deploy",
+    "typecheck": "tsc -p shared && tsc -p worker && tsc -p dapp && tsc -p scripts",
+    "deploy": "bun run --cwd worker deploy",
     "lint": "prettier -c . && eslint .",
     "format": "prettier --write .",
     "test": "bun run --cwd shared test && bun run --cwd worker test && bun run --cwd dapp test",
     "smoke": "bun scripts/smoke.ts",
-    "cf-typegen": "bun run --cwd worker cf-typegen",
-    "typecheck": "tsc -p shared && tsc -p worker && tsc -p dapp && tsc -p scripts"
+    "cf-typegen": "bun run --cwd worker cf-typegen"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

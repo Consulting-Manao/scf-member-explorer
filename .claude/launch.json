@@ -4,9 +4,10 @@
     {
       "name": "app",
       "runtimeExecutable": "bun",
-      "runtimeArgs": ["run", "dev:local"],
+      "runtimeArgs": ["run", "dev"],
       "port": 5173,
-      "url": "http://localhost:5173"
+      "url": "http://localhost:5173",
+      "autoPort": false
     }
   ]
 }

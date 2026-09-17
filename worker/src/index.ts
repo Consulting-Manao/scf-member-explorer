@@ -1,5 +1,6 @@
 import { Keypair } from "@stellar/stellar-sdk";
 import { Hono, type Context, type Next } from "hono";
+import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 
 import {
@@ -36,6 +37,10 @@ function provider(c: Context<AppEnv>): ProviderName {
 }
 
 export const app = new Hono<AppEnv>().basePath("/api");
+
+// The API is public and stateless: nothing is authenticated by the origin,
+// every request is rate limited per address.
+app.use("*", cors());
 
 /** Every API call requires a complete configuration. */
 app.use("*", async (c, next) => {

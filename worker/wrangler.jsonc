@@ -4,10 +4,6 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"],
-  },
   "observability": { "enabled": true },
   // Public configuration, also served to the app on /api/config.
   // Secrets are set with `wrangler secret put`, see .dev.vars.example.

@@ -3,7 +3,7 @@
   "compilerOptions": {
     "tsBuildInfoFile": "../node_modules/.tmp/scripts.tsbuildinfo",
     "lib": ["ES2023"],
-    "types": ["node"]
+    "types": ["node", "vite/client"]
   },
   "include": ["*.ts", "../worker/worker-configuration.d.ts"]
 }

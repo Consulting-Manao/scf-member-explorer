@@ -22,10 +22,10 @@ contributors), the IPFS CID of a profile and DAOIP-5 project ids.
 | Path               | Content                                                     |
 | ------------------ | ----------------------------------------------------------- |
 | `contracts/`       | Soroban contract, Rust, a Cargo workspace at the root       |
-| `src/`             | React app: TanStack Router and Query, Tailwind, Wallets Kit |
-| `worker/`          | Hono API, deployed with the app as a Cloudflare Worker      |
+| `dapp/`            | React app: TanStack Router and Query, Tailwind, Wallets Kit |
+| `worker/`          | Hono API, a Cloudflare Worker                               |
 | `shared/`          | Types and helpers used by the app and the worker            |
-| `packages/`        | Contract bindings, generated from the WASM                  |
+| `bindings/`        | Contract bindings, generated from the WASM                  |
 | `scripts/smoke.ts` | End-to-end flows on testnet                                 |
 
 ## Architecture
@@ -72,30 +72,28 @@ Discord or GitHub id to a member, `member(token_id)` returns the record,
 
 ```bash
 bun install
-cp .dev.vars.example .dev.vars   # secrets, can override any var
-bun dev                          # app and worker on http://localhost:5173
+cp worker/.dev.vars.example worker/.dev.vars   # secrets, can override any var
+bun dev                          # app on http://localhost:5173, worker behind /api
 ```
 
 Open the app on `localhost`, not `127.0.0.1`: browser wallet extensions
 such as xBull only inject themselves on `localhost` and `https` origins,
-and the OAuth redirect URIs are registered for `localhost`. The worker refuses every request until its
-configuration is complete and `/api/config` names what is missing. Public
-values live in `wrangler.jsonc`, secrets in `.dev.vars` locally and in
+and the OAuth redirect URIs are registered for `localhost`. The worker
+refuses every request until its configuration is complete and
+`/api/config` names what is missing. Public values live in
+`worker/wrangler.jsonc`, secrets in `worker/.dev.vars` locally and in
 `wrangler secret put` in production.
 
-If the local Cloudflare runtime cannot reach the network on your machine,
-run the worker with Bun and let Vite proxy `/api` to it:
-
-```bash
-bun run dev:local                # both: worker on 8787, Vite proxies /api to it
-```
+`bun dev` runs the worker under Bun on port 8787 and Vite proxies `/api` to
+it. `bun run --cwd worker dev` runs it under the Cloudflare runtime instead,
+on the same port, when that runtime can reach the network on your machine.
 
 Contract work goes through `make` (`make help` lists the targets):
 
 ```bash
 make test                        # contract tests
 make lint                        # clippy and rustfmt
-make bindings                    # regenerate packages/stellar-membership
+make bindings                    # regenerate bindings/
 ```
 
 ### OAuth apps
@@ -169,7 +167,7 @@ transaction and the configuration. The smoke script runs the real flows
 against testnet through the worker: mint, accounts update, profile on IPFS,
 projects, key rotation, recovery proposal and cancellation, admin recover.
 It uses only the two identities of the deployment, `stellar-members-testnet`
-(admin, also the member) and the attester from `.dev.vars`, and leaves the
+(admin, also the member) and the attester from `worker/.dev.vars`, and leaves the
 admin holding its membership. There is no browser suite: the wallet flows
 would need a wallet mock.
 
@@ -180,15 +178,21 @@ mainnet, and the app shows no trace of which one it is on. The only values
 that differ are `NETWORK`, `NETWORK_PASSPHRASE`, `RPC_URL`, `CONTRACT_ID`
 and `ATTESTER_PUBLIC` (with its secret). OAuth apps, IPFS and the other
 secrets are shared. Production is added as an `env.mainnet` block in
-`wrangler.jsonc` once the contract is deployed there.
+`worker/wrangler.jsonc` once the contract is deployed there.
 
 ```bash
 make deploy network=testnet           # deploy the contract, writes contracts/deployments/
 make upgrade network=testnet          # upgrade it in place
 make invoke fn=member args="--token_id 0"
-wrangler secret put ATTESTER_SECRET   # and the other secrets of .dev.vars.example
-bun run deploy                        # build and deploy the app and worker
+cd worker && wrangler secret put ATTESTER_SECRET   # and the other secrets of .dev.vars.example
+bun run deploy                        # deploy the worker
+VITE_API_URL=https://api.example.org bun run build   # the app, in dapp/dist
 ```
+
+The app is static: upload `dapp/dist` to any host that serves `index.html`
+for unknown paths (the routes are client side), with `VITE_API_URL` set to
+the worker's origin at build time. The worker allows every origin: it is
+public, stateless and rate limited, nothing in it trusts the origin.
 
 The contract is deployed by the `stellar-members-<network>` identity of the
 Stellar CLI (the admin) with `stellar-members-attester-<network>` as the

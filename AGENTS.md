@@ -13,30 +13,34 @@ deployment.
 - `contracts/stellar-membership/` Soroban contract (Rust, soroban-sdk) in a
   Cargo workspace at the root. `src/lib.rs` documents every function; one
   file per trait; tests in `src/tests/`, one per flow.
-- `src/` React app (Vite, TanStack Router and Query, Tailwind, Stellar
+- `dapp/` React app (Vite, TanStack Router and Query, Tailwind, Stellar
   Wallets Kit). Reads the ledger directly, writes through the generated
   bindings, caches in the browser.
 - `worker/` Hono API on Cloudflare Workers: OAuth exchange, attester
   co-signature, IPFS upload, PG Atlas proxy. Stateless, strict
-  configuration, no placeholders.
-- `shared/` types and helpers used by the app and the worker.
-- `packages/stellar-membership` bindings **generated** by `make bindings`,
-  never edited by hand.
+  configuration (`wrangler.jsonc`, `.dev.vars`), no placeholders, CORS
+  open. The app is a static build served elsewhere, `VITE_API_URL` points
+  it at the worker.
+- `shared/` types and helpers used by the app and the worker, a workspace
+  package imported as `@stellar-membership/shared`.
+- `bindings/` contract bindings **generated** by `make bindings`, never
+  edited by hand.
 - `scripts/smoke.ts` end-to-end flows on testnet with the two kept
   identities only.
 
 ## Commands
 
 ```bash
-bun install && cp .dev.vars.example .dev.vars
-bun dev                          # app and worker on http://localhost:5173
-bun run dev:local                # same, worker under Bun when workerd has no network
-bun run lint && bun run build    # prettier, eslint, tsc, vite
-bun run test                     # vitest: worker and shared
+bun install && cp worker/.dev.vars.example worker/.dev.vars
+bun dev                          # app on http://localhost:5173, worker under Bun behind /api
+bun run --cwd worker dev         # the worker under the Cloudflare runtime instead
+bun run lint && bun run build    # prettier, eslint, tsc, vite (dapp/dist)
+bun run test                     # vitest: shared, worker, dapp
 bun run smoke                    # testnet flows through the worker
 make test && make lint           # contract tests, clippy, rustfmt
 make bindings                    # after a contract change
 make deploy network=testnet      # or upgrade, invoke; see make help
+bun run deploy                   # the worker; the app build is uploaded to its host
 ```
 
 `.claude/launch.json` starts the local stack for the browser preview tool.
@@ -51,6 +55,6 @@ make deploy network=testnet      # or upgrade, invoke; see make help
   cases per argument.
 - Only the two Stellar CLI identities of a deployment are used,
   `stellar-members-<network>` (admin) and `stellar-members-attester-<network>`;
-  never generate others. Secrets stay in `.dev.vars`.
+  never generate others. Secrets stay in `worker/.dev.vars`.
 - Users never pick a network: staging is testnet, production mainnet, the
-  five network values in `wrangler.jsonc` are the only difference.
+  five network values in `worker/wrangler.jsonc` are the only difference.

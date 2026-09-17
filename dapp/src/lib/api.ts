@@ -1,7 +1,12 @@
 import type { Claim, Project, ProviderName } from "@stellar-membership/shared";
 
+/** The worker's origin; empty when served from the same one (dev proxy). */
+const API_URL: string = import.meta.env.VITE_API_URL ?? "";
+
+export const apiUrl = (path: string) => `${API_URL}/api${path}`;
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`/api${path}`, init);
+  const res = await fetch(apiUrl(path), init);
   const body = (await res.json().catch(() => ({}))) as { error?: string };
   if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status})`);
   return body as T;

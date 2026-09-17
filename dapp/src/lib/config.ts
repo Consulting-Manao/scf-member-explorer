@@ -1,9 +1,11 @@
 import type { AppConfig } from "@stellar-membership/shared";
 
+import { apiUrl } from "./api";
+
 let current: AppConfig | undefined;
 
 export async function loadConfig(): Promise<AppConfig> {
-  const res = await fetch("/api/config");
+  const res = await fetch(apiUrl("/config"));
   const body = (await res.json().catch(() => ({}))) as
     AppConfig | { error?: string };
   if (!res.ok) {

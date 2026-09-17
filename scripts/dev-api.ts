@@ -1,9 +1,7 @@
 /**
- * Serve the worker API with Bun, for machines where the local Cloudflare
- * runtime cannot reach the network. Pair it with `API_PROXY` on Vite:
- *
- *   bun scripts/dev-api.ts            # http://127.0.0.1:8787
- *   API_PROXY=http://127.0.0.1:8787 bun dev
+ * Serve the worker API with Bun on http://127.0.0.1:8787, where Vite
+ * proxies /api in dev. `bun run --cwd worker dev` runs it under the
+ * Cloudflare runtime instead, when that runtime can reach the network.
  */
 
 import { app } from "../worker/src/index";
