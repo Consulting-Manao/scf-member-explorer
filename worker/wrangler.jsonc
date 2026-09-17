@@ -1,20 +1,25 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "stellar-members-testnet",
+  "name": "stellar-members",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
   // Public configuration, also served to the app on /api/config.
-  // Secrets are set with `wrangler secret put`, see .dev.vars.example.
+  // Secrets are pushed with `make deploy-secrets`, see .dev.vars.example.
   "vars": {
-    // Staging runs on testnet, production on mainnet: these five values are the
-    // only ones that differ. Users never pick a network.
-    "NETWORK": "testnet",
-    "NETWORK_PASSPHRASE": "Test SDF Network ; September 2015",
-    "RPC_URL": "https://soroban-testnet.stellar.org",
-    "CONTRACT_ID": "CB5O6XFNHMMW6H42M7H3HOA736EOGHNTBWUA5B3T4LPIJXRFQ6WCLFZE",
-    "ATTESTER_PUBLIC": "GBAWJQEPO6KF3EWRYV4NQXJOUSCEYY3JNL6GZWKUKWAJKXOMPYUDPQ6C",
+    // One worker serves every network it is configured for; the caller names
+    // the one it wants with `?network=`. A network is served once it has all
+    // five `<NETWORK>_` settings, the fifth being the secret attester key.
+    "TESTNET_PASSPHRASE": "Test SDF Network ; September 2015",
+    "TESTNET_RPC_URL": "https://soroban-testnet.stellar.org",
+    "TESTNET_CONTRACT_ID": "CB5O6XFNHMMW6H42M7H3HOA736EOGHNTBWUA5B3T4LPIJXRFQ6WCLFZE",
+    "TESTNET_ATTESTER_PUBLIC": "GBAWJQEPO6KF3EWRYV4NQXJOUSCEYY3JNL6GZWKUKWAJKXOMPYUDPQ6C",
+    // Mainnet is not served yet: MAINNET_CONTRACT_ID, MAINNET_ATTESTER_PUBLIC
+    // and the secret are still missing, so the two below sit here unused
+    // until the contract is deployed and the attester key exists.
+    "MAINNET_PASSPHRASE": "Public Global Stellar Network ; September 2015",
+    "MAINNET_RPC_URL": "https://rpc.lightsail.network",
     "IPFS_GATEWAY": "https://ipfs.filebase.io/ipfs/",
     "PGATLAS_URL": "https://api.pgatlas.xyz",
     // "discord": role comes from the SDF Discord roles (migration),

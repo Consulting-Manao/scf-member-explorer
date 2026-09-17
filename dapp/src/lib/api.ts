@@ -3,7 +3,15 @@ import type { Claim, Project, ProviderName } from "@shared/membership";
 /** The worker's origin; empty when served from the same one (dev proxy). */
 const API_URL: string = import.meta.env.VITE_API_URL ?? "";
 
-export const apiUrl = (path: string) => `${API_URL}/api${path}`;
+/**
+ * The network this build is for. One worker serves several, so every call
+ * names the one it wants; the worker answers with that network's contract,
+ * RPC and attester, or refuses when it does not serve it.
+ */
+const NETWORK: string = import.meta.env.VITE_NETWORK ?? "testnet";
+
+export const apiUrl = (path: string) =>
+  `${API_URL}/api${path}${path.includes("?") ? "&" : "?"}network=${NETWORK}`;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(apiUrl(path), init);

@@ -18,7 +18,7 @@ import {
 import { equals } from "multiformats/bytes";
 import { sha256 } from "multiformats/hashes/sha2";
 
-import type { Env } from "./env";
+import type { Env, NetworkConfig } from "./env";
 
 export class UploadError extends Error {}
 
@@ -145,11 +145,12 @@ async function importToFilebase(
 
 export interface UploadContext {
   env: Env;
+  net: NetworkConfig;
   owner: (tokenId: number) => Promise<string | null>;
 }
 
 export async function upload(
-  { env, owner }: UploadContext,
+  { env, net, owner }: UploadContext,
   body: { cid: string; signedTxXdr: string; car: string },
 ): Promise<string> {
   const { cid, signedTxXdr, car } = body;
@@ -159,8 +160,8 @@ export async function upload(
   const { member, tokenId } = checkUploadTransaction(
     signedTxXdr,
     cid,
-    env.CONTRACT_ID,
-    env.NETWORK_PASSPHRASE,
+    net.contractId,
+    net.networkPassphrase,
   );
   // A newcomer holds nothing yet, so a mint is not checked against the
   // ledger: its signature is all there is, and the rate limit does the

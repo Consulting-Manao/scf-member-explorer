@@ -31,14 +31,18 @@ import { localEnv } from "./env";
 const origin = process.argv[2];
 const env = origin ? undefined : await localEnv();
 
+// the worker serves every network it is configured for, this only runs on
+// testnet, so every call names it
 function api(path: string, init?: RequestInit): Promise<Response> {
+  const at = `${path}${path.includes("?") ? "&" : "?"}network=testnet`;
   return origin
-    ? fetch(`${origin}/api${path}`, init)
-    : Promise.resolve(app.request(`/api${path}`, init, env));
+    ? fetch(`${origin}/api${at}`, init)
+    : Promise.resolve(app.request(`/api${at}`, init, env));
 }
 
-const attesterSecret = process.env.ATTESTER_SECRET ?? env?.ATTESTER_SECRET;
-if (!attesterSecret) throw new Error("ATTESTER_SECRET is required");
+const attesterSecret =
+  process.env.TESTNET_ATTESTER_SECRET ?? env?.TESTNET_ATTESTER_SECRET;
+if (!attesterSecret) throw new Error("TESTNET_ATTESTER_SECRET is required");
 
 const config = (await (await api("/config")).json()) as AppConfig;
 if (config.network !== "testnet") throw new Error("Only runs on testnet");

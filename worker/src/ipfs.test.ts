@@ -12,7 +12,7 @@ import * as raw from "multiformats/codecs/raw";
 import { sha256 } from "multiformats/hashes/sha2";
 import { describe, expect, it, vi } from "vitest";
 
-import type { Env } from "./env";
+import type { Env, NetworkConfig } from "./env";
 import { checkUploadTransaction, upload, UploadError } from "./ipfs";
 
 const contractId = "CATJ45GRCHCTXLR4H2GKTUW7L5CBCKYO6P3PTRLHPASBIVT3BESZ37WN";
@@ -97,10 +97,16 @@ async function car(
   return { base64: Buffer.concat(chunks).toString("base64"), root: block };
 }
 
-const env = {
-  CONTRACT_ID: contractId,
-  NETWORK_PASSPHRASE: Networks.TESTNET,
-} as Env;
+const env = { FILEBASE_TOKEN: "t" } as Env;
+
+const net = {
+  network: "testnet",
+  networkPassphrase: Networks.TESTNET,
+  rpcUrl: "https://soroban-testnet.stellar.org",
+  contractId,
+  attesterPublic: "G",
+  attesterSecret: "S",
+} as NetworkConfig;
 
 const owner = (address: string | null) => () => Promise.resolve(address);
 
@@ -109,7 +115,7 @@ describe("upload", () => {
     const { base64 } = await car("not the profile");
     await expect(
       upload(
-        { env, owner: owner(null) },
+        { env, net, owner: owner(null) },
         { cid, signedTxXdr: signedTx({ fn: "mint" }), car: base64 },
       ),
     ).rejects.toThrow("CID does not match the CAR");
@@ -120,7 +126,7 @@ describe("upload", () => {
     const { base64 } = await car("something else", declared);
     await expect(
       upload(
-        { env, owner: owner(null) },
+        { env, net, owner: owner(null) },
         { cid, signedTxXdr: signedTx({ fn: "mint" }), car: base64 },
       ),
     ).rejects.toThrow("does not contain its root");
@@ -136,6 +142,7 @@ describe("upload", () => {
       upload(
         {
           env,
+          net,
           owner: () => Promise.reject(new Error("the chain must not be read")),
         },
         {
@@ -152,7 +159,7 @@ describe("upload", () => {
     const { base64 } = await car("a profile");
     await expect(
       upload(
-        { env, owner: owner(Keypair.random().publicKey()) },
+        { env, net, owner: owner(Keypair.random().publicKey()) },
         { cid, signedTxXdr: signedTx(), car: base64 },
       ),
     ).rejects.toThrow("Not the member of that token");

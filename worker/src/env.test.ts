@@ -6,12 +6,11 @@ import { missingSettings, type Env } from "./env";
 const attester = Keypair.random();
 
 const complete: Partial<Env> = {
-  NETWORK: "testnet",
-  NETWORK_PASSPHRASE: "Test SDF Network ; September 2015",
-  RPC_URL: "https://soroban-testnet.stellar.org",
-  CONTRACT_ID: "C",
-  ATTESTER_PUBLIC: attester.publicKey(),
-  ATTESTER_SECRET: attester.secret(),
+  TESTNET_PASSPHRASE: "Test SDF Network ; September 2015",
+  TESTNET_RPC_URL: "https://soroban-testnet.stellar.org",
+  TESTNET_CONTRACT_ID: "C",
+  TESTNET_ATTESTER_PUBLIC: attester.publicKey(),
+  TESTNET_ATTESTER_SECRET: attester.secret(),
   IPFS_GATEWAY: "https://ipfs.filebase.io/ipfs/",
   PGATLAS_URL: "https://api.pgatlas.xyz",
   ROLE_SOURCE: "discord",
@@ -36,16 +35,31 @@ describe("missingSettings", () => {
     ).toEqual(["DISCORD_CLIENT_ID", "FILEBASE_TOKEN"]);
   });
 
-  it("refuses an attester secret that is not the attester", () => {
+  it("refuses an attester secret that is not that network's attester", () => {
     expect(
       missingSettings({
         ...complete,
-        ATTESTER_SECRET: Keypair.random().secret(),
+        TESTNET_ATTESTER_SECRET: Keypair.random().secret(),
       }),
-    ).toEqual(["ATTESTER_SECRET (does not match ATTESTER_PUBLIC)"]);
+    ).toEqual(["TESTNET_ATTESTER_SECRET (is not TESTNET_ATTESTER_PUBLIC)"]);
+  });
+
+  it("asks for a network when not one is complete", () => {
+    expect(missingSettings({ ...complete, TESTNET_CONTRACT_ID: "" })).toEqual([
+      expect.stringContaining("the settings of a network"),
+    ]);
+  });
+
+  it("ignores a network that is only half configured", () => {
+    // the mainnet passphrase and RPC are known long before its contract is
+    // deployed: staging them serves nothing and breaks nothing
     expect(
-      missingSettings({ ...complete, NETWORK: "local" as Env["NETWORK"] }),
-    ).toEqual(["NETWORK (testnet or mainnet)"]);
+      missingSettings({
+        ...complete,
+        MAINNET_PASSPHRASE: "Public Global Stellar Network ; September 2015",
+        MAINNET_RPC_URL: "https://rpc.lightsail.network",
+      }),
+    ).toEqual([]);
   });
 
   it("refuses an empty or invalid role map when roles come from Discord", () => {

@@ -5,14 +5,16 @@ import { app } from "./index";
 import type { Env } from "./env";
 
 const attester = Keypair.random();
+const mainnetAttester = Keypair.random();
+
+const CONTRACT_ID = "CBXKUSLQPVF35FYURR5C42BPYA5UOVDXX2ELKIM2CAJMCI6HXG2BHGZA";
 
 const env = {
-  NETWORK: "testnet",
-  NETWORK_PASSPHRASE: "Test SDF Network ; September 2015",
-  RPC_URL: "https://soroban-testnet.stellar.org",
-  CONTRACT_ID: "CBXKUSLQPVF35FYURR5C42BPYA5UOVDXX2ELKIM2CAJMCI6HXG2BHGZA",
-  ATTESTER_PUBLIC: attester.publicKey(),
-  ATTESTER_SECRET: attester.secret(),
+  TESTNET_PASSPHRASE: "Test SDF Network ; September 2015",
+  TESTNET_RPC_URL: "https://soroban-testnet.stellar.org",
+  TESTNET_CONTRACT_ID: CONTRACT_ID,
+  TESTNET_ATTESTER_PUBLIC: attester.publicKey(),
+  TESTNET_ATTESTER_SECRET: attester.secret(),
   IPFS_GATEWAY: "https://ipfs.filebase.io/ipfs/",
   PGATLAS_URL: "https://api.pgatlas.xyz",
   ROLE_SOURCE: "verified",
@@ -25,9 +27,12 @@ const env = {
   FILEBASE_TOKEN: "t",
 } as Env;
 
+const on = (path: string, network = "testnet") =>
+  `${path}${path.includes("?") ? "&" : "?"}network=${network}`;
+
 function post(path: string, body: unknown, over: Partial<Env> = {}) {
   return app.request(
-    path,
+    on(path),
     { method: "POST", body: JSON.stringify(body) },
     { ...env, ...over },
   );
@@ -39,10 +44,10 @@ async function error(res: Response): Promise<string> {
 
 describe("the API", () => {
   it("serves the public configuration", async () => {
-    const res = await app.request("/api/config", {}, env);
+    const res = await app.request(on("/api/config"), {}, env);
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({
-      contractId: env.CONTRACT_ID,
+      contractId: CONTRACT_ID,
       attester: attester.publicKey(),
       oauth: { discord: "1", github: "2" },
     });
@@ -50,13 +55,56 @@ describe("the API", () => {
 
   it("names the missing settings on /config only", async () => {
     const broken = { ...env, FILEBASE_TOKEN: "" };
-    const config = await app.request("/api/config", {}, broken);
+    const config = await app.request(on("/api/config"), {}, broken);
     expect(config.status).toBe(500);
     expect(await error(config)).toContain("FILEBASE_TOKEN");
 
     const attest = await post("/api/attest", {}, { FILEBASE_TOKEN: "" });
     expect(attest.status).toBe(500);
     expect(await error(attest)).toBe("Worker not configured");
+  });
+
+  it("refuses a request that names no network, or one it does not serve", async () => {
+    for (const path of ["/api/config", on("/api/config", "")]) {
+      const res = await app.request(path, {}, env);
+      expect(res.status).toBe(400);
+      expect(await error(res)).toBe("Missing network");
+    }
+
+    // only testnet has all of its settings
+    for (const network of ["mainnet", "local"]) {
+      const res = await app.request(on("/api/config", network), {}, env);
+      expect(res.status).toBe(400);
+      expect(await error(res)).toBe(
+        `This worker serves testnet, not ${network}`,
+      );
+    }
+  });
+
+  it("answers with the settings of the network that was named", async () => {
+    const both = {
+      ...env,
+      MAINNET_PASSPHRASE: "Public Global Stellar Network ; September 2015",
+      MAINNET_RPC_URL: "https://mainnet.example.org",
+      MAINNET_CONTRACT_ID:
+        "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+      MAINNET_ATTESTER_PUBLIC: mainnetAttester.publicKey(),
+      MAINNET_ATTESTER_SECRET: mainnetAttester.secret(),
+    } as Env;
+
+    const testnet = await app.request(on("/api/config"), {}, both);
+    expect(await testnet.json()).toMatchObject({
+      network: "testnet",
+      contractId: CONTRACT_ID,
+      attester: attester.publicKey(),
+    });
+
+    const mainnet = await app.request(on("/api/config", "mainnet"), {}, both);
+    expect(await mainnet.json()).toMatchObject({
+      network: "mainnet",
+      contractId: "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC",
+      attester: mainnetAttester.publicKey(),
+    });
   });
 
   it("refuses an unknown provider and a malformed body", async () => {
@@ -73,7 +121,7 @@ describe("the API", () => {
     expect(await error(missing)).toBe("Missing parameters");
 
     const malformed = await app.request(
-      "/api/attest",
+      on("/api/attest"),
       { method: "POST", body: "{" },
       env,
     );

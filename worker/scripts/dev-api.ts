@@ -4,12 +4,14 @@
  * Cloudflare runtime instead, when that runtime can reach the network.
  */
 
+import { servedNetworks } from "../src/env";
 import { app } from "../src/index";
 import { localEnv } from "./env";
 
 const env = await localEnv();
 const port = Number(process.env.PORT ?? 8787);
-console.log(`API on http://127.0.0.1:${port}, contract ${env.CONTRACT_ID}`);
+const served = servedNetworks(env).join(", ");
+console.log(`API on http://127.0.0.1:${port}, serving ${served}`);
 
 // `bun run` starts a server from a default export with `fetch`
 export default {

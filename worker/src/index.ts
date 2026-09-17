@@ -13,12 +13,18 @@ import {
 import { attest, AttestError } from "./attest";
 import { latestLedger, readMember, readOwner } from "./chain";
 import { signClaim, verifyClaim } from "./claims";
-import { missingSettings, type Env } from "./env";
+import {
+  missingSettings,
+  resolveNetwork,
+  UnknownNetwork,
+  type Env,
+  type NetworkConfig,
+} from "./env";
 import { upload, UploadError } from "./ipfs";
 import { exchangeCode, OAuthError } from "./oauth";
 import { CACHE_SECONDS, getProject, searchProjects } from "./projects";
 
-type AppEnv = { Bindings: Env };
+type AppEnv = { Bindings: Env; Variables: { net: NetworkConfig } };
 
 async function rateLimit(c: Context<AppEnv>, next: Next) {
   const key = c.req.header("cf-connecting-ip") ?? "local";
@@ -54,6 +60,29 @@ function provider(c: Context<AppEnv>): ProviderName {
   return name;
 }
 
+/**
+ * Pick the network of the request.
+ *
+ * `?network=` selects a whole row of the configuration: passphrase,
+ * contract, RPC and attester key always come from the same one, so a
+ * request says which network it is for and can never mix two.
+ */
+async function withNetwork(c: Context<AppEnv>, next: Next) {
+  const name = c.req.query("network");
+  if (!name) {
+    throw new HTTPException(400, { message: "Missing network" });
+  }
+  try {
+    c.set("net", resolveNetwork(c.env, name));
+  } catch (error) {
+    if (error instanceof UnknownNetwork) {
+      throw new HTTPException(400, { message: error.message });
+    }
+    throw error;
+  }
+  await next();
+}
+
 export const app = new Hono<AppEnv>().basePath("/api");
 
 // The API is public and stateless: nothing is authenticated by the origin,
@@ -73,14 +102,15 @@ app.use("*", async (c, next) => {
   await next();
 });
 
-app.get("/config", (c) => {
+app.get("/config", withNetwork, (c) => {
   const env = c.env;
+  const net = c.get("net");
   const config: AppConfig = {
-    network: env.NETWORK,
-    networkPassphrase: env.NETWORK_PASSPHRASE,
-    rpcUrl: env.RPC_URL,
-    contractId: env.CONTRACT_ID,
-    attester: env.ATTESTER_PUBLIC,
+    network: net.network,
+    networkPassphrase: net.networkPassphrase,
+    rpcUrl: net.rpcUrl,
+    contractId: net.contractId,
+    attester: net.attesterPublic,
     ipfsGateway: env.IPFS_GATEWAY,
     roleSource: env.ROLE_SOURCE,
     oauth: { discord: env.DISCORD_CLIENT_ID, github: env.GITHUB_CLIENT_ID },
@@ -88,27 +118,40 @@ app.get("/config", (c) => {
   return c.json(config);
 });
 
-app.post("/oauth/:provider/exchange", limit(4 * 1024), rateLimit, async (c) => {
-  const sent = await body<{
-    code?: string;
-    codeVerifier?: string;
-    redirectUri?: string;
-    address?: string;
-  }>(c);
-  if (!sent.code || !sent.codeVerifier || !sent.redirectUri || !sent.address) {
-    throw new HTTPException(400, { message: "Missing parameters" });
-  }
-  const identity = await exchangeCode(provider(c), c.env, {
-    code: sent.code,
-    codeVerifier: sent.codeVerifier,
-    redirectUri: sent.redirectUri,
-  });
-  const claim = { ...identity, address: sent.address };
-  const attester = Keypair.fromSecret(c.env.ATTESTER_SECRET);
-  return c.json({ claim, token: signClaim(claim, attester) });
-});
+app.post(
+  "/oauth/:provider/exchange",
+  limit(4 * 1024),
+  rateLimit,
+  withNetwork,
+  async (c) => {
+    const sent = await body<{
+      code?: string;
+      codeVerifier?: string;
+      redirectUri?: string;
+      address?: string;
+    }>(c);
+    if (
+      !sent.code ||
+      !sent.codeVerifier ||
+      !sent.redirectUri ||
+      !sent.address
+    ) {
+      throw new HTTPException(400, { message: "Missing parameters" });
+    }
+    const identity = await exchangeCode(provider(c), c.env, {
+      code: sent.code,
+      codeVerifier: sent.codeVerifier,
+      redirectUri: sent.redirectUri,
+    });
+    const claim = { ...identity, address: sent.address };
+    // the claim is signed by the attester of that network, and only
+    // `/attest` on the same network will accept it back
+    const attester = Keypair.fromSecret(c.get("net").attesterSecret);
+    return c.json({ claim, token: signClaim(claim, attester) });
+  },
+);
 
-app.post("/attest", limit(64 * 1024), rateLimit, async (c) => {
+app.post("/attest", limit(64 * 1024), rateLimit, withNetwork, async (c) => {
   const sent = await body<{
     entry?: string;
     validUntilLedger?: number;
@@ -122,8 +165,8 @@ app.post("/attest", limit(64 * 1024), rateLimit, async (c) => {
   ) {
     throw new HTTPException(400, { message: "Missing parameters" });
   }
-  const env = c.env;
-  const attester = Keypair.fromSecret(env.ATTESTER_SECRET);
+  const net = c.get("net");
+  const attester = Keypair.fromSecret(net.attesterSecret);
   const claims = sent.claims.map((token) => {
     try {
       return verifyClaim(token, attester);
@@ -133,22 +176,22 @@ app.post("/attest", limit(64 * 1024), rateLimit, async (c) => {
   });
 
   const entry = await attest(sent.entry, sent.validUntilLedger, {
-    contractId: env.CONTRACT_ID,
+    contractId: net.contractId,
     attester,
-    networkPassphrase: env.NETWORK_PASSPHRASE,
-    latestLedger: await latestLedger(env),
+    networkPassphrase: net.networkPassphrase,
+    latestLedger: await latestLedger(net),
     claims,
-    owner: (tokenId) => readOwner(env, tokenId),
-    member: (tokenId) => readMember(env, tokenId),
+    owner: (tokenId) => readOwner(net, tokenId),
+    member: (tokenId) => readMember(net, tokenId),
   });
   return c.json({ entry });
 });
 
 // the CAR is base64, so 4/3 of the 5 MB the upload itself allows
-app.post("/ipfs", limit(7 * 1024 * 1024), rateLimit, async (c) => {
-  const env = c.env;
+app.post("/ipfs", limit(7 * 1024 * 1024), rateLimit, withNetwork, async (c) => {
+  const net = c.get("net");
   const cid = await upload(
-    { env, owner: (tokenId) => readOwner(env, tokenId) },
+    { env: c.env, net, owner: (tokenId) => readOwner(net, tokenId) },
     await body(c),
   );
   return c.json({ cid });
