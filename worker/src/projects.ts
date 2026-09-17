@@ -1,6 +1,6 @@
 /** Projects from PG Atlas, identified by DAOIP-5 ids. */
 
-import type { Project } from "@stellar-membership/shared";
+import type { Project } from "@shared/membership";
 
 import type { Env } from "./env";
 

@@ -10,13 +10,13 @@ import {
   scValToNative,
   xdr,
 } from "@stellar/stellar-sdk";
-import { Client } from "stellar-membership";
+import { Client } from "@/bindings";
 
 import {
   toHex,
   type MemberRecord,
   type SocialAccount,
-} from "@stellar-membership/shared";
+} from "@shared/membership";
 
 import { config } from "./config";
 

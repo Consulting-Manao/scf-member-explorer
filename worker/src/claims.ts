@@ -6,7 +6,7 @@
 
 import type { Keypair } from "@stellar/stellar-sdk";
 
-import { PROVIDERS, type Claim } from "@stellar-membership/shared";
+import { PROVIDERS, type Claim } from "@shared/membership";
 
 /** Claims are valid for a day: long enough to finish onboarding. */
 export const CLAIM_TTL_SECONDS = 24 * 3600;

@@ -16,16 +16,12 @@ import {
   basicNodeSigner,
   type AssembledTransaction,
 } from "@stellar/stellar-sdk/contract";
-import { Client } from "stellar-membership";
+import { Client } from "../src/bindings";
 
-import {
-  accountOf,
-  type AppConfig,
-  type Claim,
-} from "@stellar-membership/shared";
-import { packCar, profileFiles } from "../dapp/src/lib/ipfs";
-import { signClaim } from "../worker/src/claims";
-import { app } from "../worker/src/index";
+import { accountOf, type AppConfig, type Claim } from "@shared/membership";
+import { packCar, profileFiles } from "../../dapp/src/lib/profile";
+import { signClaim } from "../src/claims";
+import { app } from "../src/index";
 import { localEnv } from "./env";
 
 const origin = process.argv[2];

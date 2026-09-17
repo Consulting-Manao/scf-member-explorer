@@ -12,7 +12,7 @@ import {
   type Claim,
   type ProviderName,
   type SocialAccount,
-} from "@stellar-membership/shared";
+} from "@shared/membership";
 
 import { ProviderIcon } from "@/components/icons";
 import { TxProgress } from "@/components/TxProgress";

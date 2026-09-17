@@ -3,11 +3,7 @@
  * worker, which returns a signed claim bound to the wallet address.
  */
 
-import {
-  PROVIDERS,
-  type Claim,
-  type ProviderName,
-} from "@stellar-membership/shared";
+import { PROVIDERS, type Claim, type ProviderName } from "@shared/membership";
 
 import { api } from "./api";
 import { config } from "./config";

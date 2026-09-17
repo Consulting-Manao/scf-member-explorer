@@ -6,14 +6,10 @@ import {
   Networks,
   xdr,
 } from "@stellar/stellar-sdk";
-import { Client } from "stellar-membership";
+import { Client } from "./bindings";
 import { describe, expect, it } from "vitest";
 
-import {
-  accountOf,
-  type Claim,
-  type MemberRecord,
-} from "@stellar-membership/shared";
+import { accountOf, type Claim, type MemberRecord } from "@shared/membership";
 
 import {
   attest,

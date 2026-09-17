@@ -1,7 +1,7 @@
 import { rpc } from "@stellar/stellar-sdk";
-import { Client } from "stellar-membership";
+import { Client } from "./bindings";
 
-import type { MemberRecord } from "@stellar-membership/shared";
+import type { MemberRecord } from "@shared/membership";
 import type { Env } from "./env";
 
 function client(env: Env): Client {

@@ -6,7 +6,7 @@ import { defineConfig } from "vitest/config";
 import { VitePWA } from "vite-plugin-pwa";
 
 // In dev, Vite proxies /api to the worker running locally (see
-// ../scripts/dev-api.ts, or `wrangler dev`). A build takes the worker's
+// ../worker/scripts/dev-api.ts, or `wrangler dev`). A build takes the worker's
 // origin from VITE_API_URL, empty when served from the same one.
 const API_PROXY = process.env.API_PROXY ?? "http://127.0.0.1:8787";
 
@@ -95,7 +95,10 @@ export default defineConfig(({ mode }) => {
       }),
     ],
     resolve: {
-      alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+      alias: {
+        "@": fileURLToPath(new URL("./src", import.meta.url)),
+        "@shared": fileURLToPath(new URL("../shared", import.meta.url)),
+      },
     },
     test: { include: ["src/**/*.test.ts"], environment: "node" },
     server: {

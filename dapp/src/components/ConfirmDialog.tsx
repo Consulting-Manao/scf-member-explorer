@@ -1,7 +1,7 @@
 import { ArrowRightIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
-import { ROLES } from "@stellar-membership/shared";
+import { ROLES } from "@shared/membership";
 
 import type { MemberView } from "@/lib/contract";
 import type { Step } from "@/lib/tx";

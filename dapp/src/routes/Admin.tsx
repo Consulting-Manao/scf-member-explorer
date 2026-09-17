@@ -11,7 +11,7 @@ import {
 import { StrKey } from "@stellar/stellar-sdk";
 import { useState } from "react";
 
-import { ROLES } from "@stellar-membership/shared";
+import { ROLES } from "@shared/membership";
 
 import {
   AddressFact,

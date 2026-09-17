@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRightIcon, UsersRoundIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { ROLES } from "@stellar-membership/shared";
+import { ROLES } from "@shared/membership";
 
 import { MemberCard, MemberCardSkeleton } from "@/components/MemberCard";
 import { MemberSearch } from "@/components/MemberSearch";

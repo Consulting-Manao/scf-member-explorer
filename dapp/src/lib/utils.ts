@@ -1,5 +1,5 @@
 import { clsx, type ClassValue } from "clsx";
-import { MembershipError } from "stellar-membership";
+import { MembershipError } from "@/bindings";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {

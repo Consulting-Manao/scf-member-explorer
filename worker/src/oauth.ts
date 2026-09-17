@@ -3,7 +3,7 @@ import {
   MAX_ACCOUNT_LEN,
   type Claim,
   type ProviderName,
-} from "@stellar-membership/shared";
+} from "@shared/membership";
 
 import type { Env } from "./env";
 

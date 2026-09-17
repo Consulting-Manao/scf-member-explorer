@@ -20,28 +20,35 @@ deployment.
   co-signature, IPFS upload, PG Atlas proxy. Stateless, strict
   configuration (`wrangler.jsonc`, `.dev.vars`), no placeholders, CORS
   open. The app is a static build served elsewhere, `VITE_API_URL` points
-  it at the worker.
-- `shared/` types and helpers used by the app and the worker, a workspace
-  package imported as `@stellar-membership/shared`.
-- `bindings/` contract bindings **generated** by `make bindings`, never
-  edited by hand.
-- `scripts/smoke.ts` end-to-end flows on testnet with the two kept
-  identities only.
+  it at the worker. `worker/scripts/smoke.ts` runs the flows on testnet
+  with the two kept identities only.
+- `shared/` dependency-free types and helpers, imported by the app and the
+  worker as `@shared/membership` through a path alias; its test runs with
+  `bun test shared` from the root.
+- `dapp/src/bindings/` and `worker/src/bindings/` contract bindings
+  **generated** by `make bindings`, committed, never edited by hand.
+
+The app and the worker are independent packages: their own `package.json`,
+lockfile, eslint, prettier and tsconfig. There is no Bun workspace and no
+root `package.json`; the Makefile chains the commands.
 
 ## Commands
 
 ```bash
-bun install && cp worker/.dev.vars.example worker/.dev.vars
-bun dev                          # app on http://localhost:5173, worker under Bun behind /api
-bun run --cwd worker dev         # the worker under the Cloudflare runtime instead
-bun run lint && bun run build    # prettier, eslint, tsc, vite (dapp/dist)
-bun run test                     # vitest: shared, worker, dapp
-bun run smoke                    # testnet flows through the worker
+make install && cp worker/.dev.vars.example worker/.dev.vars
+make dev                         # app on http://localhost:5173, worker under Bun behind /api
+cd worker && bun run dev:workerd # the worker under the Cloudflare runtime instead
+make lint-js && make build-dapp  # prettier, eslint, tsc of both; vite build in dapp/dist
+make test-js                     # shared, dapp and worker tests
+make smoke                       # testnet flows through the worker
 make test && make lint           # contract tests, clippy, rustfmt
 make bindings                    # after a contract change
 make deploy network=testnet      # or upgrade, invoke; see make help
-bun run deploy                   # the worker; the app build is uploaded to its host
+make deploy-worker               # the app build is uploaded to its host
 ```
+
+Inside `dapp/` or `worker/`, `bun run lint`, `test`, `build`, `format` work
+on that package alone.
 
 `.claude/launch.json` starts the local stack for the browser preview tool.
 

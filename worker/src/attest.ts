@@ -22,7 +22,7 @@ import {
   type Claim,
   type MemberRecord,
   type SocialAccount,
-} from "@stellar-membership/shared";
+} from "@shared/membership";
 
 /** Maximum validity of a signature, about 10 minutes. */
 export const MAX_VALIDITY_LEDGERS = 120;

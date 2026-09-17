@@ -1,4 +1,4 @@
-import type { Claim, Project, ProviderName } from "@stellar-membership/shared";
+import type { Claim, Project, ProviderName } from "@shared/membership";
 
 /** The worker's origin; empty when served from the same one (dev proxy). */
 const API_URL: string = import.meta.env.VITE_API_URL ?? "";

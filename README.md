@@ -19,14 +19,12 @@ contributors), the IPFS CID of a profile and DAOIP-5 project ids.
 - Admin: pending recoveries, roles, projects, revocation, moving a
   membership to a new key, attester rotation.
 
-| Path               | Content                                                     |
-| ------------------ | ----------------------------------------------------------- |
-| `contracts/`       | Soroban contract, Rust, a Cargo workspace at the root       |
-| `dapp/`            | React app: TanStack Router and Query, Tailwind, Wallets Kit |
-| `worker/`          | Hono API, a Cloudflare Worker                               |
-| `shared/`          | Types and helpers used by the app and the worker            |
-| `bindings/`        | Contract bindings, generated from the WASM                  |
-| `scripts/smoke.ts` | End-to-end flows on testnet                                 |
+| Path         | Content                                                     |
+| ------------ | ----------------------------------------------------------- |
+| `contracts/` | Soroban contract, Rust, a Cargo workspace at the root       |
+| `dapp/`      | React app: TanStack Router and Query, Tailwind, Wallets Kit |
+| `worker/`    | Hono API, a Cloudflare Worker, and the testnet smoke script |
+| `shared/`    | Types and helpers imported by both as `@shared/*`           |
 
 ## Architecture
 
@@ -70,10 +68,13 @@ Discord or GitHub id to a member, `member(token_id)` returns the record,
 
 ## Development
 
+The app and the worker are independent Bun packages, each with its own
+lockfile and tooling; the Makefile only chains their commands.
+
 ```bash
-bun install
+make install                     # bun install in dapp/ and worker/
 cp worker/.dev.vars.example worker/.dev.vars   # secrets, can override any var
-bun dev                          # app on http://localhost:5173, worker behind /api
+make dev                         # app on http://localhost:5173, worker behind /api
 ```
 
 Open the app on `localhost`, not `127.0.0.1`: browser wallet extensions
@@ -84,17 +85,21 @@ refuses every request until its configuration is complete and
 `worker/wrangler.jsonc`, secrets in `worker/.dev.vars` locally and in
 `wrangler secret put` in production.
 
-`bun dev` runs the worker under Bun on port 8787 and Vite proxies `/api` to
-it. `bun run --cwd worker dev` runs it under the Cloudflare runtime instead,
-on the same port, when that runtime can reach the network on your machine.
+`make dev` runs the worker under Bun on port 8787 and Vite proxies `/api`
+to it. `cd worker && bun run dev:workerd` runs it under the Cloudflare
+runtime instead, on the same port, when that runtime can reach the network
+on your machine.
 
-Contract work goes through `make` (`make help` lists the targets):
+Contract work goes through `make` too (`make help` lists the targets):
 
 ```bash
 make test                        # contract tests
 make lint                        # clippy and rustfmt
-make bindings                    # regenerate bindings/
+make bindings                    # regenerate dapp/src/bindings and worker/src/bindings
 ```
+
+The bindings are committed: they change only with the contract, and each
+package keeps its own copy so that it resolves them like its own code.
 
 ### OAuth apps
 
@@ -155,9 +160,9 @@ the other API calls and the RPC are never cached by it.
 
 ```bash
 make test                        # contract: one test per user flow
-bun run test                     # worker checks and shared helpers
-bun run smoke                    # end to end on testnet
-bun run lint && bun run build
+make test-js                     # shared helpers, dapp, worker
+make smoke                       # end to end on testnet
+make lint-js && make build-dapp
 ```
 
 The contract tests cover each flow with its authorizations, events and
@@ -167,8 +172,8 @@ transaction and the configuration. The smoke script runs the real flows
 against testnet through the worker: mint, accounts update, profile on IPFS,
 projects, key rotation, recovery proposal and cancellation, admin recover.
 It uses only the two identities of the deployment, `stellar-members-testnet`
-(admin, also the member) and the attester from `worker/.dev.vars`, and leaves the
-admin holding its membership. There is no browser suite: the wallet flows
+(admin, also the member) and the attester from `worker/.dev.vars`, and
+leaves the admin holding its membership. There is no browser suite: the wallet flows
 would need a wallet mock.
 
 ## Deployment
@@ -184,9 +189,9 @@ secrets are shared. Production is added as an `env.mainnet` block in
 make deploy network=testnet           # deploy the contract, writes contracts/deployments/
 make upgrade network=testnet          # upgrade it in place
 make invoke fn=member args="--token_id 0"
-cd worker && wrangler secret put ATTESTER_SECRET   # and the other secrets of .dev.vars.example
-bun run deploy                        # deploy the worker
-VITE_API_URL=https://api.example.org bun run build   # the app, in dapp/dist
+cd worker && bunx wrangler secret put ATTESTER_SECRET   # and the other secrets of .dev.vars.example
+make deploy-worker
+VITE_API_URL=https://api.example.org make build-dapp    # the app, in dapp/dist
 ```
 
 The app is static: upload `dapp/dist` to any host that serves `index.html`

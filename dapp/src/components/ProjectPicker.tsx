@@ -1,7 +1,7 @@
 import { CheckIcon, PlusIcon, SearchIcon, XIcon } from "lucide-react";
 import { useDeferredValue, useState } from "react";
 
-import { MAX_PROJECTS } from "@stellar-membership/shared";
+import { MAX_PROJECTS } from "@shared/membership";
 
 import { cn } from "@/lib/utils";
 import { useProject, useProjects } from "@/queries/members";

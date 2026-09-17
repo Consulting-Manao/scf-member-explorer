@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 
-import type { ProviderName } from "@stellar-membership/shared";
+import type { ProviderName } from "@shared/membership";
 
 type IconProps = ComponentProps<"svg">;
 

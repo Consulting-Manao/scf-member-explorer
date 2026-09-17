@@ -1,11 +1,23 @@
 {
-  "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "tsBuildInfoFile": "../node_modules/.tmp/dapp.tsbuildinfo",
+    "target": "ES2023",
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "types": ["vite/client", "vite-plugin-pwa/client", "node"],
     "jsx": "react-jsx",
-    "paths": { "@/*": ["./src/*"] }
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@shared/*": ["../shared/*"]
+    }
   },
   "include": ["src", "vite.config.ts"]
 }

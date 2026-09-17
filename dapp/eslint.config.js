@@ -5,25 +5,12 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  {
-    ignores: [
-      "**/dist",
-      "bindings",
-      "**/.wrangler",
-      "worker/worker-configuration.d.ts",
-    ],
-  },
+  { ignores: ["dist", "src/bindings"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
-    files: ["**/*.{ts,tsx}"],
-    languageOptions: {
-      ecmaVersion: 2023,
-      globals: globals.browser,
-    },
-    plugins: {
-      "react-hooks": reactHooks,
-      "react-refresh": reactRefresh,
-    },
+    files: ["**/*.{ts,tsx}", "../shared/**/*.ts"],
+    languageOptions: { ecmaVersion: 2023, globals: globals.browser },
+    plugins: { "react-hooks": reactHooks, "react-refresh": reactRefresh },
     rules: {
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": [

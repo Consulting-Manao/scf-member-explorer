@@ -1,8 +1,21 @@
 {
-  "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "tsBuildInfoFile": "../node_modules/.tmp/worker.tsbuildinfo",
-    "types": ["node"]
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "paths": {
+      "@shared/*": ["../shared/*"]
+    }
   },
-  "include": ["src", "worker-configuration.d.ts"]
+  "include": ["src", "scripts", "worker-configuration.d.ts"]
 }

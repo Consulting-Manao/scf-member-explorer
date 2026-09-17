@@ -1,10 +1,6 @@
 import { BadgeCheckIcon, XIcon } from "lucide-react";
 
-import {
-  PROVIDER_HINT,
-  PROVIDER_LABEL,
-  ROLES,
-} from "@stellar-membership/shared";
+import { PROVIDER_HINT, PROVIDER_LABEL, ROLES } from "@shared/membership";
 
 import { enabledProviders, forgetClaim, startOAuth } from "@/lib/oauth";
 import { notify } from "@/lib/toast";

@@ -1,4 +1,4 @@
 {
   "plugins": ["prettier-plugin-tailwindcss"],
-  "tailwindStylesheet": "./dapp/src/styles.css"
+  "tailwindStylesheet": "./src/styles.css"
 }

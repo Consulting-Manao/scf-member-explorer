@@ -2,7 +2,7 @@ import {
   PROVIDER_ID,
   providerName,
   type SocialAccount,
-} from "@stellar-membership/shared";
+} from "@shared/membership";
 
 import type { MemberView } from "./contract";
 

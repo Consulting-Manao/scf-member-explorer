@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { PROVIDER_ID } from "@stellar-membership/shared";
+import { PROVIDER_ID } from "@shared/membership";
 
 import type { MemberView } from "@/lib/contract";
 import { cn } from "@/lib/utils";

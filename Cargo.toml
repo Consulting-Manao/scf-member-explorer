@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["contracts/*"]
+members = ["contracts/stellar-membership"]
 
 [workspace.package]
 authors = ["Consulting Manao GmbH"]

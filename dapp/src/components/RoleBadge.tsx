@@ -1,4 +1,4 @@
-import { ROLES } from "@stellar-membership/shared";
+import { ROLES } from "@shared/membership";
 
 import { cn } from "@/lib/utils";
 

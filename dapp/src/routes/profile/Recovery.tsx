@@ -7,7 +7,7 @@ import {
   PROVIDER_LABEL,
   providerName,
   RECOVERY_DELAY_SECONDS,
-} from "@stellar-membership/shared";
+} from "@shared/membership";
 
 import { MemberCard } from "@/components/MemberCard";
 import { TxProgress } from "@/components/TxProgress";

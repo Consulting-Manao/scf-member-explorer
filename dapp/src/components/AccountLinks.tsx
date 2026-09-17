@@ -1,4 +1,4 @@
-import { providerName, type SocialAccount } from "@stellar-membership/shared";
+import { providerName, type SocialAccount } from "@shared/membership";
 
 import { accountUrl } from "@/lib/members";
 import { cn } from "@/lib/utils";

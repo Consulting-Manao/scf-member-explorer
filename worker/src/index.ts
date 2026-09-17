@@ -7,7 +7,7 @@ import {
   PROVIDERS,
   type AppConfig,
   type ProviderName,
-} from "@stellar-membership/shared";
+} from "@shared/membership";
 
 import { attest, AttestError } from "./attest";
 import { latestLedger, readMember, readOwner } from "./chain";

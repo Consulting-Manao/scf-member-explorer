@@ -9,7 +9,7 @@ import {
   PROVIDER_LABEL,
   ROLES,
   type ProviderName,
-} from "@stellar-membership/shared";
+} from "@shared/membership";
 
 import { AccountLinks } from "@/components/AccountLinks";
 import { ProfileForm } from "@/components/ProfileForm";

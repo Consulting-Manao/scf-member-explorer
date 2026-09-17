@@ -1,22 +1,35 @@
 {
-  "name": "@stellar-membership/worker",
+  "name": "stellar-membership-worker",
   "private": true,
+  "license": "BSD-3-Clause",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --port 8787",
+    "dev": "bun scripts/dev-api.ts",
+    "dev:workerd": "wrangler dev --port 8787",
     "deploy": "wrangler deploy",
+    "lint": "prettier -c . ../shared && eslint . && tsc",
+    "format": "prettier --write . ../shared",
     "test": "vitest run",
+    "smoke": "bun scripts/smoke.ts",
     "cf-typegen": "wrangler types worker-configuration.d.ts"
   },
   "dependencies": {
     "@ipld/car": "^5.4.7",
-    "@stellar-membership/shared": "workspace:*",
     "@stellar/stellar-sdk": "^17.1.0",
-    "hono": "^4.13.8",
-    "stellar-membership": "workspace:*"
+    "buffer": "^6.0.3",
+    "hono": "^4.13.8"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.0",
+    "eslint": "^10.10.0",
+    "globals": "^17.12.0",
+    "ipfs-car": "^3.1.0",
     "multiformats": "^14.0.5",
+    "prettier": "^3.9.6",
+    "typescript": "^6",
+    "typescript-eslint": "^8.70.0",
+    "vitest": "^5.0.1",
     "wrangler": "^4.132.0"
   }
 }

@@ -1,4 +1,4 @@
-import type { AppConfig } from "@stellar-membership/shared";
+import type { AppConfig } from "@shared/membership";
 
 import { apiUrl } from "./api";
 

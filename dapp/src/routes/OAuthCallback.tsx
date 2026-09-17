@@ -6,7 +6,7 @@ import {
   PROVIDER_LABEL,
   PROVIDERS,
   type ProviderName,
-} from "@stellar-membership/shared";
+} from "@shared/membership";
 
 import { Button } from "@/components/ui/button";
 import { completeOAuth } from "@/lib/oauth";

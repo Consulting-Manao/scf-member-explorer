@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { hashEmail } from "@stellar-membership/shared";
+import { hashEmail } from "@shared/membership";
 
 import type { Env } from "./env";
 import { exchangeCode, OAuthError, roleFromDiscordRoles } from "./oauth";

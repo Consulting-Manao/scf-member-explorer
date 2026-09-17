@@ -1,9 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import type { Env } from "../worker/src/env";
+import type { Env } from "../src/env";
 
-const WORKER = join(import.meta.dirname, "../worker");
+const WORKER = join(import.meta.dirname, "..");
 
 /** Worker vars from wrangler.jsonc, overridden by .dev.vars. */
 export async function localEnv(): Promise<Env> {
