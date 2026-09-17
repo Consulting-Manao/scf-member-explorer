@@ -11,6 +11,20 @@ export function shortAddress(address: string, size = 4): string {
   return `${address.slice(0, size)}…${address.slice(-size)}`;
 }
 
+/**
+ * A member's own link, as a web address or not at all: it comes from their
+ * profile on IPFS and is rendered on a page anyone can open.
+ */
+export function httpUrl(value: string | undefined): string | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
 const CONTRACT_ERRORS: Record<string, string> = {
   UnauthorizedSigner: "Only the member or an admin can do this.",
   NonExistentToken: "This member does not exist.",

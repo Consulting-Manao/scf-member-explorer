@@ -13,12 +13,14 @@ export async function localEnv(): Promise<Env> {
   );
   const dotVars = Object.fromEntries(
     (await readFile(join(WORKER, ".dev.vars"), "utf8").catch(() => ""))
-      .split("\n")
-      .filter((line) => /^[A-Z_]+=/.test(line))
-      .map((line) => [
-        line.slice(0, line.indexOf("=")),
-        line.slice(line.indexOf("=") + 1),
-      ]),
+      .split(/\r?\n/)
+      .filter((line) => /^[A-Za-z_][A-Za-z0-9_]*=/.test(line))
+      .map((line) => {
+        const at = line.indexOf("=");
+        // wrangler accepts a quoted value
+        const value = line.slice(at + 1).replace(/^(['"])(.*)\1$/, "$2");
+        return [line.slice(0, at), value];
+      }),
   );
   return { ...wrangler.vars, ...dotVars } as Env;
 }

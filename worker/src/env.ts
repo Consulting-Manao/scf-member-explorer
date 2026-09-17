@@ -1,3 +1,5 @@
+import { Keypair } from "@stellar/stellar-sdk";
+
 export interface Env {
   /** Only bound under Workers; the Bun dev server and tests run without. */
   RATE_LIMITER?: RateLimit;
@@ -44,6 +46,22 @@ const REQUIRED = [
 /** Names of the missing or invalid settings, empty when the worker is usable. */
 export function missingSettings(env: Partial<Env>): string[] {
   const missing: string[] = REQUIRED.filter((name) => !env[name]);
+  if (env.NETWORK && !["testnet", "mainnet"].includes(env.NETWORK)) {
+    missing.push("NETWORK (testnet or mainnet)");
+  }
+  if (env.ROLE_SOURCE && !["discord", "verified"].includes(env.ROLE_SOURCE)) {
+    missing.push("ROLE_SOURCE (discord or verified)");
+  }
+  if (env.ATTESTER_SECRET && env.ATTESTER_PUBLIC) {
+    try {
+      const derived = Keypair.fromSecret(env.ATTESTER_SECRET).publicKey();
+      if (derived !== env.ATTESTER_PUBLIC) {
+        missing.push("ATTESTER_SECRET (does not match ATTESTER_PUBLIC)");
+      }
+    } catch {
+      missing.push("ATTESTER_SECRET (not a secret key)");
+    }
+  }
   if (env.ROLE_SOURCE === "discord" && env.DISCORD_ROLE_MAP) {
     try {
       const map = JSON.parse(env.DISCORD_ROLE_MAP) as Record<string, unknown>;

@@ -4,12 +4,20 @@ import { Client } from "./bindings";
 import type { MemberRecord } from "@shared/membership";
 import type { Env } from "./env";
 
+/** One client per worker instance: it holds no state beyond the endpoint. */
+const clients = new WeakMap<Env, Client>();
+
 function client(env: Env): Client {
-  return new Client({
-    contractId: env.CONTRACT_ID,
-    networkPassphrase: env.NETWORK_PASSPHRASE,
-    rpcUrl: env.RPC_URL,
-  });
+  let existing = clients.get(env);
+  if (!existing) {
+    existing = new Client({
+      contractId: env.CONTRACT_ID,
+      networkPassphrase: env.NETWORK_PASSPHRASE,
+      rpcUrl: env.RPC_URL,
+    });
+    clients.set(env, existing);
+  }
+  return existing;
 }
 
 export async function latestLedger(env: Env): Promise<number> {

@@ -7,6 +7,10 @@
  *
  * OAuth is skipped: claims are signed with the attester key directly.
  * Idempotent: the admin ends up holding its membership, whatever the state.
+ *
+ * The profile is packed with the dapp's own code rather than a copy, so the
+ * upload is exactly the one the app sends. That is why `ipfs-car` is a
+ * devDependency here.
  */
 
 import { execFileSync } from "node:child_process";

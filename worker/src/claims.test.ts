@@ -28,4 +28,20 @@ describe("claims", () => {
     const token = signClaim(claim, attester, past);
     expect(() => verifyClaim(token, attester)).toThrow("expired");
   });
+
+  it("rejects a tampered payload or a malformed token", () => {
+    const [payload, signature] = signClaim(claim, attester).split(".");
+    const forged = Buffer.from(
+      JSON.stringify({ ...claim, role: 3, exp: 2 ** 31 }),
+    ).toString("base64url");
+    expect(() => verifyClaim(`${forged}.${signature!}`, attester)).toThrow(
+      "attester",
+    );
+    expect(() => verifyClaim(payload!, attester)).toThrow("Malformed claim");
+  });
+
+  it("keeps the email out of what it signs", () => {
+    const token = signClaim({ ...claim, email: "grogu@example.org" }, attester);
+    expect(verifyClaim(token, attester)).toEqual(claim);
+  });
 });

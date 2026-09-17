@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { explorerUrl } from "@/lib/config";
 import { ipfsUrl } from "@/lib/ipfs";
+import { httpUrl } from "@/lib/utils";
 import type { MemberView } from "@/lib/contract";
 import { useWallet } from "@/lib/wallet";
 import {
@@ -64,6 +65,8 @@ function MemberDetails({ member }: { member: MemberView }) {
   const { data: nqg } = useNqg(member.tokenId, !member.revoked);
   const { data: admin } = useAdmin();
   const isOwner = Boolean(address && address === member.owner);
+  const social = httpUrl(profile?.social);
+  const bioUrl = member.bio ? ipfsUrl(member.bio) : null;
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 px-4 py-10 sm:px-6">
@@ -127,14 +130,14 @@ function MemberDetails({ member }: { member: MemberView }) {
                 A verified email links this member to their contributions.
               </p>
             )}
-            {profile?.social && (
+            {social && (
               <a
-                href={profile.social}
+                href={social}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
               >
-                <GlobeIcon className="size-4" /> {profile.social}
+                <GlobeIcon className="size-4" /> {social}
               </a>
             )}
           </CardContent>
@@ -174,9 +177,9 @@ function MemberDetails({ member }: { member: MemberView }) {
             <ExternalLinkIcon className="size-4" /> Account
           </a>
         )}
-        {member.bio && (
+        {bioUrl && (
           <a
-            href={ipfsUrl(member.bio)}
+            href={bioUrl}
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-1.5 hover:text-foreground"

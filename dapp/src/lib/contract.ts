@@ -10,6 +10,10 @@ import {
   scValToNative,
   xdr,
 } from "@stellar/stellar-sdk";
+import type {
+  ClientOptions,
+  MethodOptions,
+} from "@stellar/stellar-sdk/contract";
 import { Client } from "@/bindings";
 
 import {
@@ -37,9 +41,24 @@ export interface Recovery {
   executableAt: Date;
 }
 
+/**
+ * Ceiling on the inclusion fee, 0.01 XLM: the network charges the least it
+ * can and the rest is the resource fee. The SDK default of 100 stroops is
+ * refused as soon as the ledger is busy, and by then the member has signed.
+ */
+const FEE = "100000";
+
 export function membershipClient(publicKey?: string): Client {
   const { contractId, networkPassphrase, rpcUrl } = config();
-  return new Client({ contractId, networkPassphrase, rpcUrl, publicKey });
+  const options: ClientOptions & MethodOptions = {
+    contractId,
+    networkPassphrase,
+    rpcUrl,
+    publicKey,
+    fee: FEE,
+    restore: true,
+  };
+  return new Client(options);
 }
 
 function server(): rpc.Server {
@@ -201,13 +220,10 @@ export async function getInstance(): Promise<Instance> {
   return { nextTokenId, admin, attester };
 }
 
-export async function getNqg(tokenId: number): Promise<number | null> {
-  try {
-    const { result } = await membershipClient().governance({
-      token_id: tokenId,
-    });
-    return Number(result.nqg) / 1e6;
-  } catch {
-    return null;
-  }
+/** Score of an active member; the contract answers 0 when NQG is down. */
+export async function getNqg(tokenId: number): Promise<number> {
+  const { result } = await membershipClient().governance({
+    token_id: tokenId,
+  });
+  return Number(result.nqg) / 1e6;
 }

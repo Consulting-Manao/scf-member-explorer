@@ -1,6 +1,7 @@
 import { CheckIcon, CopyIcon } from "lucide-react";
 import { useState } from "react";
 
+import { notify } from "@/lib/toast";
 import { cn, shortAddress } from "@/lib/utils";
 
 export function Copyable({
@@ -16,10 +17,14 @@ export function Copyable({
   return (
     <button
       type="button"
-      onClick={async () => {
-        await navigator.clipboard.writeText(value);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
+      onClick={() => {
+        navigator.clipboard
+          .writeText(value)
+          .then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          })
+          .catch((error: unknown) => notify.failure("Nothing copied", error));
       }}
       className={cn(
         "inline-flex cursor-pointer items-center gap-1.5 font-mono text-sm text-muted-foreground transition hover:text-foreground",

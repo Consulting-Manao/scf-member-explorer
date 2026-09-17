@@ -8,7 +8,7 @@ export default tseslint.config(
   { ignores: ["dist", "src/bindings"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
-    files: ["**/*.{ts,tsx}", "../shared/**/*.ts"],
+    files: ["**/*.{ts,tsx}"],
     languageOptions: { ecmaVersion: 2023, globals: globals.browser },
     plugins: { "react-hooks": reactHooks, "react-refresh": reactRefresh },
     rules: {

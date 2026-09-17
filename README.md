@@ -41,9 +41,11 @@ browser ──── Stellar RPC     reads (ledger entries) and transactions
 The worker is small and stateless. It holds the **attester** key, which
 only signs `SorobanAuthorizationEntry` for `mint`, `set_external_accounts`
 and `propose_recovery` after checking the arguments against OAuth claims.
-The member always authorizes the call too, so the attester alone cannot act
-on anyone's membership. It never submits a transaction: the member's wallet
-is the source and pays the fees.
+For a mint and an accounts change the member signs too, so the attester
+alone cannot touch a membership. A recovery is the exception by design: it
+is proposed by the attester and the new key, which is why it only takes
+effect after seven days and the member can cancel it. The worker never
+submits a transaction: the member's wallet is the source and pays the fees.
 
 ### Contract
 
@@ -60,6 +62,17 @@ external_accounts)`.
   `recover` (admin only, also reinstates a revoked token).
 - `revoke` (admin): the address is released, the record and accounts stay.
 - `governance(token_id)`: role and NQG score, read from the NQG contract.
+
+Known limits, accepted as they are:
+
+- A recovery left pending is not kept alive: its entry is written with the
+  usual 120 days and never extended, so after that the token needs its
+  entries restored. A recovery finalizes in seven days.
+- `governance` reads an `I256` from the NQG contract and converts it; a
+  value above `i128::MAX` would panic instead of reading as zero. The app
+  shows a dash when the read fails, other on-chain readers would not.
+- Replacing a leaked attester does not cancel the recoveries it proposed.
+  The admin panel lists them and cancels each.
 
 Every change is published as an event with the token id as topic. Other
 services read the contract directly: `token_by_account(provider, id)` maps a
@@ -152,9 +165,11 @@ card is on screen.
 
 The member queries are kept in the browser (IndexedDB) between visits and
 refreshed in the background after ten minutes. A transaction refreshes only
-the members it touched. The app is a PWA: the service worker caches the
-app shell, profiles and pictures from IPFS, avatars and project lookups;
-the other API calls and the RPC are never cached by it.
+the members it touched. The app is a PWA: the service worker precaches the
+whole shell and caches profiles and pictures from IPFS, avatars, project
+lookups and the configuration, so an installed app opens without the
+network and shows what it last read. The RPC, the OAuth exchange and the
+attestation are never cached.
 
 ## Testing
 

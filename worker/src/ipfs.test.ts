@@ -79,26 +79,60 @@ describe("checkUploadTransaction", () => {
   });
 });
 
+/** A CAR of one raw block, optionally declaring a root it does not hold. */
+async function car(
+  content: string,
+  root?: CID,
+): Promise<{ base64: string; root: CID }> {
+  const bytes = new TextEncoder().encode(content);
+  const block = CID.create(1, raw.code, await sha256.digest(bytes));
+  const { writer, out } = CarWriter.create([root ?? block]);
+  const chunks: Uint8Array[] = [];
+  const collected = (async () => {
+    for await (const chunk of out) chunks.push(chunk);
+  })();
+  await writer.put({ cid: block, bytes });
+  await writer.close();
+  await collected;
+  return { base64: Buffer.concat(chunks).toString("base64"), root: block };
+}
+
+const env = {
+  CONTRACT_ID: contractId,
+  NETWORK_PASSPHRASE: Networks.TESTNET,
+} as Env;
+
+const owner = (address: string | null) => () => Promise.resolve(address);
+
 describe("upload", () => {
   it("rejects a CAR whose root is not the CID", async () => {
-    const bytes = new TextEncoder().encode("not the profile");
-    const root = CID.create(1, raw.code, await sha256.digest(bytes));
-    const { writer, out } = CarWriter.create([root]);
-    const chunks: Uint8Array[] = [];
-    const collected = (async () => {
-      for await (const chunk of out) chunks.push(chunk);
-    })();
-    await writer.put({ cid: root, bytes });
-    await writer.close();
-    await collected;
-    const car = Buffer.concat(chunks).toString("base64");
-
-    const env = {
-      CONTRACT_ID: contractId,
-      NETWORK_PASSPHRASE: Networks.TESTNET,
-    } as Env;
+    const { base64 } = await car("not the profile");
     await expect(
-      upload(env, { cid, signedTxXdr: signedTx(), car }),
+      upload(
+        { env, owner: owner(null) },
+        { cid, signedTxXdr: signedTx({ fn: "mint" }), car: base64 },
+      ),
     ).rejects.toThrow("CID does not match the CAR");
+  });
+
+  it("rejects a CAR that does not hold the root it declares", async () => {
+    const declared = CID.parse(cid);
+    const { base64 } = await car("something else", declared);
+    await expect(
+      upload(
+        { env, owner: owner(null) },
+        { cid, signedTxXdr: signedTx({ fn: "mint" }), car: base64 },
+      ),
+    ).rejects.toThrow("does not contain its root");
+  });
+
+  it("rejects a set_bio from someone who is not the token's member", async () => {
+    const { base64 } = await car("a profile");
+    await expect(
+      upload(
+        { env, owner: owner(Keypair.random().publicKey()) },
+        { cid, signedTxXdr: signedTx(), car: base64 },
+      ),
+    ).rejects.toThrow("Not the member of that token");
   });
 });

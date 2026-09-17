@@ -6,8 +6,12 @@ network ?= testnet
 admin ?= stellar-members-$(network)
 attester ?= stellar-members-attester-$(network)
 wasm = target/wasm32v1-none/release/stellar_membership.wasm
-contract_id = $(shell cat contracts/deployments/stellar-membership-$(network))
-nqg_contract = CAM3VZX47TCQWCEYGXEDTSIJYKIVM6AWMFR7VTFYTETXFO53I5LOZGBT
+deployment = contracts/deployments/stellar-membership-$(network)
+contract_id = $(shell cat $(deployment))
+# Neural Quorum Governance, given to the contract at deployment and never
+# settable afterwards: one per network, and no default.
+nqg_contract_testnet = CAM3VZX47TCQWCEYGXEDTSIJYKIVM6AWMFR7VTFYTETXFO53I5LOZGBT
+nqg_contract = $(nqg_contract_$(network))
 
 help:  ## list the targets
 	@grep -E '^[a-z_-]+:.*##' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  %-24s %s\n", $$1, $$2}'
@@ -19,14 +23,13 @@ install:  ## install the dapp and the worker
 	cd worker && bun install
 
 dev:  ## the worker under Bun on 8787 and the app on http://localhost:5173
-	trap 'kill 0' EXIT; (cd worker && bun run dev) & (cd dapp && bun run dev); wait
+	trap 'kill 0' EXIT; (cd worker && bun run dev) & (cd dapp && bun run dev) & wait -n
 
 lint-js:  ## prettier, eslint and tsc of the dapp and the worker
 	cd dapp && bun run lint
 	cd worker && bun run lint
 
-test-js:  ## tests of the shared code, the dapp and the worker
-	bun test shared
+test-js:  ## tests of the dapp, of the shared code with it, and of the worker
 	cd dapp && bun run test
 	cd worker && bun run test
 
@@ -61,7 +64,9 @@ bindings: build  ## regenerate the TypeScript bindings of the dapp and the worke
 type_imports = s/import \{\s*AssembledTransaction,\s*Client as ContractClient,\s*ClientOptions as ContractClientOptions,\s*MethodOptions,\s*Result,\s*Spec as ContractSpec,?\s*\} from "\@stellar\/stellar-sdk\/contract";/import {\n  AssembledTransaction,\n  Client as ContractClient,\n  Spec as ContractSpec,\n} from "\@stellar\/stellar-sdk\/contract";\nimport type {\n  ClientOptions as ContractClientOptions,\n  MethodOptions,\n  Result,\n} from "\@stellar\/stellar-sdk\/contract";/
 
 deploy: build  ## deploy the contract with the admin and attester identities
-	stellar contract deploy \
+	@test -n "$(nqg_contract)" || \
+		{ echo "set nqg_contract_$(network) in the Makefile first"; exit 1; }
+	id=$$(stellar contract deploy \
 		--wasm $(wasm) \
 		--source-account $(admin) \
 		--network $(network) \
@@ -72,9 +77,8 @@ deploy: build  ## deploy the contract with the admin and attester identities
 		--name "Stellar Members" --symbol SMBR \
 		--uri https://ipfs.io/ipfs/QmVTqJ4EzJThVWobgyaWCetcrXCjftQhgi24E4giJ5EgXr \
 		--uri_trait https://ipfs.io/ipfs/Qmddf2UgGTQ3z2SZfg2ziZJzDJDRS3Dk7Z3phZ76fMzdLf \
-		--nqg_contract $(nqg_contract) \
-		> contracts/deployments/stellar-membership-$(network) && \
-	cat contracts/deployments/stellar-membership-$(network)
+		--nqg_contract $(nqg_contract)) && \
+	echo "$$id" | tee $(deployment)
 
 upgrade: build  ## upgrade the deployed contract in place
 	stellar contract invoke \

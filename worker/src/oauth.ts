@@ -1,4 +1,5 @@
 import {
+  clampToBytes,
   hashEmail,
   MAX_ACCOUNT_LEN,
   type Claim,
@@ -23,11 +24,14 @@ const DISCORD_USER_AGENT =
   "DiscordBot (https://github.com/Consulting-Manao, 1.0)";
 const DISCORD_API = "https://discord.com/api/v10";
 
-/** Parse a provider response, keeping its error body for diagnosis. */
+/** Parse a provider response, logging its error body rather than echoing it. */
 async function json<T>(res: Response, what: string): Promise<T> {
   if (!res.ok) {
-    const body = (await res.text()).slice(0, 200);
-    throw new OAuthError(`${what} failed (${res.status}): ${body}`);
+    console.error(
+      `${what} failed (${res.status})`,
+      (await res.text()).slice(0, 200),
+    );
+    throw new OAuthError(`${what} failed`);
   }
   return (await res.json()) as T;
 }
@@ -48,7 +52,10 @@ function normalizeIdentity(identity: Identity): Identity {
   if (!identity.id || identity.id.length > MAX_ACCOUNT_LEN) {
     throw new OAuthError("Invalid account id");
   }
-  return { ...identity, handle: identity.handle.slice(0, MAX_ACCOUNT_LEN) };
+  return {
+    ...identity,
+    handle: clampToBytes(identity.handle, MAX_ACCOUNT_LEN),
+  };
 }
 
 /** Highest role mapped from the member's Discord roles. */

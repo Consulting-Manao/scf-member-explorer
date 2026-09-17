@@ -24,7 +24,7 @@ deployment.
   with the two kept identities only.
 - `shared/` dependency-free types and helpers, imported by the app and the
   worker as `@shared/membership` through a path alias; its test runs with
-  `bun test shared` from the root.
+  the dapp's.
 - `dapp/src/bindings/` and `worker/src/bindings/` contract bindings
   **generated** by `make bindings`, committed, never edited by hand.
 
@@ -44,11 +44,11 @@ make smoke                       # testnet flows through the worker
 make test && make lint           # contract tests, clippy, rustfmt
 make bindings                    # after a contract change
 make deploy network=testnet      # or upgrade, invoke; see make help
-make deploy-worker               # the app build is uploaded to its host
+make deploy-worker               # wrangler deploy; the app build goes to its own host
 ```
 
-Inside `dapp/` or `worker/`, `bun run lint`, `test`, `build`, `format` work
-on that package alone.
+Inside `dapp/` or `worker/`, `bun run lint`, `test` and `format` work on
+that package alone, and `bun run build` builds the app.
 
 `.claude/launch.json` starts the local stack for the browser preview tool.
 

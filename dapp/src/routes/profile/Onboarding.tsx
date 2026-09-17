@@ -40,12 +40,13 @@ import {
   uploadCar,
   type ProfileInput,
 } from "@/lib/ipfs";
-import { useClaims } from "@/queries/members";
+import { useClaims, useInvalidateInstance } from "@/queries/members";
 
 /** The connected address holds no membership: verify, describe, mint. */
 export function Onboarding({ address }: { address: string }) {
   const navigate = useNavigate({ from: "/profile" });
   const claims = useClaims(address);
+  const invalidateInstance = useInvalidateInstance();
   const { step, busy, run } = useTxAction();
   const [emailFrom, setEmailFrom] = useState<ProviderName | null>(null);
   const [profile, setProfile] = useState<ProfileInput>(EMPTY_PROFILE);
@@ -87,6 +88,8 @@ export function Onboarding({ address }: { address: string }) {
       },
     );
     if (!sent) return;
+    // the token did not exist before, so the whole list shifts by one
+    await invalidateInstance();
     if (email?.email && email.emailHash) {
       rememberEmail(email.emailHash, email.email);
     }

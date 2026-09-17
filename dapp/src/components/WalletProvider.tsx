@@ -56,8 +56,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         }
         void rememberWallet();
       })
-      .catch((error: unknown) => {
-        console.warn("wallet session not restored", error);
+      .catch(() => {
+        // the wallet is gone or locked: start disconnected
         setAddress(null);
         store(null);
       });

@@ -1,5 +1,6 @@
 import { Keypair } from "@stellar/stellar-sdk";
 import { Hono, type Context, type Next } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 
@@ -28,6 +29,23 @@ async function rateLimit(c: Context<AppEnv>, next: Next) {
   await next();
 }
 
+/** A body this big is refused before it is read. */
+const limit = (maxSize: number) =>
+  bodyLimit({
+    maxSize,
+    onError: () => {
+      throw new HTTPException(413, { message: "Body too large" });
+    },
+  });
+
+async function body<T>(c: Context<AppEnv>): Promise<T> {
+  try {
+    return await c.req.json<T>();
+  } catch {
+    throw new HTTPException(400, { message: "Malformed JSON body" });
+  }
+}
+
 function provider(c: Context<AppEnv>): ProviderName {
   const name = c.req.param("provider") as ProviderName;
   if (!PROVIDERS.includes(name)) {
@@ -39,15 +57,17 @@ function provider(c: Context<AppEnv>): ProviderName {
 export const app = new Hono<AppEnv>().basePath("/api");
 
 // The API is public and stateless: nothing is authenticated by the origin,
-// every request is rate limited per address.
+// every request that costs something is rate limited per client address.
 app.use("*", cors());
 
-/** Every API call requires a complete configuration. */
+/** Every API call requires a complete configuration, `/config` says why. */
 app.use("*", async (c, next) => {
   const missing = missingSettings(c.env);
   if (missing.length > 0) {
     throw new HTTPException(500, {
-      message: `Worker not configured: ${missing.join(", ")}`,
+      message: c.req.path.endsWith("/config")
+        ? `Worker not configured: ${missing.join(", ")}`
+        : "Worker not configured",
     });
   }
   await next();
@@ -68,38 +88,43 @@ app.get("/config", (c) => {
   return c.json(config);
 });
 
-app.post("/oauth/:provider/exchange", rateLimit, async (c) => {
-  const body = await c.req.json<{
+app.post("/oauth/:provider/exchange", limit(4 * 1024), rateLimit, async (c) => {
+  const sent = await body<{
     code?: string;
     codeVerifier?: string;
     redirectUri?: string;
     address?: string;
-  }>();
-  if (!body.code || !body.codeVerifier || !body.redirectUri || !body.address) {
+  }>(c);
+  if (!sent.code || !sent.codeVerifier || !sent.redirectUri || !sent.address) {
     throw new HTTPException(400, { message: "Missing parameters" });
   }
   const identity = await exchangeCode(provider(c), c.env, {
-    code: body.code,
-    codeVerifier: body.codeVerifier,
-    redirectUri: body.redirectUri,
+    code: sent.code,
+    codeVerifier: sent.codeVerifier,
+    redirectUri: sent.redirectUri,
   });
-  const claim = { ...identity, address: body.address };
+  const claim = { ...identity, address: sent.address };
   const attester = Keypair.fromSecret(c.env.ATTESTER_SECRET);
   return c.json({ claim, token: signClaim(claim, attester) });
 });
 
-app.post("/attest", rateLimit, async (c) => {
-  const body = await c.req.json<{
+app.post("/attest", limit(64 * 1024), rateLimit, async (c) => {
+  const sent = await body<{
     entry?: string;
     validUntilLedger?: number;
     claims?: string[];
-  }>();
-  if (!body.entry || !body.validUntilLedger || !Array.isArray(body.claims)) {
+  }>(c);
+  if (
+    !sent.entry ||
+    typeof sent.validUntilLedger !== "number" ||
+    !Array.isArray(sent.claims) ||
+    sent.claims.length > PROVIDERS.length
+  ) {
     throw new HTTPException(400, { message: "Missing parameters" });
   }
   const env = c.env;
   const attester = Keypair.fromSecret(env.ATTESTER_SECRET);
-  const claims = body.claims.map((token) => {
+  const claims = sent.claims.map((token) => {
     try {
       return verifyClaim(token, attester);
     } catch {
@@ -107,7 +132,7 @@ app.post("/attest", rateLimit, async (c) => {
     }
   });
 
-  const entry = await attest(body.entry, body.validUntilLedger, {
+  const entry = await attest(sent.entry, sent.validUntilLedger, {
     contractId: env.CONTRACT_ID,
     attester,
     networkPassphrase: env.NETWORK_PASSPHRASE,
@@ -119,8 +144,13 @@ app.post("/attest", rateLimit, async (c) => {
   return c.json({ entry });
 });
 
-app.post("/ipfs", rateLimit, async (c) => {
-  const cid = await upload(c.env, await c.req.json());
+// the CAR is base64, so 4/3 of the 5 MB the upload itself allows
+app.post("/ipfs", limit(7 * 1024 * 1024), rateLimit, async (c) => {
+  const env = c.env;
+  const cid = await upload(
+    { env, owner: (tokenId) => readOwner(env, tokenId) },
+    await body(c),
+  );
   return c.json({ cid });
 });
 

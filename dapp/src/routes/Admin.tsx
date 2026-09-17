@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   EraserIcon,
@@ -40,8 +39,6 @@ import { useRemaining } from "@/hooks/useNow";
 import { useTxAction } from "@/hooks/useTxAction";
 import { config } from "@/lib/config";
 import {
-  getMembers,
-  getRecoveries,
   membershipClient,
   type MemberView,
   type Recovery,
@@ -50,35 +47,18 @@ import { notify } from "@/lib/toast";
 import { formatDuration } from "@/lib/utils";
 import { useWallet } from "@/lib/wallet";
 import {
-  queryKeys,
   useAdmin,
   useInstance,
   useInvalidateInstance,
   useMember,
   useMemberCount,
   useMemberName,
+  useRecoveries,
 } from "@/queries/members";
 
 function PendingRecoveries({ admin }: { admin: string }) {
   const { data: count } = useMemberCount();
-  const pending = useQuery({
-    queryKey: queryKeys.recoveries(count ?? 0),
-    enabled: count !== undefined,
-    queryFn: async () => {
-      const ids = Array.from({ length: count! }, (_, i) => i);
-      const recoveries = await getRecoveries(ids);
-      const pending = ids
-        .map((id, i) => ({ id, recovery: recoveries[i] }))
-        .filter((r): r is { id: number; recovery: Recovery } =>
-          Boolean(r.recovery),
-        );
-      const members = await getMembers(pending.map((r) => r.id));
-      return pending.map(({ recovery }, i) => ({
-        member: members[i]!,
-        recovery,
-      }));
-    },
-  });
+  const pending = useRecoveries(count);
 
   return (
     <Card>

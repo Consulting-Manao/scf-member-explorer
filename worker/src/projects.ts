@@ -8,8 +8,6 @@ interface PgAtlasProject {
   canonical_id: string;
   display_name: string;
   category: string | null;
-  activity_status: string | null;
-  git_owner_url: string | null;
 }
 
 export const CACHE_SECONDS = 3600;
@@ -19,8 +17,6 @@ function toProject(project: PgAtlasProject): Project {
     id: project.canonical_id,
     name: project.display_name,
     category: project.category,
-    status: project.activity_status,
-    gitOwnerUrl: project.git_owner_url,
   };
 }
 
@@ -56,7 +52,7 @@ export async function getProject(
   id: string,
 ): Promise<Project | null> {
   const data = await cachedJson<PgAtlasProject>(
-    `${env.PGATLAS_URL}/projects/${encodeURIComponent(id)}`,
+    `${env.PGATLAS_URL}/projects/${encodeURIComponent(id.slice(0, 128))}`,
   );
   return data ? toProject(data) : null;
 }

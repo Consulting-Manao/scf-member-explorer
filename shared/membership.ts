@@ -39,6 +39,13 @@ export const MAX_PROJECTS = 10;
 export const MAX_ACCOUNT_LEN = 64;
 export const RECOVERY_DELAY_SECONDS = 7 * 24 * 3600;
 
+/** Cut a string to what the contract stores, which counts UTF-8 bytes. */
+export function clampToBytes(value: string, max: number): string {
+  const bytes = new TextEncoder().encode(value);
+  if (bytes.length <= max) return value;
+  return new TextDecoder().decode(bytes.subarray(0, max)).replace(/�$/, "");
+}
+
 /** An external account verified by the worker through OAuth. */
 export interface Claim {
   /** Address the claim was issued for. */
@@ -78,8 +85,6 @@ export interface Project {
   id: string;
   name: string;
   category: string | null;
-  status: string | null;
-  gitOwnerUrl: string | null;
 }
 
 /** Public configuration served by the worker on `/api/config`. */

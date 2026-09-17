@@ -56,20 +56,28 @@ function external(claims: Claim[], emailHash?: string) {
 async function entryFor(
   functionName: string,
   args: xdr.ScVal[],
-  options: { signer?: Keypair; contract?: string } = {},
+  options: { signer?: Keypair; contract?: string; nested?: boolean } = {},
 ): Promise<string> {
+  const call = (name: string) =>
+    xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
+      new xdr.InvokeContractArgs({
+        contractAddress: new Address(
+          options.contract ?? contractId,
+        ).toScAddress(),
+        functionName: name,
+        args,
+      }),
+    );
   const invocation = new xdr.SorobanAuthorizedInvocation({
-    function:
-      xdr.SorobanAuthorizedFunction.sorobanAuthorizedFunctionTypeContractFn(
-        new xdr.InvokeContractArgs({
-          contractAddress: new Address(
-            options.contract ?? contractId,
-          ).toScAddress(),
-          functionName,
-          args,
-        }),
-      ),
-    subInvocations: [],
+    function: call(functionName),
+    subInvocations: options.nested
+      ? [
+          new xdr.SorobanAuthorizedInvocation({
+            function: call(functionName),
+            subInvocations: [],
+          }),
+        ]
+      : [],
   });
   const entry = await authorizeInvocation({
     signer: options.signer ?? attester,
@@ -193,6 +201,13 @@ describe("attest mint", () => {
     await rejects(
       attest(wrongFunction, latestLedger + 60, context()),
       "Cannot attest",
+    );
+
+    // an attested call smuggled under another one
+    const nested = await entryFor("mint", args, { nested: true });
+    await rejects(
+      attest(nested, latestLedger + 60, context()),
+      "Unexpected sub-invocation",
     );
   });
 

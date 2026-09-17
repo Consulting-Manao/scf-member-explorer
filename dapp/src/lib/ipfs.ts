@@ -15,7 +15,15 @@ export {
 
 export const MAX_IMAGE_BYTES = 1024 * 1024;
 
-export function ipfsUrl(cid: string, path = ""): string {
+/** CIDv0 and the base32 CIDv1 that `packCar` produces. */
+const CID = /^(Qm[1-9A-HJ-NP-Za-km-z]{44}|b[a-z2-7]{58,})$/;
+
+/**
+ * Gateway address of a profile, `null` for anything that is not a CID: the
+ * bio is a free string on-chain and ends up in this URL.
+ */
+export function ipfsUrl(cid: string, path = ""): string | null {
+  if (!CID.test(cid)) return null;
   return `${config().ipfsGateway}${cid}${path}`;
 }
 
@@ -37,13 +45,19 @@ export async function uploadCar(
 }
 
 export async function fetchProfile(cid: string): Promise<Profile | null> {
-  const res = await fetch(ipfsUrl(cid, "/profile.json"));
+  const url = ipfsUrl(cid, "/profile.json");
+  if (!url) return null;
+  const res = await fetch(url);
   if (!res.ok) return null;
   const data = (await res.json()) as Partial<Profile>;
+  const image = data.image ? `${data.image}` : "";
   return {
     name: String(data.name ?? ""),
     description: String(data.description ?? ""),
     social: String(data.social ?? ""),
-    image: data.image ? ipfsUrl(cid, `/${data.image}`) : undefined,
+    // the profile is a directory, so its picture is a plain file name
+    image: /^[\w.-]+$/.test(image)
+      ? (ipfsUrl(cid, `/${image}`) ?? undefined)
+      : undefined,
   };
 }

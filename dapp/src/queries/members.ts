@@ -17,6 +17,7 @@ import {
   getTokenOf,
   type Instance,
   type MemberView,
+  type Recovery,
 } from "@/lib/contract";
 import { fetchProfile } from "@/lib/ipfs";
 import { memberName } from "@/lib/members";
@@ -116,6 +117,29 @@ export function useMember(tokenId: number | null | undefined) {
 export function useMemberName(member: MemberView) {
   const { data: profile } = useProfile(member.bio || undefined);
   return { name: memberName(member, profile?.name), profile };
+}
+
+/** Pending recoveries, one ledger key per member: read sparingly. */
+export function useRecoveries(count: number | undefined) {
+  return useQuery({
+    queryKey: queryKeys.recoveries(count ?? 0),
+    enabled: count !== undefined,
+    staleTime: MINUTE,
+    queryFn: async () => {
+      const ids = Array.from({ length: count! }, (_, i) => i);
+      const recoveries = await getRecoveries(ids);
+      const pending = ids
+        .map((id, i) => ({ id, recovery: recoveries[i] }))
+        .filter((r): r is { id: number; recovery: Recovery } =>
+          Boolean(r.recovery),
+        );
+      const members = await getMembers(pending.map((r) => r.id));
+      return pending.map(({ recovery }, i) => ({
+        member: members[i]!,
+        recovery,
+      }));
+    },
+  });
 }
 
 export function useRecovery(tokenId: number | null | undefined) {
@@ -265,11 +289,22 @@ export function useInvalidateMembers() {
   );
 }
 
-/** Refresh the instance after an admin change (attester, count). */
+/**
+ * Refresh the instance after a change to it (a mint, an attester rotation).
+ * A new member moves the top page, which re-keys the list: the pages read
+ * under the previous key are dropped rather than left in the cache.
+ */
 export function useInvalidateInstance() {
   const client = useQueryClient();
-  return useCallback(
-    () => client.invalidateQueries({ queryKey: queryKeys.instance }),
-    [client],
-  );
+  return useCallback(async () => {
+    await client.invalidateQueries({ queryKey: queryKeys.instance });
+    const instance = client.getQueryData<Instance>(queryKeys.instance);
+    if (instance) {
+      const current = topPage(instance.nextTokenId);
+      client.removeQueries({
+        queryKey: ["members", "list"],
+        predicate: (query) => query.queryKey[2] !== current,
+      });
+    }
+  }, [client]);
 }

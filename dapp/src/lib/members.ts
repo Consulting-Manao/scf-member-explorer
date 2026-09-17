@@ -19,12 +19,13 @@ export function memberName(member: MemberView, profileName?: string): string {
 }
 
 export function accountUrl(account: SocialAccount): string {
+  const handle = encodeURIComponent(account.handle);
   switch (providerName(account.provider)) {
     case "github":
-      return `https://github.com/${account.handle}`;
+      return `https://github.com/${handle}`;
     case "x":
-      return `https://x.com/${account.handle}`;
+      return `https://x.com/${handle}`;
     case "discord":
-      return `https://discord.com/users/${account.id}`;
+      return `https://discord.com/users/${encodeURIComponent(account.id)}`;
   }
 }

@@ -65,12 +65,12 @@ function decodeInvocation(
   return { functionName: call.function, args: call.args };
 }
 
-function claimsFor(address: unknown, ctx: AttestContext): Claim[] {
+/** Every claim must have been issued for the address the call is about. */
+function requireClaimsFor(address: unknown, ctx: AttestContext): void {
   if (ctx.claims.length === 0) fail("No verified account");
   if (ctx.claims.some((claim) => claim.address !== address)) {
     fail("Accounts were verified for another address");
   }
-  return ctx.claims;
 }
 
 function sameAccount(a: SocialAccount, b: SocialAccount): boolean {
@@ -126,13 +126,13 @@ function checkAccounts(
 async function checkMint(args: unknown[], ctx: AttestContext): Promise<void> {
   if (args.length !== 3) fail("Unexpected arguments");
   const [to, role, external] = args;
-  const claims = claimsFor(to, ctx);
+  requireClaimsFor(to, ctx);
 
   const granted =
-    claims.find((claim) => claim.provider === "discord")?.role ?? 0;
+    ctx.claims.find((claim) => claim.provider === "discord")?.role ?? 0;
   if (role !== granted) fail("Role not granted");
 
-  checkAccounts(external, claims);
+  checkAccounts(external, ctx.claims);
 }
 
 async function checkSetExternalAccounts(
@@ -149,8 +149,8 @@ async function checkSetExternalAccounts(
     ctx.member(tokenId),
   ]);
   if (!owner || !member) fail("Not an active member");
-  const claims = claimsFor(owner, ctx);
-  checkAccounts(external, claims, asAccounts(member.external_accounts));
+  requireClaimsFor(owner, ctx);
+  checkAccounts(external, ctx.claims, asAccounts(member.external_accounts));
 }
 
 /** At least two matching accounts, or the only one the member has. */
@@ -162,7 +162,7 @@ async function checkProposeRecovery(
     fail("Unexpected arguments");
   }
   const [tokenId, newAddress] = args as [number, unknown];
-  const claims = claimsFor(newAddress, ctx);
+  requireClaimsFor(newAddress, ctx);
 
   const member = await ctx.member(tokenId);
   if (!member || member.status !== 0) fail("Not an active member");
@@ -172,7 +172,7 @@ async function checkProposeRecovery(
   if (required === 0) fail("The member has no verified account");
 
   const matches = accounts.filter((account) =>
-    claims.some(
+    ctx.claims.some(
       (claim) =>
         PROVIDER_ID[claim.provider] === account.provider &&
         claim.id === account.id,

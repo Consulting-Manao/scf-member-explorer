@@ -44,9 +44,9 @@ export function ProfileSection({ member, address }: Props) {
   );
 }
 
-async function imageFile(url: string): Promise<File | null> {
+async function imageFile(url: string): Promise<File> {
   const res = await fetch(url);
-  if (!res.ok) return null;
+  if (!res.ok) throw new Error("The current picture could not be read back");
   const blob = await res.blob();
   return new File([blob], url.split("/").at(-1) ?? "profile-image", {
     type: blob.type,

@@ -6,7 +6,7 @@
 
 import type { Keypair } from "@stellar/stellar-sdk";
 
-import { PROVIDERS, type Claim } from "@shared/membership";
+import type { Claim } from "@shared/membership";
 
 /** Claims are valid for a day: long enough to finish onboarding. */
 export const CLAIM_TTL_SECONDS = 24 * 3600;
@@ -19,8 +19,10 @@ export function signClaim(
   attester: Keypair,
   now = Math.floor(Date.now() / 1000),
 ): string {
+  // the plain email stays in the browser: only its hash is ever checked
+  const { email: _email, ...signed } = claim;
   const payload = Buffer.from(
-    JSON.stringify({ ...claim, exp: now + CLAIM_TTL_SECONDS }),
+    JSON.stringify({ ...signed, exp: now + CLAIM_TTL_SECONDS }),
   );
   return `${encode(payload)}.${encode(attester.sign(payload))}`;
 }
@@ -33,20 +35,9 @@ export function verifyClaim(token: string, attester: Keypair): Claim {
   if (!attester.verify(bytes, decode(signature))) {
     throw new Error("Claim not signed by the attester");
   }
-  const data = JSON.parse(bytes.toString()) as Partial<Claim> & {
-    exp?: number;
+  const { exp, ...claim } = JSON.parse(bytes.toString()) as Claim & {
+    exp: number;
   };
-  const { exp, ...claim } = data;
-  if (typeof exp !== "number" || exp <= Math.floor(Date.now() / 1000)) {
-    throw new Error("Claim expired");
-  }
-  if (
-    typeof claim.address !== "string" ||
-    !PROVIDERS.includes(claim.provider as Claim["provider"]) ||
-    typeof claim.id !== "string" ||
-    typeof claim.handle !== "string"
-  ) {
-    throw new Error("Malformed claim");
-  }
-  return claim as Claim;
+  if (exp <= Math.floor(Date.now() / 1000)) throw new Error("Claim expired");
+  return claim;
 }

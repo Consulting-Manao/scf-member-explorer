@@ -14,13 +14,12 @@ const DAY = 24 * 60 * 60;
 
 export default defineConfig(({ mode }) => {
   const apiUrl = loadEnv(mode, process.cwd(), "VITE_").VITE_API_URL;
-  // routes are serialised into the service worker, so a plain pattern: a
-  // cross-origin one must match from the start, a same-origin one anywhere
-  const projects = apiUrl
-    ? new RegExp(
-        `^${new URL(apiUrl).origin.replaceAll(".", "\\.")}/api/projects`,
-      )
-    : /\/api\/projects/;
+  // routes are serialised into the service worker, so a plain pattern:
+  // anchored on the worker's origin, or on the path when it shares ours
+  const api = (path: string) =>
+    new RegExp(
+      `^${apiUrl ? new URL(apiUrl).origin.replaceAll(".", "\\.") : "[^?#]*"}/api/${path}`,
+    );
   return {
     plugins: [
       react(),
@@ -47,13 +46,10 @@ export default defineConfig(({ mode }) => {
           ],
         },
         workbox: {
-          // the shell only: lazy chunks stay lazy, fonts and pictures are
-          // cached as they load
-          globPatterns: [
-            "index.html",
-            "assets/index-*.{js,css}",
-            "*.{svg,png}",
-          ],
+          // the whole shell, so an installed app opens without the network
+          globPatterns: ["index.html", "assets/*.{js,css}", "*.{svg,png}"],
+          // packing a profile needs the network anyway, so it stays lazy
+          globIgnores: ["**/ipfs-car-*.js"],
           navigateFallbackDenylist: [/^\/api\//],
           runtimeCaching: [
             {
@@ -83,11 +79,21 @@ export default defineConfig(({ mode }) => {
               },
             },
             {
-              urlPattern: projects,
+              urlPattern: api("projects"),
               handler: "StaleWhileRevalidate",
               options: {
                 cacheName: "projects",
                 expiration: { maxEntries: 500, maxAgeSeconds: DAY },
+              },
+            },
+            {
+              // the app cannot render without it, and it is public
+              urlPattern: api("config$"),
+              handler: "NetworkFirst",
+              options: {
+                cacheName: "config",
+                networkTimeoutSeconds: 5,
+                expiration: { maxEntries: 1 },
               },
             },
           ],
@@ -100,7 +106,10 @@ export default defineConfig(({ mode }) => {
         "@shared": fileURLToPath(new URL("../shared", import.meta.url)),
       },
     },
-    test: { include: ["src/**/*.test.ts"], environment: "node" },
+    test: {
+      include: ["src/**/*.test.ts", "../shared/**/*.test.ts"],
+      environment: "node",
+    },
     server: {
       port: 5173,
       proxy: { "/api": API_PROXY },

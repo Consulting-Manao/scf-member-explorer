@@ -1,7 +1,8 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 
 import {
   accountsFromClaims,
+  clampToBytes,
   fromHex,
   hashEmail,
   toHex,
@@ -37,5 +38,14 @@ describe("accountsFromClaims", () => {
     expect(accountsFromClaims([claim("discord", "aa")]).emailHash).toBe(
       undefined,
     );
+  });
+});
+
+describe("clampToBytes", () => {
+  it("cuts on a character boundary, counting UTF-8 bytes", () => {
+    expect(clampToBytes("grogu", 64)).toBe("grogu");
+    // three bytes each, so 8 leaves room for two
+    expect(clampToBytes("ありがとう", 8)).toBe("あり");
+    expect(clampToBytes("a".repeat(70), 64)).toHaveLength(64);
   });
 });

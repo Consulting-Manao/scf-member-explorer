@@ -44,16 +44,6 @@ jobs:
       - run: bun run test
       - run: bunx wrangler deploy --dry-run --outdir /tmp/worker
 
-  shared:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
-      - run: bun test shared
-
   contract:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -64,6 +54,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --check
       - run: cargo clippy --all-targets --all-features -- -Dwarnings
       - run: cargo test
