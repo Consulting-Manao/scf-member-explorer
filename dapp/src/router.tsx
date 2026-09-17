@@ -45,6 +45,9 @@ const routeTree = rootRoute.addChildren([
 
 export const router = createRouter({
   routeTree,
+  // the app is its own site unless it is served under a path, and BASE_URL
+  // always ends with a slash while the router wants the path without it
+  basepath: import.meta.env.BASE_URL.replace(/\/$/, "") || "/",
   defaultPreload: "intent",
   scrollRestoration: true,
 });

@@ -57,7 +57,8 @@ export async function codeChallenge(verifier: string): Promise<string> {
 }
 
 export function redirectUri(provider: ProviderName): string {
-  return `${window.location.origin}/oauth/callback/${provider}`;
+  const { origin } = window.location;
+  return `${origin}${import.meta.env.BASE_URL}oauth/callback/${provider}`;
 }
 
 /** Providers the worker is configured for, in the contract's order. */

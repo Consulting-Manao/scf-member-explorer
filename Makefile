@@ -64,7 +64,7 @@ test-js:  ## tests of the dapp, of the shared code with it, and of the worker
 	cd dapp && bun run test
 	cd worker && bun run test
 
-build-dapp:  ## static build in dapp/dist, VITE_API_URL is the worker's origin, VITE_NETWORK the network
+build-dapp:  ## static build in dapp/dist: VITE_API_URL the worker's origin, VITE_NETWORK the network, BASE_PATH the path it is served under
 	cd dapp && bun run build
 
 deploy-worker:  ## deploy the worker with wrangler
@@ -84,6 +84,12 @@ smoke:  ## end-to-end flows on testnet through the worker
 override pages_dir = pages
 override worker_url = https://stellar-members.tansu-964.workers.dev
 
+# Radicle Pages serves the repository under its alias, so the build is for
+# that path. The day the app has a domain of its own: `make deploy-pages base=/`.
+ifndef base
+   override base = /stellar-members/
+endif
+
 pages-init:  ## one-time: the canonical pages branch and the worktree that builds into it
 	rad id update \
 		--title "Configure the pages canonical branch" \
@@ -95,7 +101,9 @@ pages-init:  ## one-time: the canonical pages branch and the worktree that build
 
 deploy-pages:  ## build the app and publish it to Radicle Pages
 	@test -e $(pages_dir)/.git || { echo "run 'make pages-init' first"; exit 1; }
-	VITE_API_URL=$(worker_url) VITE_NETWORK=$(network) $(MAKE) build-dapp
+	@test -z "$$(git status --porcelain)" \
+		|| { echo "commit first: a publish names the commit it was built from"; exit 1; }
+	VITE_API_URL=$(worker_url) VITE_NETWORK=$(network) BASE_PATH=$(base) $(MAKE) build-dapp
 	find $(pages_dir) -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
 	cp -R dapp/dist/. $(pages_dir)/
 	git -C $(pages_dir) add -A

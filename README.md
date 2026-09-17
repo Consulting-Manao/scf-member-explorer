@@ -251,9 +251,17 @@ builds the app against the deployed worker, copies it into that worktree,
 commits and pushes; every push redeploys. `dapp/public/_redirects` serves
 `index.html` for the paths the build does not contain, as the routes are
 client side, and the files that exist keep precedence. The rest happens
-once on radicle.garden: add the repository, then Settings, Pages, Publish,
-with "Serve at the site root" on so the service worker and the manifest
-keep the root scope they are built for.
+once on radicle.garden: add the repository, then Settings, Pages, Publish.
+
+Radicle Pages serves the repository under its alias, so the app is built
+for a path rather than for a domain of its own. `BASE_PATH` is where that
+path is written down, once, as the `base` variable of `deploy-pages`; the
+router, the manifest, the service worker scope and the OAuth redirect read
+it back through `import.meta.env.BASE_URL`. A domain of its own is the
+default, `make deploy-pages base=/`. Whatever the path is, each provider's
+OAuth app must list its callback: today
+`https://consulting-manao.radicle.page/stellar-members/oauth/callback/discord`
+and the same for GitHub.
 
 Any other static host works the same way: upload `dapp/dist` somewhere that
 serves `index.html` for unknown paths, with `VITE_API_URL` set to the

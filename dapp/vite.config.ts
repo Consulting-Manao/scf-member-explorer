@@ -10,6 +10,11 @@ import { VitePWA } from "vite-plugin-pwa";
 // origin from VITE_API_URL, empty when served from the same one.
 const API_PROXY = process.env.API_PROXY ?? "http://127.0.0.1:8787";
 
+// The path the app is served under, its own domain unless BASE_PATH says
+// otherwise. Everything absolute is built from it: the manifest here, the
+// router and the OAuth redirect through import.meta.env.BASE_URL.
+const BASE = process.env.BASE_PATH ?? "/";
+
 const DAY = 24 * 60 * 60;
 
 export default defineConfig(({ mode }) => {
@@ -21,6 +26,7 @@ export default defineConfig(({ mode }) => {
       `^${apiUrl ? new URL(apiUrl).origin.replaceAll(".", "\\.") : "[^?#]*"}/api/${path}`,
     );
   return {
+    base: BASE,
     plugins: [
       react(),
       tailwindcss(),
@@ -30,15 +36,16 @@ export default defineConfig(({ mode }) => {
           name: "Stellar Members",
           short_name: "Members",
           description: "Your seat in the Stellar community.",
-          start_url: "/",
+          start_url: BASE,
+          scope: BASE,
           display: "standalone",
           background_color: "#0b0b12",
           theme_color: "#0b0b12",
           icons: [
-            { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
-            { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
+            { src: `${BASE}icon-192.png`, sizes: "192x192", type: "image/png" },
+            { src: `${BASE}icon-512.png`, sizes: "512x512", type: "image/png" },
             {
-              src: "/icon-maskable-512.png",
+              src: `${BASE}icon-maskable-512.png`,
               sizes: "512x512",
               type: "image/png",
               purpose: "maskable",
@@ -64,7 +71,7 @@ export default defineConfig(({ mode }) => {
             },
             {
               urlPattern: ({ url, sameOrigin }) =>
-                sameOrigin && url.pathname.startsWith("/assets/"),
+                sameOrigin && url.pathname.startsWith(`${BASE}assets/`),
               handler: "StaleWhileRevalidate",
               options: { cacheName: "assets" },
             },
