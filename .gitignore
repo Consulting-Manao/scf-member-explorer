@@ -1,5 +1,7 @@
 node_modules
 dist
+# the worktree of the pages branch, see `make pages-init`
+/pages
 .wrangler
 .dev.vars
 .idea

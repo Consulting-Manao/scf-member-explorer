@@ -1,4 +1,4 @@
-.PHONY: help install dev dev-api dev-app lint-js test-js build-dapp deploy-worker smoke build test lint bindings deploy upgrade invoke
+.PHONY: help install dev dev-api dev-app lint-js test-js build-dapp deploy-worker deploy-secrets pages-init deploy-pages smoke build test lint bindings deploy upgrade invoke
 .DEFAULT_GOAL := help
 SHELL:=/bin/bash
 
@@ -64,14 +64,44 @@ test-js:  ## tests of the dapp, of the shared code with it, and of the worker
 	cd dapp && bun run test
 	cd worker && bun run test
 
-build-dapp:  ## static build in dapp/dist, VITE_API_URL is the worker's origin
+build-dapp:  ## static build in dapp/dist, VITE_API_URL is the worker's origin, VITE_NETWORK the network
 	cd dapp && bun run build
 
 deploy-worker:  ## deploy the worker with wrangler
 	cd worker && bun run deploy
 
+deploy-secrets:  ## push every secret of worker/.dev.vars to Cloudflare at once
+	cd worker && bun run deploy:secrets
+
 smoke:  ## end-to-end flows on testnet through the worker
 	cd worker && bun run smoke
+
+# --------- Radicle Pages --------- #
+
+# The site is the whole content of the `pages` branch, which Radicle Pages
+# serves. That branch is checked out once as an orphan worktree in `pages/`,
+# so a deployment is a build copied there, committed and pushed.
+override pages_dir = pages
+override worker_url = https://stellar-members.tansu-964.workers.dev
+
+pages-init:  ## one-time: the canonical pages branch and the worktree that builds into it
+	rad id update \
+		--title "Configure the pages canonical branch" \
+		--description "Radicle Pages serves the site from refs/heads/pages" \
+		--payload xyz.radicle.crefs rules \
+		'{"refs/heads/pages": {"allow": "delegates", "threshold": 1}}'
+	rad sync
+	git worktree add --orphan -b $(pages_dir) $(pages_dir)
+
+deploy-pages:  ## build the app and publish it to Radicle Pages
+	@test -e $(pages_dir)/.git || { echo "run 'make pages-init' first"; exit 1; }
+	VITE_API_URL=$(worker_url) VITE_NETWORK=$(network) $(MAKE) build-dapp
+	find $(pages_dir) -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+	cp -R dapp/dist/. $(pages_dir)/
+	git -C $(pages_dir) add -A
+	git -C $(pages_dir) commit -q -m "Publish $(shell git rev-parse --short HEAD)" \
+		|| echo "the build is identical, publishing it again"
+	git -C $(pages_dir) push rad $(pages_dir)
 
 # --------- Contract build/test/deploy --------- #
 
@@ -93,7 +123,7 @@ bindings: build  ## regenerate the contract bindings of the dapp and the worker
 	cp dapp/src/bindings/index.ts worker/src/bindings/index.ts
 
 deploy: build  ## deploy the contract with the admin and attester identities
-	stellar contract deploy \
+	id=$$(stellar contract deploy \
 		--wasm $(wasm) \
 		--source-account $(admin) \
 		--network $(network) \
@@ -104,8 +134,8 @@ deploy: build  ## deploy the contract with the admin and attester identities
 		--name "Stellar Members" --symbol SMBR \
 		--uri https://ipfs.io/ipfs/QmVTqJ4EzJThVWobgyaWCetcrXCjftQhgi24E4giJ5EgXr \
 		--uri_trait https://ipfs.io/ipfs/Qmddf2UgGTQ3z2SZfg2ziZJzDJDRS3Dk7Z3phZ76fMzdLf \
-		--nqg_contract $(nqg_contract) \
-		> $(deployment) && \
+		--nqg_contract $(nqg_contract)) && \
+	echo "$$id" > $(deployment) && \
 	cat $(deployment)
 
 upgrade: build  ## upgrade the deployed contract in place

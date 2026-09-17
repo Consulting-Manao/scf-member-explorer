@@ -44,7 +44,8 @@ make smoke                       # testnet flows through the worker
 make test && make lint           # contract tests, clippy, rustfmt
 make bindings                    # after a contract change
 make deploy network=testnet      # or upgrade, invoke; see make help
-make deploy-worker               # wrangler deploy; the app build goes to its own host
+make deploy-worker               # wrangler deploy
+make deploy-pages                # build the app and publish it to Radicle Pages
 ```
 
 Inside `dapp/` or `worker/`, `bun run lint`, `test` and `format` work on
