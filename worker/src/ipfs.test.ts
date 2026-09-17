@@ -10,7 +10,7 @@ import { CarWriter } from "@ipld/car";
 import { CID } from "multiformats/cid";
 import * as raw from "multiformats/codecs/raw";
 import { sha256 } from "multiformats/hashes/sha2";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { Env } from "./env";
 import { checkUploadTransaction, upload, UploadError } from "./ipfs";
@@ -124,6 +124,28 @@ describe("upload", () => {
         { cid, signedTxXdr: signedTx({ fn: "mint" }), car: base64 },
       ),
     ).rejects.toThrow("does not contain its root");
+  });
+
+  it("accepts a mint from an address that holds nothing yet", async () => {
+    // onboarding: the profile goes up with the transaction that mints, so
+    // there is no token and no owner to read
+    const { base64, root } = await car("a newcomer's profile");
+    const uploaded = root.toString();
+    vi.stubGlobal("fetch", () => Promise.resolve(new Response(uploaded)));
+    await expect(
+      upload(
+        {
+          env,
+          owner: () => Promise.reject(new Error("the chain must not be read")),
+        },
+        {
+          cid: uploaded,
+          signedTxXdr: signedTx({ fn: "mint", bio: uploaded }),
+          car: base64,
+        },
+      ),
+    ).resolves.toBe(uploaded);
+    vi.unstubAllGlobals();
   });
 
   it("rejects a set_bio from someone who is not the token's member", async () => {

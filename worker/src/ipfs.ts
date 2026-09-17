@@ -156,13 +156,15 @@ export async function upload(
   if (!cid || !signedTxXdr || !car) {
     throw new UploadError("Missing cid, signedTxXdr or car");
   }
-  // a mint is not on-chain yet, so only its signature ties it to a person
   const { member, tokenId } = checkUploadTransaction(
     signedTxXdr,
     cid,
     env.CONTRACT_ID,
     env.NETWORK_PASSPHRASE,
   );
+  // A newcomer holds nothing yet, so a mint is not checked against the
+  // ledger: its signature is all there is, and the rate limit does the
+  // rest. Editing a profile is another matter, the token has an owner.
   if (tokenId !== null && (await owner(tokenId)) !== member) {
     throw new UploadError("Not the member of that token");
   }
