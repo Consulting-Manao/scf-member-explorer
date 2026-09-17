@@ -22,8 +22,13 @@ install:  ## install the dapp and the worker
 	cd dapp && bun install
 	cd worker && bun install
 
+# `exec` so each pid is the server itself, and macOS ships bash 3.2: no
+# `wait -n`, so poll and let the trap stop whichever is still standing.
 dev:  ## the worker under Bun on 8787 and the app on http://localhost:5173
-	trap 'kill 0' EXIT; (cd worker && bun run dev) & (cd dapp && bun run dev) & wait -n
+	trap 'kill $$api $$app 2>/dev/null' EXIT; \
+	(cd worker && exec bun run dev) & api=$$!; \
+	(cd dapp && exec bun run dev) & app=$$!; \
+	while kill -0 $$api && kill -0 $$app; do sleep 1; done 2>/dev/null
 
 lint-js:  ## prettier, eslint and tsc of the dapp and the worker
 	cd dapp && bun run lint
