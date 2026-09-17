@@ -90,8 +90,9 @@ fn test_propose_recovery() {
     let new_key = Address::generate(e);
     let call = args(e, (token_id, new_key.clone()));
 
-    // the attester alone cannot direct a token to an address it does not
-    // control, and nobody can propose without the attester
+    // a proposal needs the attester and the new key together, and neither
+    // alone; the attester can of course co-sign for an address it made, so
+    // what protects the member is the delay, not the second signature
     for address in [&setup.attester, &new_key, &setup.admin] {
         mock_auths(&setup, &[(address, "propose_recovery", call.clone())]);
         assert!(
@@ -131,6 +132,7 @@ fn test_propose_recovery() {
     assert_eq!(
         setup.contract.recovery(&token_id),
         Some(types::RecoveryRequest {
+            attester: setup.attester.clone(),
             new_address: new_key,
             executable_at,
         })
@@ -168,7 +170,7 @@ fn test_recovery_after_delay() {
         &setup,
         &[&events::Recovered {
             token_id,
-            from: Some(setup.grogu.clone()),
+            from: setup.grogu.clone(),
             to: new_key.clone(),
         }],
     );
@@ -218,7 +220,7 @@ fn test_admin_approves_recovery_early() {
         &setup,
         &[&events::Recovered {
             token_id,
-            from: Some(setup.grogu.clone()),
+            from: setup.grogu.clone(),
             to: new_key.clone(),
         }],
     );
@@ -313,7 +315,7 @@ fn test_admin_recover() {
         &setup,
         &[
             &events::RecoveryCancelled { token_id },
-            &events::Recovered {
+            &events::AdminRecovered {
                 token_id,
                 from: Some(setup.grogu.clone()),
                 to: new_key.clone(),
@@ -324,5 +326,69 @@ fn test_admin_recover() {
     assert!(e.auths().iter().all(|(address, _)| address != &new_key));
     assert_eq!(setup.contract.owner_of(&token_id), new_key);
     assert_eq!(setup.contract.token_of(&setup.grogu), None);
+    assert_eq!(setup.contract.recovery(&token_id), None);
+}
+
+#[test]
+fn test_recovery_is_bound_to_its_attester() {
+    let setup = create_test_data();
+    let e = &setup.env;
+    let token_id = mint(&setup, &setup.grogu, "1");
+    let new_key = Address::generate(e);
+    setup.contract.propose_recovery(&token_id, &new_key);
+    let executable_at = 1_000 + types::RECOVERY_DELAY;
+
+    // replacing a leaked attester voids what it proposed, without the
+    // admin having to cancel each one before the delay runs out
+    setup.contract.set_attester(&Address::generate(e));
+    e.ledger().set_timestamp(executable_at);
+    let err = setup
+        .contract
+        .try_finalize_recovery(&token_id)
+        .unwrap_err()
+        .unwrap();
+    assert_eq!(err, MembershipError::AttesterChanged.into());
+    assert_eq!(setup.contract.owner_of(&token_id), setup.grogu);
+
+    // the member cancels the dead request and the new attester proposes
+    setup.contract.cancel_recovery(&setup.grogu, &token_id);
+    setup.contract.propose_recovery(&token_id, &new_key);
+    e.ledger()
+        .set_timestamp(executable_at + types::RECOVERY_DELAY);
+    setup.contract.finalize_recovery(&token_id);
+    assert_eq!(setup.contract.owner_of(&token_id), new_key);
+}
+
+#[test]
+fn test_recovery_lapses() {
+    let setup = create_test_data();
+    let e = &setup.env;
+    let token_id = mint(&setup, &setup.grogu, "1");
+    let new_key = Address::generate(e);
+    setup.contract.propose_recovery(&token_id, &new_key);
+    let executable_at = 1_000 + types::RECOVERY_DELAY;
+
+    // the last second of the window still moves the token
+    e.ledger()
+        .set_timestamp(executable_at + types::RECOVERY_DELAY - 1);
+    setup.contract.finalize_recovery(&token_id);
+    assert_eq!(setup.contract.owner_of(&token_id), new_key);
+
+    // a second one, left to run past its window, is dead
+    let later_key = Address::generate(e);
+    setup.contract.propose_recovery(&token_id, &later_key);
+    let executable_at = e.ledger().timestamp() + types::RECOVERY_DELAY;
+    e.ledger()
+        .set_timestamp(executable_at + types::RECOVERY_DELAY);
+    let err = setup
+        .contract
+        .try_finalize_recovery(&token_id)
+        .unwrap_err()
+        .unwrap();
+    assert_eq!(err, MembershipError::RecoveryExpired.into());
+    assert_eq!(setup.contract.owner_of(&token_id), new_key);
+
+    // and it stays cancellable, so the entry is not stuck
+    setup.contract.cancel_recovery(&new_key, &token_id);
     assert_eq!(setup.contract.recovery(&token_id), None);
 }

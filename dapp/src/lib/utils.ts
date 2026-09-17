@@ -36,6 +36,10 @@ const CONTRACT_ERRORS: Record<string, string> = {
   DuplicateProvider: "Only one account per platform.",
   RecoveryPending: "A recovery is already pending for this member.",
   NoRecovery: "There is no pending recovery.",
+  AttesterChanged:
+    "The account that vouched for this recovery has been replaced. Prove your accounts again.",
+  RecoveryExpired:
+    "This recovery was not finalized in time. Prove your accounts again.",
 };
 
 /**

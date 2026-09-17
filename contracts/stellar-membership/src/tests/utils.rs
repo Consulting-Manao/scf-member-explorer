@@ -2,7 +2,7 @@ use soroban_sdk::testutils::{
     Address as _, AuthorizedFunction, AuthorizedInvocation, Events, Ledger, MockAuth,
     MockAuthInvoke,
 };
-use soroban_sdk::{Address, BytesN, Env, Event, IntoVal, String, Symbol, Val, Vec, vec};
+use soroban_sdk::{Address, BytesN, Env, Event, I256, IntoVal, String, Symbol, Val, Vec, vec};
 
 use crate::{StellarMembership, StellarMembershipClient, types};
 
@@ -21,6 +21,7 @@ pub mod nqg {
     #[contracttype]
     pub enum DataKey {
         Pilot,
+        Score,
     }
 
     #[contract]
@@ -28,14 +29,15 @@ pub mod nqg {
 
     #[contractimpl]
     impl Mock {
-        pub fn __constructor(e: &Env, pilot: String) {
+        pub fn __constructor(e: &Env, pilot: String, score: I256) {
             e.storage().instance().set(&DataKey::Pilot, &pilot);
+            e.storage().instance().set(&DataKey::Score, &score);
         }
 
         pub fn get_voting_power_for_user(e: &Env, user: String) -> I256 {
             let pilot: String = e.storage().instance().get(&DataKey::Pilot).unwrap();
             if user == pilot {
-                I256::from_i128(e, 10_000_000_000_000_000_000i128)
+                e.storage().instance().get(&DataKey::Score).unwrap()
             } else {
                 panic_with_error!(e, Error::NoScore);
             }
@@ -64,7 +66,7 @@ pub fn create_test_data() -> TestSetup {
     let grogu = Address::generate(&env);
     let mando = Address::generate(&env);
 
-    let nqg_id = env.register(nqg::Mock, (grogu.to_string(),));
+    let nqg_id = env.register(nqg::Mock, (grogu.to_string(), nqg_score(&env, PILOT_SCORE)));
     let contract_id = env.register(
         StellarMembership,
         (
@@ -88,6 +90,22 @@ pub fn create_test_data() -> TestSetup {
         grogu,
         mando,
     }
+}
+
+/// Raw NQG score of `grogu`, 18 decimals; the contract scales it to 6.
+pub const PILOT_SCORE: i128 = 10_000_000_000_000_000_000;
+
+pub fn nqg_score(e: &Env, raw: i128) -> I256 {
+    I256::from_i128(e, raw)
+}
+
+/// Register an NQG contract returning `score` for `grogu` and point the
+/// membership contract at it.
+pub fn set_nqg_score(setup: &TestSetup, score: I256) {
+    let nqg_id = setup
+        .env
+        .register(nqg::Mock, (setup.grogu.to_string(), score));
+    setup.contract.set_nqg_contract(&nqg_id);
 }
 
 pub fn account(e: &Env, provider: types::Provider, id: &str, handle: &str) -> types::SocialAccount {

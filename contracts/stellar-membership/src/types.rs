@@ -9,14 +9,31 @@ pub const MAX_BIO_LEN: u32 = 128;
 /// Maximum length of an external account id or handle.
 pub const MAX_ACCOUNT_LEN: u32 = 64;
 
-/// Delay before an attested recovery can be finalized (7 days).
+/// Delay before an attested recovery can be finalized, and the window it
+/// then has to be finalized in (7 days each).
 pub const RECOVERY_DELAY: u64 = 7 * 24 * 3600;
 
+// Ledger counts, not durations. A ledger closes in about five seconds
+// today and that is not a promise: none of the values below may be read as
+// a time, and no business logic depends on them.
 const DAY_IN_LEDGERS: u32 = 17_280;
-/// Entries with less than this many ledgers left are extended on access.
-pub const TTL_THRESHOLD: u32 = 30 * DAY_IN_LEDGERS;
-/// Ledgers of life given to an entry when it is written or extended.
-pub const TTL_EXTEND_TO: u32 = 120 * DAY_IN_LEDGERS;
+
+/// A persistent entry below this many ledgers is extended when written.
+pub const PERSISTENT_TTL_THRESHOLD: u32 = 30 * DAY_IN_LEDGERS;
+/// Life given to a persistent entry when it is written or extended.
+pub const PERSISTENT_TTL_EXTEND_TO: u32 = 120 * DAY_IN_LEDGERS;
+/// The instance holds the contract settings and is read by every call.
+pub const INSTANCE_TTL_THRESHOLD: u32 = 30 * DAY_IN_LEDGERS;
+pub const INSTANCE_TTL_EXTEND_TO: u32 = 120 * DAY_IN_LEDGERS;
+/// The code entry is the largest the contract owns and is extended apart
+/// from the instance to smooth the cost: the caller that happens to cross
+/// the threshold pays 30 days of rent on it rather than 90. Rent per unit
+/// of time is the same either way; what the shorter target gives up is the
+/// longest the contract can sit idle, since an archived code entry is what
+/// makes it uninvocable. The guaranteed margin is the threshold, 30 days,
+/// whatever the target.
+pub const CODE_TTL_THRESHOLD: u32 = 30 * DAY_IN_LEDGERS;
+pub const CODE_TTL_EXTEND_TO: u32 = 60 * DAY_IN_LEDGERS;
 
 #[contracttype]
 pub enum DataKey {
@@ -105,6 +122,9 @@ pub struct Member {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RecoveryRequest {
+    /// The attester that proposed it. A recovery is only as good as the
+    /// attester behind it, so replacing the attester voids it.
+    pub attester: Address,
     pub new_address: Address,
     pub executable_at: u64,
 }

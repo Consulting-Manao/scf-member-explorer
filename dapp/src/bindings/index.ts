@@ -93,6 +93,11 @@ id: string;
 
 
 export interface RecoveryRequest {
+  /**
+ * The attester that proposed it. A recovery is only as good as the
+ * attester behind it, so replacing the attester voids it.
+ */
+attester: string;
   executable_at: u64;
   new_address: string;
 }
@@ -155,8 +160,19 @@ export const MembershipError = {
   /**
    * No recovery is pending for this token.
    */
-  301: {message:"NoRecovery"}
+  301: {message:"NoRecovery"},
+  /**
+   * The attester changed since the recovery was proposed.
+   */
+  302: {message:"AttesterChanged"},
+  /**
+   * The recovery was not finalized within its window.
+   */
+  303: {message:"RecoveryExpired"}
 }
+
+
+
 
 
 
@@ -221,6 +237,41 @@ export interface Client {
   finalize_recovery: ({token_id}: {token_id: u32}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
 
   /**
+   * Construct and simulate a admin transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   */
+  admin: (options?: MethodOptions) => Promise<AssembledTransaction<string>>
+
+  /**
+   * Construct and simulate a upgrade transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   */
+  upgrade: ({wasm_hash}: {wasm_hash: Buffer}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
+
+  /**
+   * Construct and simulate a attester transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   */
+  attester: (options?: MethodOptions) => Promise<AssembledTransaction<string>>
+
+  /**
+   * Construct and simulate a set_admin transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   */
+  set_admin: ({admin}: {admin: string}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
+
+  /**
+   * Construct and simulate a nqg_contract transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   */
+  nqg_contract: (options?: MethodOptions) => Promise<AssembledTransaction<string>>
+
+  /**
+   * Construct and simulate a set_attester transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   */
+  set_attester: ({attester}: {attester: string}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
+
+  /**
+   * Construct and simulate a set_nqg_contract transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   */
+  set_nqg_contract: ({nqg_contract}: {nqg_contract: string}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
+
+  /**
    * Construct and simulate a mint transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
   mint: ({to, role, external_accounts, bio, projects}: {to: string, role: Role, external_accounts: ExternalAccounts, bio: string, projects: Array<string>}, options?: MethodOptions) => Promise<AssembledTransaction<u32>>
@@ -229,11 +280,6 @@ export interface Client {
    * Construct and simulate a name transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
   name: (options?: MethodOptions) => Promise<AssembledTransaction<string>>
-
-  /**
-   * Construct and simulate a admin transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  admin: (options?: MethodOptions) => Promise<AssembledTransaction<string>>
 
   /**
    * Construct and simulate a revoke transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
@@ -251,16 +297,6 @@ export interface Client {
   balance: ({owner}: {owner: string}, options?: MethodOptions) => Promise<AssembledTransaction<u32>>
 
   /**
-   * Construct and simulate a upgrade transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  upgrade: ({wasm_hash}: {wasm_hash: Buffer}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
-
-  /**
-   * Construct and simulate a attester transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  attester: (options?: MethodOptions) => Promise<AssembledTransaction<string>>
-
-  /**
    * Construct and simulate a owner_of transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
   owner_of: ({token_id}: {token_id: u32}, options?: MethodOptions) => Promise<AssembledTransaction<string>>
@@ -274,11 +310,6 @@ export interface Client {
    * Construct and simulate a token_uri transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
   token_uri: ({token_id}: {token_id: u32}, options?: MethodOptions) => Promise<AssembledTransaction<string>>
-
-  /**
-   * Construct and simulate a set_attester transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
-   */
-  set_attester: ({attester}: {attester: string}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
 
   /**
    * Construct and simulate a next_token_id transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
@@ -304,6 +335,11 @@ export interface Client {
    * Construct and simulate a set_projects transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
    */
   set_projects: ({caller, token_id, projects}: {caller: string, token_id: u32, projects: Array<string>}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
+
+  /**
+   * Construct and simulate a extend_member transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
+   */
+  extend_member: ({token_id}: {token_id: u32}, options?: MethodOptions) => Promise<AssembledTransaction<null>>
 
   /**
    * Construct and simulate a token_by_account transaction. Returns an `AssembledTransaction` object which will have a `result` field containing the result of the simulation. If this transaction changes contract state, you will need to call `signAndSend()` on the returned object.
@@ -345,19 +381,22 @@ export class Client extends ContractClient {
         "AAAAAAAAAAAAAAAPY2FuY2VsX3JlY292ZXJ5AAAAAAIAAAAAAAAABmNhbGxlcgAAAAAAEwAAAAAAAAAIdG9rZW5faWQAAAAEAAAAAA==",
         "AAAAAAAAAAAAAAAQcHJvcG9zZV9yZWNvdmVyeQAAAAIAAAAAAAAACHRva2VuX2lkAAAABAAAAAAAAAALbmV3X2FkZHJlc3MAAAAAEwAAAAA=",
         "AAAAAAAAAAAAAAARZmluYWxpemVfcmVjb3ZlcnkAAAAAAAABAAAAAAAAAAh0b2tlbl9pZAAAAAQAAAAA",
+        "AAAAAAAAAAAAAAAFYWRtaW4AAAAAAAAAAAAAAQAAABM=",
+        "AAAAAAAAAAAAAAAHdXBncmFkZQAAAAABAAAAAAAAAAl3YXNtX2hhc2gAAAAAAAPuAAAAIAAAAAA=",
+        "AAAAAAAAAAAAAAAIYXR0ZXN0ZXIAAAAAAAAAAQAAABM=",
+        "AAAAAAAAAAAAAAAJc2V0X2FkbWluAAAAAAAAAQAAAAAAAAAFYWRtaW4AAAAAAAATAAAAAA==",
+        "AAAAAAAAAAAAAAAMbnFnX2NvbnRyYWN0AAAAAAAAAAEAAAAT",
+        "AAAAAAAAAAAAAAAMc2V0X2F0dGVzdGVyAAAAAQAAAAAAAAAIYXR0ZXN0ZXIAAAATAAAAAA==",
+        "AAAAAAAAAAAAAAANX19jb25zdHJ1Y3RvcgAAAAAAAAcAAAAAAAAABWFkbWluAAAAAAAAEwAAAAAAAAAIYXR0ZXN0ZXIAAAATAAAAAAAAAARuYW1lAAAAEAAAAAAAAAAGc3ltYm9sAAAAAAAQAAAAAAAAAAN1cmkAAAAAEAAAAAAAAAAJdXJpX3RyYWl0AAAAAAAAEAAAAAAAAAAMbnFnX2NvbnRyYWN0AAAAEwAAAAA=",
+        "AAAAAAAAAAAAAAAQc2V0X25xZ19jb250cmFjdAAAAAEAAAAAAAAADG5xZ19jb250cmFjdAAAABMAAAAA",
         "AAAAAAAAAAAAAAAEbWludAAAAAUAAAAAAAAAAnRvAAAAAAATAAAAAAAAAARyb2xlAAAH0AAAAARSb2xlAAAAAAAAABFleHRlcm5hbF9hY2NvdW50cwAAAAAAB9AAAAAQRXh0ZXJuYWxBY2NvdW50cwAAAAAAAAADYmlvAAAAABAAAAAAAAAACHByb2plY3RzAAAD6gAAABAAAAABAAAABA==",
         "AAAAAAAAAAAAAAAEbmFtZQAAAAAAAAABAAAAEA==",
-        "AAAAAAAAAAAAAAAFYWRtaW4AAAAAAAAAAAAAAQAAABM=",
         "AAAAAAAAAAAAAAAGcmV2b2tlAAAAAAABAAAAAAAAAAh0b2tlbl9pZAAAAAQAAAAA",
         "AAAAAAAAAAAAAAAGc3ltYm9sAAAAAAAAAAAAAQAAABA=",
         "AAAAAAAAAAAAAAAHYmFsYW5jZQAAAAABAAAAAAAAAAVvd25lcgAAAAAAABMAAAABAAAABA==",
-        "AAAAAAAAAAAAAAAHdXBncmFkZQAAAAABAAAAAAAAAAl3YXNtX2hhc2gAAAAAAAPuAAAAIAAAAAA=",
-        "AAAAAAAAAAAAAAAIYXR0ZXN0ZXIAAAAAAAAAAQAAABM=",
         "AAAAAAAAAAAAAAAIb3duZXJfb2YAAAABAAAAAAAAAAh0b2tlbl9pZAAAAAQAAAABAAAAEw==",
         "AAAAAAAAAAAAAAAIdG9rZW5fb2YAAAABAAAAAAAAAAVvd25lcgAAAAAAABMAAAABAAAD6AAAAAQ=",
         "AAAAAAAAAAAAAAAJdG9rZW5fdXJpAAAAAAAAAQAAAAAAAAAIdG9rZW5faWQAAAAEAAAAAQAAABA=",
-        "AAAAAAAAAAAAAAAMc2V0X2F0dGVzdGVyAAAAAQAAAAAAAAAIYXR0ZXN0ZXIAAAATAAAAAA==",
-        "AAAAAAAAAAAAAAANX19jb25zdHJ1Y3RvcgAAAAAAAAcAAAAAAAAABWFkbWluAAAAAAAAEwAAAAAAAAAIYXR0ZXN0ZXIAAAATAAAAAAAAAARuYW1lAAAAEAAAAAAAAAAGc3ltYm9sAAAAAAAQAAAAAAAAAAN1cmkAAAAAEAAAAAAAAAAJdXJpX3RyYWl0AAAAAAAAEAAAAAAAAAAMbnFnX2NvbnRyYWN0AAAAEwAAAAA=",
         "AAAAAAAAAAAAAAANbmV4dF90b2tlbl9pZAAAAAAAAAAAAAABAAAABA==",
         "AAAAAwAAAAAAAAAAAAAABFJvbGUAAAAEAAAAAAAAAAhWZXJpZmllZAAAAAAAAAAAAAAAClBhdGhmaW5kZXIAAAAAAAEAAAAAAAAACU5hdmlnYXRvcgAAAAAAAAIAAAAAAAAABVBpbG90AAAAAAAAAw==",
         "AAAAAQAAAAAAAAAAAAAABk1lbWJlcgAAAAAABQAAACJJUEZTIENJRCBvZiB0aGUgcHJvZmlsZSBkaXJlY3RvcnkuAAAAAAADYmlvAAAAABAAAAAAAAAAEWV4dGVybmFsX2FjY291bnRzAAAAAAAH0AAAABBFeHRlcm5hbEFjY291bnRzAAAAHERBT0lQLTUgcHJvamVjdCBpZGVudGlmaWVycy4AAAAIcHJvamVjdHMAAAPqAAAAEAAAAAAAAAAEcm9sZQAAB9AAAAAEUm9sZQAAAAAAAAAGc3RhdHVzAAAAAAfQAAAABlN0YXR1cwAA",
@@ -365,17 +404,20 @@ export class Client extends ContractClient {
         "AAAAAwAAAAAAAAAAAAAACFByb3ZpZGVyAAAAAwAAAAAAAAAHRGlzY29yZAAAAAAAAAAAAAAAAAZHaXRodWIAAAAAAAEAAAAAAAAAAVgAAAAAAAAC",
         "AAAAAQAAAAAAAAAAAAAACkdvdmVybmFuY2UAAAAAAAIAAAAAAAAAA25xZwAAAAALAAAAAAAAAARyb2xlAAAH0AAAAARSb2xl",
         "AAAAAQAAADxBbiBhY2NvdW50IG9uIGFuIGV4dGVybmFsIHBsYXRmb3JtIHZlcmlmaWVkIGJ5IHRoZSBhdHRlc3Rlci4AAAAAAAAADVNvY2lhbEFjY291bnQAAAAAAAADAAAAK0Rpc3BsYXkgaGFuZGxlIGF0IHRoZSB0aW1lIG9mIHZlcmlmaWNhdGlvbi4AAAAABmhhbmRsZQAAAAAAEAAAADtTdGFibGUgaWRlbnRpZmllciBvbiB0aGUgcGxhdGZvcm0gKGUuZy4gRGlzY29yZCBzbm93Zmxha2UpLgAAAAACaWQAAAAAABAAAAAAAAAACHByb3ZpZGVyAAAH0AAAAAhQcm92aWRlcg==",
-        "AAAAAQAAAAAAAAAAAAAAD1JlY292ZXJ5UmVxdWVzdAAAAAACAAAAAAAAAA1leGVjdXRhYmxlX2F0AAAAAAAABgAAAAAAAAALbmV3X2FkZHJlc3MAAAAAEw==",
+        "AAAAAQAAAAAAAAAAAAAAD1JlY292ZXJ5UmVxdWVzdAAAAAADAAAAeFRoZSBhdHRlc3RlciB0aGF0IHByb3Bvc2VkIGl0LiBBIHJlY292ZXJ5IGlzIG9ubHkgYXMgZ29vZCBhcyB0aGUKYXR0ZXN0ZXIgYmVoaW5kIGl0LCBzbyByZXBsYWNpbmcgdGhlIGF0dGVzdGVyIHZvaWRzIGl0LgAAAAhhdHRlc3RlcgAAABMAAAAAAAAADWV4ZWN1dGFibGVfYXQAAAAAAAAGAAAAAAAAAAtuZXdfYWRkcmVzcwAAAAAT",
         "AAAAAQAAAAAAAAAAAAAAEEV4dGVybmFsQWNjb3VudHMAAAACAAAAIUF0IG1vc3Qgb25lIGFjY291bnQgcGVyIHByb3ZpZGVyLgAAAAAAAAhhY2NvdW50cwAAA+oAAAfQAAAADVNvY2lhbEFjY291bnQAAAAAAACuc2hhMjU2IG9mIHRoZSB0cmltbWVkLCBsb3dlcmNhc2VkIGVtYWlsLCBhcyB2ZXJpZmllZCBieSB0aGUKYXR0ZXN0ZXIuIE5vdCB1bmlxdWUgYWNyb3NzIG1lbWJlcnM6IGl0IGxpbmtzIGEgbWVtYmVyIHRvIGl0cwpjb250cmlidXRpb25zIGluIFBHIEF0bGFzLCBpdCBkb2VzIG5vdCBpZGVudGlmeSBvbmUuAAAAAAAKZW1haWxfaGFzaAAAAAAD6AAAA+4AAAAg",
-        "AAAABAAAAAAAAAAAAAAAD01lbWJlcnNoaXBFcnJvcgAAAAALAAAANFRoZSBjYWxsZXIgaXMgbmVpdGhlciB0aGUgdG9rZW4gb3duZXIgbm9yIHRoZSBhZG1pbi4AAAASVW5hdXRob3JpemVkU2lnbmVyAAAAAABkAAAAJEluZGljYXRlcyBhIG5vbi1leGlzdGVudCBgdG9rZW5faWRgLgAAABBOb25FeGlzdGVudFRva2VuAAAAyAAAACVJbmRpY2F0ZXMgYSBub24tZXhpc3RlbnQgYHRyYWl0X2tleWAuAAAAAAAAEVRyYWl0RG9lc05vdEV4aXN0AAAAAAAAyQAAACJUaGUgYWRkcmVzcyBhbHJlYWR5IGhvbGRzIGEgdG9rZW4uAAAAAAASTWVtYmVyQWxyZWFkeUV4aXN0AAAAAADKAAAAL1RoZSBleHRlcm5hbCBhY2NvdW50IGlzIGJvdW5kIHRvIGFub3RoZXIgdG9rZW4uAAAAABNBY2NvdW50QWxyZWFkeUJvdW5kAAAAAMsAAAAiTW9yZSBwcm9qZWN0cyB0aGFuIGBNQVhfUFJPSkVDVFNgLgAAAAAAD1Rvb01hbnlQcm9qZWN0cwAAAADMAAAAMEEgc3RyaW5nIGlzIGVtcHR5IG9yIGV4Y2VlZHMgaXRzIG1heGltdW0gbGVuZ3RoLgAAAA1JbnZhbGlkTGVuZ3RoAAAAAAAAzQAAABtUaGUgdG9rZW4gaGFzIGJlZW4gcmV2b2tlZC4AAAAADFRva2VuUmV2b2tlZAAAAM4AAAAlTW9yZSB0aGFuIG9uZSBhY2NvdW50IGZvciBhIHByb3ZpZGVyLgAAAAAAABFEdXBsaWNhdGVQcm92aWRlcgAAAAAAAM8AAAAtQSByZWNvdmVyeSBpcyBhbHJlYWR5IHBlbmRpbmcgZm9yIHRoaXMgdG9rZW4uAAAAAAAAD1JlY292ZXJ5UGVuZGluZwAAAAEsAAAAJk5vIHJlY292ZXJ5IGlzIHBlbmRpbmcgZm9yIHRoaXMgdG9rZW4uAAAAAAAKTm9SZWNvdmVyeQAAAAABLQ==",
+        "AAAABAAAAAAAAAAAAAAAD01lbWJlcnNoaXBFcnJvcgAAAAANAAAANFRoZSBjYWxsZXIgaXMgbmVpdGhlciB0aGUgdG9rZW4gb3duZXIgbm9yIHRoZSBhZG1pbi4AAAASVW5hdXRob3JpemVkU2lnbmVyAAAAAABkAAAAJEluZGljYXRlcyBhIG5vbi1leGlzdGVudCBgdG9rZW5faWRgLgAAABBOb25FeGlzdGVudFRva2VuAAAAyAAAACVJbmRpY2F0ZXMgYSBub24tZXhpc3RlbnQgYHRyYWl0X2tleWAuAAAAAAAAEVRyYWl0RG9lc05vdEV4aXN0AAAAAAAAyQAAACJUaGUgYWRkcmVzcyBhbHJlYWR5IGhvbGRzIGEgdG9rZW4uAAAAAAASTWVtYmVyQWxyZWFkeUV4aXN0AAAAAADKAAAAL1RoZSBleHRlcm5hbCBhY2NvdW50IGlzIGJvdW5kIHRvIGFub3RoZXIgdG9rZW4uAAAAABNBY2NvdW50QWxyZWFkeUJvdW5kAAAAAMsAAAAiTW9yZSBwcm9qZWN0cyB0aGFuIGBNQVhfUFJPSkVDVFNgLgAAAAAAD1Rvb01hbnlQcm9qZWN0cwAAAADMAAAAMEEgc3RyaW5nIGlzIGVtcHR5IG9yIGV4Y2VlZHMgaXRzIG1heGltdW0gbGVuZ3RoLgAAAA1JbnZhbGlkTGVuZ3RoAAAAAAAAzQAAABtUaGUgdG9rZW4gaGFzIGJlZW4gcmV2b2tlZC4AAAAADFRva2VuUmV2b2tlZAAAAM4AAAAlTW9yZSB0aGFuIG9uZSBhY2NvdW50IGZvciBhIHByb3ZpZGVyLgAAAAAAABFEdXBsaWNhdGVQcm92aWRlcgAAAAAAAM8AAAAtQSByZWNvdmVyeSBpcyBhbHJlYWR5IHBlbmRpbmcgZm9yIHRoaXMgdG9rZW4uAAAAAAAAD1JlY292ZXJ5UGVuZGluZwAAAAEsAAAAJk5vIHJlY292ZXJ5IGlzIHBlbmRpbmcgZm9yIHRoaXMgdG9rZW4uAAAAAAAKTm9SZWNvdmVyeQAAAAABLQAAADVUaGUgYXR0ZXN0ZXIgY2hhbmdlZCBzaW5jZSB0aGUgcmVjb3Zlcnkgd2FzIHByb3Bvc2VkLgAAAAAAAA9BdHRlc3RlckNoYW5nZWQAAAABLgAAADFUaGUgcmVjb3Zlcnkgd2FzIG5vdCBmaW5hbGl6ZWQgd2l0aGluIGl0cyB3aW5kb3cuAAAAAAAAD1JlY292ZXJ5RXhwaXJlZAAAAAEv",
         "AAAABQAAAAAAAAAAAAAABkJpb1NldAAAAAAAAQAAAAdiaW9fc2V0AAAAAAIAAAAAAAAACHRva2VuX2lkAAAABAAAAAEAAAAAAAAAA2JpbwAAAAAQAAAAAAAAAAI=",
         "AAAABQAAAAAAAAAAAAAABk1pbnRlZAAAAAAAAQAAAAZtaW50ZWQAAAAAAAYAAAAAAAAACHRva2VuX2lkAAAABAAAAAEAAAAAAAAAAnRvAAAAAAATAAAAAQAAAAAAAAAEcm9sZQAAB9AAAAAEUm9sZQAAAAAAAAAAAAAAEWV4dGVybmFsX2FjY291bnRzAAAAAAAH0AAAABBFeHRlcm5hbEFjY291bnRzAAAAAAAAAAAAAAADYmlvAAAAABAAAAAAAAAAAAAAAAhwcm9qZWN0cwAAA+oAAAAQAAAAAAAAAAI=",
         "AAAABQAAAAAAAAAAAAAAB1Jldm9rZWQAAAAAAQAAAAdyZXZva2VkAAAAAAIAAAAAAAAACHRva2VuX2lkAAAABAAAAAEAAAAAAAAABGZyb20AAAATAAAAAAAAAAI=",
         "AAAABQAAAAAAAAAAAAAAB1JvbGVTZXQAAAAAAQAAAAhyb2xlX3NldAAAAAIAAAAAAAAACHRva2VuX2lkAAAABAAAAAEAAAAAAAAABHJvbGUAAAfQAAAABFJvbGUAAAAAAAAAAg==",
-        "AAAABQAAAAAAAAAAAAAACVJlY292ZXJlZAAAAAAAAAEAAAAJcmVjb3ZlcmVkAAAAAAAAAwAAAAAAAAAIdG9rZW5faWQAAAAEAAAAAQAAAChgTm9uZWAgd2hlbiByZWluc3RhdGluZyBhIHJldm9rZWQgdG9rZW4uAAAABGZyb20AAAPoAAAAEwAAAAAAAAAAAAAAAnRvAAAAAAATAAAAAAAAAAI=",
+        "AAAABQAAAAAAAAAAAAAACEFkbWluU2V0AAAAAQAAAAlhZG1pbl9zZXQAAAAAAAACAAAAAAAAAA5wcmV2aW91c19hZG1pbgAAAAAAEwAAAAAAAAAAAAAABWFkbWluAAAAAAAAEwAAAAAAAAAC",
+        "AAAABQAAADxBIHJlY292ZXJ5IHRoZSBhdHRlc3RlciBwcm9wb3NlZCwgZmluYWxpemVkIGFmdGVyIGl0cyBkZWxheS4AAAAAAAAACVJlY292ZXJlZAAAAAAAAAEAAAAJcmVjb3ZlcmVkAAAAAAAAAwAAAAAAAAAIdG9rZW5faWQAAAAEAAAAAQAAAAAAAAAEZnJvbQAAABMAAAAAAAAAAAAAAAJ0bwAAAAAAEwAAAAAAAAAC",
         "AAAABQAAAAAAAAAAAAAACktleVJvdGF0ZWQAAAAAAAEAAAALa2V5X3JvdGF0ZWQAAAAAAwAAAAAAAAAIdG9rZW5faWQAAAAEAAAAAQAAAAAAAAAEZnJvbQAAABMAAAAAAAAAAAAAAAJ0bwAAAAAAEwAAAAAAAAAC",
-        "AAAABQAAAAAAAAAAAAAAC0F0dGVzdGVyU2V0AAAAAAEAAAAMYXR0ZXN0ZXJfc2V0AAAAAQAAAAAAAAAIYXR0ZXN0ZXIAAAATAAAAAAAAAAI=",
+        "AAAABQAAAAAAAAAAAAAAC0F0dGVzdGVyU2V0AAAAAAEAAAAMYXR0ZXN0ZXJfc2V0AAAAAgAAAAAAAAARcHJldmlvdXNfYXR0ZXN0ZXIAAAAAAAATAAAAAAAAAAAAAAAIYXR0ZXN0ZXIAAAATAAAAAAAAAAI=",
         "AAAABQAAAAAAAAAAAAAAC1Byb2plY3RzU2V0AAAAAAEAAAAMcHJvamVjdHNfc2V0AAAAAgAAAAAAAAAIdG9rZW5faWQAAAAEAAAAAQAAAAAAAAAIcHJvamVjdHMAAAPqAAAAEAAAAAAAAAAC",
+        "AAAABQAAAJxUaGUgYWRtaW4gbW92aW5nIGEgdG9rZW4gb24gaXRzIG93biBzaWduYXR1cmUsIGByZWNvdmVyYC4gS2VwdCBhcGFydApmcm9tIGBSZWNvdmVyZWRgIHNvIHRoYXQgYSBtb3ZlIHRoZSBtZW1iZXIgbmV2ZXIgYXNrZWQgZm9yIGlzIG5ldmVyCnJlYWQgYXMgb25lIGl0IGRpZC4AAAAAAAAADkFkbWluUmVjb3ZlcmVkAAAAAAABAAAAD2FkbWluX3JlY292ZXJlZAAAAAADAAAAAAAAAAh0b2tlbl9pZAAAAAQAAAABAAAAKGBOb25lYCB3aGVuIHJlaW5zdGF0aW5nIGEgcmV2b2tlZCB0b2tlbi4AAAAEZnJvbQAAA+gAAAATAAAAAAAAAAAAAAACdG8AAAAAABMAAAAAAAAAAg==",
+        "AAAABQAAAAAAAAAAAAAADk5xZ0NvbnRyYWN0U2V0AAAAAAABAAAAEG5xZ19jb250cmFjdF9zZXQAAAACAAAAAAAAABVwcmV2aW91c19ucWdfY29udHJhY3QAAAAAAAATAAAAAAAAAAAAAAAMbnFnX2NvbnRyYWN0AAAAEwAAAAAAAAAC",
         "AAAABQAAAAAAAAAAAAAAEFJlY292ZXJ5UHJvcG9zZWQAAAABAAAAEXJlY292ZXJ5X3Byb3Bvc2VkAAAAAAAAAwAAAAAAAAAIdG9rZW5faWQAAAAEAAAAAQAAAAAAAAALbmV3X2FkZHJlc3MAAAAAEwAAAAAAAAAAAAAADWV4ZWN1dGFibGVfYXQAAAAAAAAGAAAAAAAAAAI=",
         "AAAABQAAAAAAAAAAAAAAEVJlY292ZXJ5Q2FuY2VsbGVkAAAAAAAAAQAAABJyZWNvdmVyeV9jYW5jZWxsZWQAAAAAAAEAAAAAAAAACHRva2VuX2lkAAAABAAAAAEAAAAC",
         "AAAABQAAAAAAAAAAAAAAE0V4dGVybmFsQWNjb3VudHNTZXQAAAAAAQAAABVleHRlcm5hbF9hY2NvdW50c19zZXQAAAAAAAACAAAAAAAAAAh0b2tlbl9pZAAAAAQAAAABAAAAAAAAABFleHRlcm5hbF9hY2NvdW50cwAAAAAAB9AAAAAQRXh0ZXJuYWxBY2NvdW50cwAAAAAAAAAC",
@@ -383,6 +425,7 @@ export class Client extends ContractClient {
         "AAAAAAAAAAAAAAAHc2V0X2JpbwAAAAADAAAAAAAAAAZjYWxsZXIAAAAAABMAAAAAAAAACHRva2VuX2lkAAAABAAAAAAAAAADYmlvAAAAABAAAAAA",
         "AAAAAAAAAAAAAAAIc2V0X3JvbGUAAAACAAAAAAAAAAh0b2tlbl9pZAAAAAQAAAAAAAAABHJvbGUAAAfQAAAABFJvbGUAAAAA",
         "AAAAAAAAAAAAAAAMc2V0X3Byb2plY3RzAAAAAwAAAAAAAAAGY2FsbGVyAAAAAAATAAAAAAAAAAh0b2tlbl9pZAAAAAQAAAAAAAAACHByb2plY3RzAAAD6gAAABAAAAAA",
+        "AAAAAAAAAAAAAAANZXh0ZW5kX21lbWJlcgAAAAAAAAEAAAAAAAAACHRva2VuX2lkAAAABAAAAAA=",
         "AAAAAAAAAAAAAAAQdG9rZW5fYnlfYWNjb3VudAAAAAIAAAAAAAAACHByb3ZpZGVyAAAH0AAAAAhQcm92aWRlcgAAAAAAAAACaWQAAAAAABAAAAABAAAD6AAAAAQ=",
         "AAAAAAAAAAAAAAAVc2V0X2V4dGVybmFsX2FjY291bnRzAAAAAAAAAgAAAAAAAAAIdG9rZW5faWQAAAAEAAAAAAAAABFleHRlcm5hbF9hY2NvdW50cwAAAAAAB9AAAAAQRXh0ZXJuYWxBY2NvdW50cwAAAAA=" ]),
       options
@@ -399,23 +442,27 @@ export class Client extends ContractClient {
         cancel_recovery: this.txFromJSON<null>,
         propose_recovery: this.txFromJSON<null>,
         finalize_recovery: this.txFromJSON<null>,
+        admin: this.txFromJSON<string>,
+        upgrade: this.txFromJSON<null>,
+        attester: this.txFromJSON<string>,
+        set_admin: this.txFromJSON<null>,
+        nqg_contract: this.txFromJSON<string>,
+        set_attester: this.txFromJSON<null>,
+        set_nqg_contract: this.txFromJSON<null>,
         mint: this.txFromJSON<u32>,
         name: this.txFromJSON<string>,
-        admin: this.txFromJSON<string>,
         revoke: this.txFromJSON<null>,
         symbol: this.txFromJSON<string>,
         balance: this.txFromJSON<u32>,
-        upgrade: this.txFromJSON<null>,
-        attester: this.txFromJSON<string>,
         owner_of: this.txFromJSON<string>,
         token_of: this.txFromJSON<Option<u32>>,
         token_uri: this.txFromJSON<string>,
-        set_attester: this.txFromJSON<null>,
         next_token_id: this.txFromJSON<u32>,
         member: this.txFromJSON<Member>,
         set_bio: this.txFromJSON<null>,
         set_role: this.txFromJSON<null>,
         set_projects: this.txFromJSON<null>,
+        extend_member: this.txFromJSON<null>,
         token_by_account: this.txFromJSON<Option<u32>>,
         set_external_accounts: this.txFromJSON<null>
   }

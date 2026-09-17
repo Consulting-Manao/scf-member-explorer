@@ -1,6 +1,6 @@
 use crate::{
-    GovernanceTrait, StellarMembership, StellarMembershipArgs, StellarMembershipClient, errors,
-    storage, types,
+    CoreTrait, GovernanceTrait, MemberTrait, StellarMembership, StellarMembershipArgs,
+    StellarMembershipClient, TokenTrait, admin, errors, types,
 };
 use soroban_sdk::{
     Env, I256, InvokeError, String, Symbol, Vec, contractimpl, panic_with_error, vec,
@@ -10,7 +10,7 @@ use soroban_sdk::{
 impl GovernanceTrait for StellarMembership {
     fn trait_value(e: &Env, token_id: u32, trait_key: String) -> i128 {
         if trait_key == String::from_str(e, "role") {
-            storage::member(e, token_id).role as i128
+            Self::member(e, token_id).role as i128
         } else if trait_key == String::from_str(e, "nqg") {
             get_nqg(e, token_id)
         } else {
@@ -30,28 +30,28 @@ impl GovernanceTrait for StellarMembership {
         e.storage()
             .instance()
             .get(&types::DataKey::UriTrait)
-            .unwrap()
+            .expect(admin::ALWAYS_SET)
     }
 
     fn governance(e: &Env, token_id: u32) -> types::Governance {
         types::Governance {
-            role: storage::member(e, token_id).role,
+            role: Self::member(e, token_id).role,
             nqg: get_nqg(e, token_id),
         }
     }
 }
 
-/// NQG score of the current owner, scaled to 6 decimals. 0 if unavailable.
+/// NQG score of the current owner, scaled to 6 decimals.
+///
+/// 0 covers every case the score cannot be read as a positive number: the
+/// member has none, the call failed, the value does not fit an `i128` or is
+/// negative, or the score is below 1e-6. Nothing the NQG contract returns
+/// makes this panic.
 fn get_nqg(e: &Env, token_id: u32) -> i128 {
-    let owner = storage::owner(e, token_id);
+    let owner = StellarMembership::owner_of(e, token_id);
 
-    let nqg_contract_address = e
-        .storage()
-        .instance()
-        .get(&types::DataKey::NqgContract)
-        .unwrap();
     let r = e.try_invoke_contract::<I256, InvokeError>(
-        &nqg_contract_address,
+        &StellarMembership::nqg_contract(e),
         &Symbol::new(e, "get_voting_power_for_user"),
         vec![e, owner.to_string().to_val()],
     );
@@ -60,5 +60,5 @@ fn get_nqg(e: &Env, token_id: u32) -> i128 {
         _ => I256::from_i128(e, 0),
     };
     let scaled = nqg.div(&I256::from_i128(e, 10_i128.pow(12)));
-    scaled.to_i128().unwrap()
+    scaled.to_i128().unwrap_or(0).max(0)
 }

@@ -1,5 +1,5 @@
 use soroban_sdk::testutils::Address as _;
-use soroban_sdk::{Address, String, vec};
+use soroban_sdk::{Address, I256, String, vec};
 
 use super::utils::*;
 use crate::errors::MembershipError;
@@ -52,4 +52,31 @@ fn test_governance() {
     assert_eq!(err, MembershipError::TraitDoesNotExist.into());
     let err = setup.contract.try_governance(&42).unwrap_err().unwrap();
     assert_eq!(err, MembershipError::NonExistentToken.into());
+}
+
+#[test]
+fn test_nqg_never_panics() {
+    let setup = create_test_data();
+    let e = &setup.env;
+    let nqg_key = String::from_str(e, "nqg");
+    let token_id = mint(&setup, &setup.grogu, "1");
+    assert_eq!(setup.contract.trait_value(&token_id, &nqg_key), 10_000_000);
+
+    // a score too large to scale down into an i128 reads as no score
+    // rather than trapping, like every other unreadable score
+    set_nqg_score(
+        &setup,
+        I256::from_parts(e, i64::MAX, u64::MAX, u64::MAX, u64::MAX),
+    );
+    assert_eq!(setup.contract.trait_value(&token_id, &nqg_key), 0);
+    assert_eq!(setup.contract.governance(&token_id).nqg, 0);
+
+    // so does a negative one, which is not a voting weight
+    set_nqg_score(&setup, nqg_score(e, -PILOT_SCORE));
+    assert_eq!(setup.contract.trait_value(&token_id, &nqg_key), 0);
+    assert_eq!(setup.contract.governance(&token_id).nqg, 0);
+
+    // and a score below the 6 decimals kept truncates to zero
+    set_nqg_score(&setup, nqg_score(e, 999_999));
+    assert_eq!(setup.contract.governance(&token_id).nqg, 0);
 }

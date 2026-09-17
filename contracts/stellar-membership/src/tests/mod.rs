@@ -1,3 +1,4 @@
+mod admin;
 mod governance;
 mod keys;
 mod member;

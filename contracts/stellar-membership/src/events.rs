@@ -51,9 +51,22 @@ pub struct RecoveryCancelled {
     pub token_id: u32,
 }
 
+/// A recovery the attester proposed, finalized after its delay.
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Recovered {
+    #[topic]
+    pub token_id: u32,
+    pub from: Address,
+    pub to: Address,
+}
+
+/// The admin moving a token on its own signature, `recover`. Kept apart
+/// from `Recovered` so that a move the member never asked for is never
+/// read as one it did.
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AdminRecovered {
     #[topic]
     pub token_id: u32,
     /// `None` when reinstating a revoked token.
@@ -95,6 +108,21 @@ pub struct ProjectsSet {
 
 #[contractevent]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AdminSet {
+    pub previous_admin: Address,
+    pub admin: Address,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AttesterSet {
+    pub previous_attester: Address,
     pub attester: Address,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NqgContractSet {
+    pub previous_nqg_contract: Address,
+    pub nqg_contract: Address,
 }

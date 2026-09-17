@@ -1,6 +1,7 @@
-//! Storage access, validation and invariants shared by all entry points.
+//! Storage invariants and validation shared by all entry points.
 //!
-//! Invariants:
+//! Reads live on the entry point that exposes them; what is here writes
+//! and carries entries forward, and every write keeps these four true:
 //! - `Owner(t) = a` iff `TokenOf(a) = t`.
 //! - `Owner(t)` exists iff `Member(t).status == Active`.
 //! - `Account(p, id) = t` iff `Member(t)` holds that account.
@@ -9,89 +10,51 @@
 use soroban_sdk::{Address, Env, IntoVal, String, Val, Vec, panic_with_error};
 
 use crate::errors::MembershipError;
-use crate::events;
 use crate::types::{
-    DataKey, ExternalAccounts, MAX_ACCOUNT_LEN, MAX_BIO_LEN, MAX_PROJECT_LEN, MAX_PROJECTS, Member,
-    MemberKey, Provider, RecoveryRequest, TTL_EXTEND_TO, TTL_THRESHOLD,
+    CODE_TTL_EXTEND_TO, CODE_TTL_THRESHOLD, ExternalAccounts, INSTANCE_TTL_EXTEND_TO,
+    INSTANCE_TTL_THRESHOLD, MAX_ACCOUNT_LEN, MAX_PROJECT_LEN, MAX_PROJECTS, Member, MemberKey,
+    PERSISTENT_TTL_EXTEND_TO, PERSISTENT_TTL_THRESHOLD,
 };
+use crate::{CoreTrait, KeyTrait, StellarMembership, TokenTrait, events};
 
+/// Extend the instance and the code entries.
+///
+/// They are extended apart: carrying the code costs more than carrying the
+/// instance, so it is given its own, shorter target.
 pub fn extend_instance(e: &Env) {
-    e.storage()
-        .instance()
-        .extend_ttl(TTL_THRESHOLD, TTL_EXTEND_TO);
+    let contract = e.current_contract_address();
+    e.deployer().extend_ttl_for_contract_instance(
+        contract.clone(),
+        INSTANCE_TTL_THRESHOLD,
+        INSTANCE_TTL_EXTEND_TO,
+    );
+    e.deployer()
+        .extend_ttl_for_code(contract, CODE_TTL_THRESHOLD, CODE_TTL_EXTEND_TO);
 }
 
-fn write<K, V>(e: &Env, key: &K, val: &V)
+/// Write a persistent entry and carry it forward.
+///
+/// Creating an entry is what gives it a TTL; rewriting one leaves the TTL
+/// it already had, decaying. Without the extension a member written at
+/// mint would have to be restored 120 days later however often the profile
+/// was edited since.
+pub fn write<K, V>(e: &Env, key: &K, val: &V)
 where
     K: IntoVal<Env, Val>,
     V: IntoVal<Env, Val>,
 {
-    e.storage().persistent().set(key, val);
-    e.storage()
-        .persistent()
-        .extend_ttl(key, TTL_THRESHOLD, TTL_EXTEND_TO);
-}
-
-fn extend<K: IntoVal<Env, Val>>(e: &Env, key: &K) {
-    e.storage()
-        .persistent()
-        .extend_ttl(key, TTL_THRESHOLD, TTL_EXTEND_TO);
-}
-
-pub fn admin(e: &Env) -> Address {
-    e.storage().instance().get(&DataKey::Admin).unwrap()
-}
-
-pub fn attester(e: &Env) -> Address {
-    e.storage().instance().get(&DataKey::Attester).unwrap()
-}
-
-pub fn member(e: &Env, token_id: u32) -> Member {
-    e.storage()
-        .persistent()
-        .get(&MemberKey::Member(token_id))
-        .unwrap_or_else(|| panic_with_error!(e, MembershipError::NonExistentToken))
-}
-
-/// Current address of an active token.
-pub fn owner(e: &Env, token_id: u32) -> Address {
-    match current_owner(e, token_id) {
-        Some(owner) => owner,
-        None if e.storage().persistent().has(&MemberKey::Member(token_id)) => {
-            panic_with_error!(e, MembershipError::TokenRevoked)
-        }
-        None => panic_with_error!(e, MembershipError::NonExistentToken),
-    }
-}
-
-pub fn token_of(e: &Env, address: &Address) -> Option<u32> {
-    e.storage()
-        .persistent()
-        .get(&MemberKey::TokenOf(address.clone()))
+    let persistent = e.storage().persistent();
+    persistent.set(key, val);
+    persistent.extend_ttl(key, PERSISTENT_TTL_THRESHOLD, PERSISTENT_TTL_EXTEND_TO);
 }
 
 /// Require the auth of `caller` and that it is the token owner or the admin.
 pub fn auth_owner_or_admin(e: &Env, caller: &Address, token_id: u32) {
     caller.require_auth();
-    if *caller != owner(e, token_id) && *caller != admin(e) {
+    if *caller != StellarMembership::owner_of(e, token_id) && *caller != StellarMembership::admin(e)
+    {
         panic_with_error!(e, MembershipError::UnauthorizedSigner)
     }
-}
-
-/// Address of a token, `None` when revoked.
-pub fn current_owner(e: &Env, token_id: u32) -> Option<Address> {
-    e.storage().persistent().get(&MemberKey::Owner(token_id))
-}
-
-/// Panics unless the token exists and is active.
-pub fn require_active(e: &Env, token_id: u32) {
-    owner(e, token_id);
-}
-
-pub fn token_by_account(e: &Env, provider: Provider, id: String) -> Option<u32> {
-    e.storage()
-        .persistent()
-        .get(&MemberKey::Account(provider, id))
 }
 
 /// Store the member and extend the TTL of every entry bound to it.
@@ -100,25 +63,31 @@ pub fn save_member(e: &Env, token_id: u32, member: &Member) {
     extend_links(e, token_id, member);
 }
 
-/// Extend the TTL of a member and of every entry bound to it.
-pub fn extend_member(e: &Env, token_id: u32) {
-    extend(e, &MemberKey::Member(token_id));
-    extend_links(e, token_id, &member(e, token_id));
-}
-
-fn extend_links(e: &Env, token_id: u32, member: &Member) {
-    if let Some(owner) = current_owner(e, token_id) {
-        extend(e, &MemberKey::Owner(token_id));
-        extend(e, &MemberKey::TokenOf(owner));
+/// Extend the TTL of every entry bound to a member: its address both ways
+/// and the external accounts it reserves.
+pub fn extend_links(e: &Env, token_id: u32, member: &Member) {
+    let persistent = e.storage().persistent();
+    let owner: Option<Address> = persistent.get(&MemberKey::Owner(token_id));
+    if let Some(owner) = owner {
+        for key in [MemberKey::Owner(token_id), MemberKey::TokenOf(owner)] {
+            persistent.extend_ttl(&key, PERSISTENT_TTL_THRESHOLD, PERSISTENT_TTL_EXTEND_TO);
+        }
     }
     for account in member.external_accounts.accounts.iter() {
-        extend(e, &MemberKey::Account(account.provider, account.id));
+        persistent.extend_ttl(
+            &MemberKey::Account(account.provider, account.id),
+            PERSISTENT_TTL_THRESHOLD,
+            PERSISTENT_TTL_EXTEND_TO,
+        );
     }
 }
 
 /// Assign `token_id` to `to`, releasing the previous address if any.
 pub fn set_owner(e: &Env, token_id: u32, from: Option<Address>, to: &Address) {
-    if token_of(e, to).is_some() {
+    if e.storage()
+        .persistent()
+        .has(&MemberKey::TokenOf(to.clone()))
+    {
         panic_with_error!(e, MembershipError::MemberAlreadyExist)
     }
     if let Some(from) = from {
@@ -135,27 +104,14 @@ pub fn remove_owner(e: &Env, token_id: u32, from: &Address) {
         .remove(&MemberKey::TokenOf(from.clone()));
 }
 
-pub fn recovery(e: &Env, token_id: u32) -> Option<RecoveryRequest> {
-    e.storage().persistent().get(&MemberKey::Recovery(token_id))
-}
-
-pub fn write_recovery(e: &Env, token_id: u32, request: &RecoveryRequest) {
-    write(e, &MemberKey::Recovery(token_id), request);
-}
-
-/// Drop a pending recovery without an event: `Recovered` supersedes it.
-pub fn clear_recovery(e: &Env, token_id: u32) {
-    e.storage()
-        .persistent()
-        .remove(&MemberKey::Recovery(token_id));
-}
-
 /// Drop a pending recovery and publish its cancellation. Returns whether
 /// there was one.
 pub fn cancel_recovery(e: &Env, token_id: u32) -> bool {
-    let pending = recovery(e, token_id).is_some();
+    let pending = StellarMembership::recovery(e, token_id).is_some();
     if pending {
-        clear_recovery(e, token_id);
+        e.storage()
+            .persistent()
+            .remove(&MemberKey::Recovery(token_id));
         events::RecoveryCancelled { token_id }.publish(e);
     }
     pending
@@ -179,7 +135,7 @@ pub fn unbind_accounts(e: &Env, external_accounts: &ExternalAccounts) {
     }
 }
 
-fn check_max_len(e: &Env, value: &String, max: u32) {
+pub fn check_max_len(e: &Env, value: &String, max: u32) {
     if value.len() > max {
         panic_with_error!(e, MembershipError::InvalidLength)
     }
@@ -205,10 +161,6 @@ pub fn validate_accounts(e: &Env, external_accounts: &ExternalAccounts) {
             panic_with_error!(e, MembershipError::DuplicateProvider)
         }
     }
-}
-
-pub fn validate_bio(e: &Env, bio: &String) {
-    check_max_len(e, bio, MAX_BIO_LEN);
 }
 
 pub fn validate_projects(e: &Env, projects: &Vec<String>) {

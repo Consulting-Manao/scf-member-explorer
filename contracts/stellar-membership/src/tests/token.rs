@@ -1,28 +1,9 @@
 use soroban_sdk::testutils::Address as _;
-use soroban_sdk::{Address, BytesN, String, vec};
+use soroban_sdk::{Address, String, vec};
 
 use super::utils::*;
 use crate::errors::MembershipError;
 use crate::{events, types};
-
-#[test]
-fn test_metadata() {
-    let setup = create_test_data();
-    let e = &setup.env;
-
-    assert_eq!(
-        setup.contract.name(),
-        String::from_str(e, "Stellar Members")
-    );
-    assert_eq!(setup.contract.symbol(), String::from_str(e, "SMBR"));
-    assert_eq!(
-        setup.contract.trait_metadata_uri(),
-        String::from_str(e, "ipfs://wxyz")
-    );
-    assert_eq!(setup.contract.admin(), setup.admin);
-    assert_eq!(setup.contract.attester(), setup.attester);
-    assert_eq!(setup.contract.next_token_id(), 0);
-}
 
 #[test]
 fn test_mint() {
@@ -289,78 +270,6 @@ fn test_mint_validates_lengths() {
 }
 
 #[test]
-fn test_set_attester() {
-    let setup = create_test_data();
-    let e = &setup.env;
-    let new_attester = Address::generate(e);
-
-    mock_auths(&setup, &[]);
-    assert!(setup.contract.try_set_attester(&new_attester).is_err());
-
-    e.mock_all_auths();
-    setup.contract.set_attester(&new_attester);
-    assert_events(
-        &setup,
-        &[&events::AttesterSet {
-            attester: new_attester.clone(),
-        }],
-    );
-    assert_authorized(
-        &setup,
-        &setup.admin,
-        "set_attester",
-        args(e, (new_attester.clone(),)),
-    );
-    assert_eq!(setup.contract.attester(), new_attester);
-
-    // the previous attester cannot vouch anymore
-    let external_accounts = accounts(e, "1");
-    mock_auths(
-        &setup,
-        &[
-            (
-                &setup.grogu,
-                "mint",
-                args(
-                    e,
-                    (
-                        setup.grogu.clone(),
-                        types::Role::Verified,
-                        external_accounts.clone(),
-                        bio(e),
-                        projects(e, 2),
-                    ),
-                ),
-            ),
-            (
-                &setup.attester,
-                "mint",
-                args(
-                    e,
-                    (
-                        setup.grogu.clone(),
-                        types::Role::Verified,
-                        external_accounts.clone(),
-                    ),
-                ),
-            ),
-        ],
-    );
-    assert!(
-        setup
-            .contract
-            .try_mint(
-                &setup.grogu,
-                &types::Role::Verified,
-                &external_accounts,
-                &bio(e),
-                &projects(e, 2),
-            )
-            .is_err()
-    );
-}
-
-#[test]
 fn test_revoke() {
     let setup = create_test_data();
     let e = &setup.env;
@@ -450,7 +359,7 @@ fn test_recover_reinstates_revoked() {
     setup.contract.recover(&token_id, &new_key);
     assert_events(
         &setup,
-        &[&events::Recovered {
+        &[&events::AdminRecovered {
             token_id,
             from: None,
             to: new_key.clone(),
@@ -462,25 +371,4 @@ fn test_recover_reinstates_revoked() {
         setup.contract.member(&token_id).status,
         types::Status::Active
     );
-}
-
-#[test]
-fn test_upgrade_is_admin_only() {
-    let setup = create_test_data();
-    let e = &setup.env;
-    let token_id = mint(&setup, &setup.grogu, "1");
-    let wasm_hash = BytesN::from_array(e, &[9; 32]);
-    let call = args(e, (wasm_hash.clone(),));
-
-    // nobody signing, and nobody but the admin signing
-    mock_auths(&setup, &[]);
-    assert!(setup.contract.try_upgrade(&wasm_hash).is_err());
-    for address in [&setup.attester, &setup.grogu] {
-        mock_auths(&setup, &[(address, "upgrade", call.clone())]);
-        assert!(setup.contract.try_upgrade(&wasm_hash).is_err());
-    }
-
-    // the member's record is untouched by the refused calls
-    e.mock_all_auths();
-    assert_eq!(setup.contract.owner_of(&token_id), setup.grogu);
 }

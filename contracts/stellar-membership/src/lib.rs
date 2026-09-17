@@ -18,6 +18,11 @@
 //! A revoked token keeps its record and accounts, only its address is
 //! released: reads of the record still work, writes and the NQG score
 //! need an active token.
+//!
+//! The external accounts are public and permanent: the Discord and GitHub
+//! ids and handles are stored as given, and the email hash is a plain
+//! sha256, which a dictionary reverses for any address someone can guess.
+//! A revoked record keeps all of it.
 #![no_std]
 
 #[cfg(test)]
@@ -30,6 +35,7 @@ contractmeta!(
     val = "Soulbound membership token of the Stellar community"
 );
 
+mod admin;
 mod governance;
 mod keys;
 mod member;
@@ -46,7 +52,7 @@ mod tests;
 #[contract]
 pub struct StellarMembership;
 
-pub trait TokenTrait {
+pub trait CoreTrait {
     /// # Arguments
     ///
     /// * `admin` - Account managing members and upgrades.
@@ -56,6 +62,9 @@ pub trait TokenTrait {
     /// * `uri` - Base URI, token URI is `{uri}/{role}`.
     /// * `uri_trait` - URI of the ERC-7496 trait metadata.
     /// * `nqg_contract` - Neural Quorum Governance contract.
+    ///
+    /// The admin and the attester have to be two different accounts: the
+    /// admin is the one who cancels a recovery the attester proposed.
     #[allow(clippy::too_many_arguments)]
     fn __constructor(
         e: &Env,
@@ -69,20 +78,50 @@ pub trait TokenTrait {
     );
 
     /// Upgrade the contract. Admin only.
+    ///
+    /// The name, the symbol and the two URIs have no setter: changing one
+    /// goes through here.
     fn upgrade(e: &Env, wasm_hash: BytesN<32>);
 
+    /// Replace the admin. Admin only.
+    ///
+    /// # Events
+    ///
+    /// * topics - `["admin_set"]`
+    /// * data - `{previous_admin: Address, admin: Address}`
+    fn set_admin(e: &Env, admin: Address);
+
     /// Replace the attester. Admin only.
+    ///
+    /// The recoveries the previous attester proposed can no longer be
+    /// finalized: `finalize_recovery` panics with `AttesterChanged`.
     ///
     /// # Events
     ///
     /// * topics - `["attester_set"]`
-    /// * data - `{attester: Address}`
+    /// * data - `{previous_attester: Address, attester: Address}`
     fn set_attester(e: &Env, attester: Address);
+
+    /// Replace the Neural Quorum Governance contract. Admin only.
+    ///
+    /// A wrong address reads as a score of zero for every member instead
+    /// of failing, so confirm with `governance` on a member known to have
+    /// one.
+    ///
+    /// # Events
+    ///
+    /// * topics - `["nqg_contract_set"]`
+    /// * data - `{previous_nqg_contract: Address, nqg_contract: Address}`
+    fn set_nqg_contract(e: &Env, nqg_contract: Address);
 
     fn admin(e: &Env) -> Address;
 
     fn attester(e: &Env) -> Address;
 
+    fn nqg_contract(e: &Env) -> Address;
+}
+
+pub trait TokenTrait {
     /// Mint a member.
     ///
     /// Requires the auth of `to` and of the attester over
@@ -124,6 +163,12 @@ pub trait TokenTrait {
     ///
     /// The member record and external accounts are kept, only the address
     /// is released. Cancels a pending recovery. `recover` reinstates it.
+    ///
+    /// The accounts stay bound, so the Discord or GitHub id of a revoked
+    /// member cannot be minted again. Freeing one, or clearing a profile
+    /// that motivated the revocation, takes three calls: `recover` to an
+    /// address holding no token, `set_external_accounts` or `set_bio` from
+    /// that address with the attester, then `revoke` again.
     ///
     /// # Panics
     ///
@@ -174,6 +219,21 @@ pub trait MemberTrait {
     /// Returns the token bound to an external account, if any.
     fn token_by_account(e: &Env, provider: types::Provider, id: String) -> Option<u32>;
 
+    /// Carry the member and every entry bound to it forward. Anyone.
+    ///
+    /// Writing to a member extends it, but only an active token can be
+    /// written to, and a member nobody touches is archived after
+    /// `PERSISTENT_TTL_EXTEND_TO`. This keeps a revoked record, and the
+    /// accounts it still reserves, readable without restoring them.
+    ///
+    /// No authorization: any account can extend any entry with
+    /// `ExtendFootprintTTLOp` regardless.
+    ///
+    /// # Panics
+    ///
+    /// * If the token does not exist.
+    fn extend_member(e: &Env, token_id: u32);
+
     /// Set the role. Admin only.
     ///
     /// # Panics
@@ -203,6 +263,12 @@ pub trait MemberTrait {
 
     /// Set the bio. Owner or admin.
     ///
+    /// # Panics
+    ///
+    /// * If the token does not exist or is revoked.
+    /// * If `caller` is neither the owner nor the admin.
+    /// * If the bio exceeds `MAX_BIO_LEN`.
+    ///
     /// # Events
     ///
     /// * topics - `["bio_set", token_id: u32]`
@@ -210,6 +276,12 @@ pub trait MemberTrait {
     fn set_bio(e: &Env, caller: Address, token_id: u32, bio: String);
 
     /// Set the projects. Owner or admin.
+    ///
+    /// # Panics
+    ///
+    /// * If the token does not exist or is revoked.
+    /// * If `caller` is neither the owner nor the admin.
+    /// * If a project exceeds its bounds.
     ///
     /// # Events
     ///
@@ -240,6 +312,9 @@ pub trait KeyTrait {
     /// Used when the key is lost. Requires the auth of the attester, who
     /// verified the external accounts of the member, and of `new_address`.
     ///
+    /// The proposal has to be finalized within `RECOVERY_DELAY` of
+    /// becoming executable; after that it lapses and a new one is needed.
+    ///
     /// # Panics
     ///
     /// * If the token does not exist or is revoked.
@@ -267,6 +342,9 @@ pub trait KeyTrait {
     /// # Panics
     ///
     /// * If no recovery is pending.
+    /// * If the attester changed since the recovery was proposed.
+    /// * If the recovery lapsed, i.e. `RECOVERY_DELAY` passed since it
+    ///   became executable.
     /// * If the new address holds a token in the meantime.
     ///
     /// # Events
@@ -279,7 +357,11 @@ pub trait KeyTrait {
     ///
     /// Only the admin signs: the member is not present when the key is lost
     /// without attested accounts, or when a revoked token is reinstated.
-    /// Clears a pending recovery.
+    /// `new_address` does not sign either, so the admin alone moves any
+    /// token, active or revoked, to any address. Clears a pending recovery.
+    ///
+    /// Published as `admin_recovered`, not `recovered`, so that an admin
+    /// move is never read as a recovery the member asked for.
     ///
     /// # Panics
     ///
@@ -288,7 +370,7 @@ pub trait KeyTrait {
     ///
     /// # Events
     ///
-    /// * topics - `["recovered", token_id: u32]`
+    /// * topics - `["admin_recovered", token_id: u32]`
     /// * data - `{from: Option<Address>, to}`
     fn recover(e: &Env, token_id: u32, new_address: Address);
 

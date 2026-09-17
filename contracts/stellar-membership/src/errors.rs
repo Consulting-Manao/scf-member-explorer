@@ -31,4 +31,8 @@ pub enum MembershipError {
     RecoveryPending = 300,
     /// No recovery is pending for this token.
     NoRecovery = 301,
+    /// The attester changed since the recovery was proposed.
+    AttesterChanged = 302,
+    /// The recovery was not finalized within its window.
+    RecoveryExpired = 303,
 }
